@@ -1,0 +1,27 @@
+# RailMate Backend V1 Dependencies
+
+# Web Framework
+fastapi==0.109.2
+uvicorn[standard]==0.27.1
+
+# Database & ORM
+sqlmodel==0.0.14
+sqlalchemy==2.0.25
+
+# AI/LLM
+openai==1.12.0
+langchain==0.1.6
+langchain-openai==0.0.5
+
+# Task Scheduling
+apscheduler==3.10.4
+
+# Environment & Config
+python-dotenv==1.0.1
+pydantic-settings==2.1.0
+
+# HTTP Client (for future 12306 integration)
+httpx==0.26.0
+
+# Utilities
+rich==13.7.0  # Beautiful terminal output for debug console
