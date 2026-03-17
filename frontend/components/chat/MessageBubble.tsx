@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { motion } from "framer-motion";
+import ReactMarkdown from "react-markdown";
 import { Bot, User, Wrench } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { ChatMessage } from "@/types/chat";
@@ -42,8 +43,8 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
         {!isUser && message.tool_calls && message.tool_calls.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-1">
             {message.tool_calls.map((tc, i) => (
-              <Badge key={i} variant="secondary" className="gap-1 text-xs">
-                <Wrench className="h-3 w-3" />
+              <Badge key={i} variant="secondary" className="gap-1 text-[11px]">
+                <Wrench className="h-2.5 w-2.5" />
                 {tc.tool_name}
               </Badge>
             ))}
@@ -52,13 +53,19 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
 
         <div
           className={cn(
-            "rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
+            "rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
             isUser
-              ? "bg-primary text-primary-foreground rounded-br-md"
+              ? "bg-primary text-primary-foreground rounded-br-md whitespace-pre-wrap"
               : "bg-secondary text-secondary-foreground rounded-bl-md",
           )}
         >
-          {message.content}
+          {isUser ? (
+            message.content
+          ) : (
+            <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-foreground prose-code:text-xs prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-muted prose-pre:p-2 prose-pre:rounded-lg">
+              <ReactMarkdown>{message.content}</ReactMarkdown>
+            </div>
+          )}
         </div>
 
         {cards.length > 0 && (

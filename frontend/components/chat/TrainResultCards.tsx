@@ -1,10 +1,10 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Clock, ArrowRight, TrainFront, Zap, Ticket, ArrowRightLeft, Search } from "lucide-react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Clock, ArrowRight, TrainFront, Zap, Ticket, ArrowRightLeft, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 import { formatDuration } from "@/utils/date";
 import { formatPrice, formatRemaining, getTrainTypeColor } from "@/utils/format";
@@ -20,50 +20,47 @@ function MiniTrainCard({ train, index }: { train: TrainCardData; index: number }
     <motion.div
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.2, delay: index * 0.06 }}
+      transition={{ duration: 0.2, delay: index * 0.05 }}
     >
       <Link href={href} className="block group">
-        <div className="rounded-lg border border-border bg-card/80 backdrop-blur-sm p-3 hover:border-primary/40 hover:shadow-sm transition-all duration-200 group-hover:scale-[1.01]">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
+        <div className="rounded-lg border border-border/60 bg-card/60 backdrop-blur-sm p-2.5 hover:border-primary/30 hover:bg-card/80 transition-all duration-200">
+          <div className="flex items-center justify-between gap-2">
+            {/* Left: train badge + times */}
+            <div className="flex items-center gap-2 min-w-0 flex-1">
               <span className={cn(
-                "inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-bold text-white",
+                "inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-bold text-white shrink-0",
                 getTrainTypeColor(train.train_type),
               )}>
                 {train.train_no}
               </span>
-              {train.from_station && (
-                <span className="text-xs text-muted-foreground">{train.from_station}</span>
-              )}
-            </div>
-            <span className={cn(
-              "text-[11px] font-medium",
-              train.remaining_tickets === 0 ? "text-destructive" :
-              train.remaining_tickets != null && train.remaining_tickets < 10 ? "text-warning" : "text-success",
-            )}>
-              {formatRemaining(train.remaining_tickets, fmtLocale)}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-lg font-bold tabular-nums">{train.departure_time}</span>
-            <div className="flex items-center gap-1 flex-1">
-              <div className="flex-1 h-px bg-border" />
-              <div className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
-                <Clock className="h-2.5 w-2.5" />
-                {formatDuration(train.duration_minutes, fmtLocale)}
+              <div className="flex items-center gap-1 text-sm tabular-nums font-semibold">
+                <span>{train.departure_time}</span>
+                <div className="flex items-center gap-0.5 text-muted-foreground">
+                  <div className="w-4 h-px bg-border" />
+                  <span className="text-[10px] font-normal">
+                    {formatDuration(train.duration_minutes, fmtLocale)}
+                  </span>
+                  <div className="w-4 h-px bg-border" />
+                  <ArrowRight className="h-2.5 w-2.5" />
+                </div>
+                <span>{train.arrival_time}</span>
               </div>
-              <div className="flex-1 h-px bg-border" />
-              <ArrowRight className="h-3 w-3 text-muted-foreground" />
             </div>
-            <span className="text-lg font-bold tabular-nums">{train.arrival_time}</span>
+
+            {/* Right: price + remaining */}
+            <div className="flex items-center gap-2 shrink-0">
+              {train.price_second_seat != null && (
+                <span className="text-xs font-semibold text-primary">{formatPrice(train.price_second_seat)}</span>
+              )}
+              <span className={cn(
+                "text-[10px]",
+                train.remaining_tickets === 0 ? "text-destructive" :
+                train.remaining_tickets != null && train.remaining_tickets < 10 ? "text-warning" : "text-muted-foreground",
+              )}>
+                {formatRemaining(train.remaining_tickets, fmtLocale)}
+              </span>
+            </div>
           </div>
-          {train.price_second_seat != null && (
-            <div className="flex items-center gap-1 mt-1.5">
-              <Ticket className="h-3 w-3 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">{t("tickets.seat.second")}</span>
-              <span className="text-xs font-semibold text-primary">{formatPrice(train.price_second_seat)}</span>
-            </div>
-          )}
         </div>
       </Link>
     </motion.div>
@@ -82,15 +79,20 @@ function TransferPlanCard({ plan, index }: { plan: TransferPlanData; index: numb
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.2, delay: index * 0.08 }}
-      className="rounded-lg border border-border bg-card/80 backdrop-blur-sm p-3 space-y-2"
+      className="rounded-lg border border-border/60 bg-card/60 backdrop-blur-sm p-2.5 space-y-1.5"
     >
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-foreground">{route}</span>
-        <Badge variant="secondary" className="text-[10px]">
-          {formatDuration(plan.total_minutes, fmtLocale)}
-        </Badge>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-medium text-foreground truncate">{route}</span>
+        <div className="flex items-center gap-2 shrink-0">
+          {plan.total_price != null && (
+            <span className="text-xs font-semibold text-primary">{formatPrice(plan.total_price)}</span>
+          )}
+          <Badge variant="secondary" className="text-[10px] shrink-0">
+            {formatDuration(plan.total_minutes, fmtLocale)}
+          </Badge>
+        </div>
       </div>
-      <div className="flex items-center gap-1.5 flex-wrap">
+      <div className="flex items-center gap-1 flex-wrap">
         {plan.legs.map((leg, i) => (
           <div key={i} className="flex items-center gap-1">
             <span className={cn(
@@ -103,19 +105,13 @@ function TransferPlanCard({ plan, index }: { plan: TransferPlanData; index: numb
               {leg.departure_time}→{leg.arrival_time}
             </span>
             {i < plan.legs.length - 1 && plan.waits[i] != null && (
-              <span className="text-[10px] text-warning mx-0.5">
-                {locale === "en" ? `wait ${plan.waits[i]}m` : `候${plan.waits[i]}分`}
+              <span className="text-[10px] text-amber-500 dark:text-amber-400 mx-0.5">
+                {locale === "en" ? `wait ${plan.waits[i]}min` : `候${plan.waits[i]}分`}
               </span>
             )}
           </div>
         ))}
       </div>
-      {plan.total_price != null && (
-        <div className="flex items-center gap-1">
-          <Ticket className="h-3 w-3 text-muted-foreground" />
-          <span className="text-xs font-semibold text-primary">{formatPrice(plan.total_price)}</span>
-        </div>
-      )}
     </motion.div>
   );
 }
@@ -127,62 +123,87 @@ interface TrainResultCardsProps {
 
 export function TrainResultCards({ cards, onQueryTransfer }: TrainResultCardsProps) {
   const { t, locale } = useI18n();
+  const [expandedCards, setExpandedCards] = useState<Record<number, boolean>>({});
+
+  const toggleExpand = (idx: number) => {
+    setExpandedCards((prev) => ({ ...prev, [idx]: !prev[idx] }));
+  };
 
   return (
-    <div className="space-y-3 mt-2">
-      {cards.map((card, ci) => (
-        <motion.div
-          key={ci}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: ci * 0.1 }}
-          className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-accent/30 p-3 shadow-sm"
-        >
-          <div className="flex items-center gap-2 mb-2.5 px-1">
-            {card.type === "fastest_train" ? (
-              <Zap className="h-4 w-4 text-amber-500" />
-            ) : card.type === "transfer" ? (
-              <ArrowRightLeft className="h-4 w-4 text-emerald-500" />
-            ) : (
-              <TrainFront className="h-4 w-4 text-primary" />
-            )}
-            <span className="text-xs font-medium text-foreground">
-              {card.type === "train_list"
-                ? `${card.from} → ${card.to}  ·  ${card.trains.length} ${locale === "en" ? "trains" : "趟"}`
-                : card.type === "transfer"
-                ? `${card.from} → ${card.to}  ·  ${card.plans.length} ${locale === "en" ? "plans" : "个方案"}`
-                : card.hint || t("chat.quick.fast.label")}
-            </span>
-          </div>
-          <div className="space-y-2">
-            {card.type === "transfer"
-              ? card.plans.map((plan, i) => (
-                  <TransferPlanCard key={i} plan={plan} index={i} />
-                ))
-              : card.trains.slice(0, 5).map((train, i) => (
-                  <MiniTrainCard key={`${train.train_no}:${train.from_station}:${i}`} train={train} index={i} />
-                ))}
-          </div>
-          {card.type !== "transfer" && card.trains.length > 5 && (
-            <p className="text-[11px] text-muted-foreground text-center mt-2">
-              +{card.trains.length - 5} ...
-            </p>
-          )}
-          {card.type === "train_list" && onQueryTransfer && (
-            <div className="mt-2.5 flex justify-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5 text-xs text-muted-foreground hover:text-primary"
-                onClick={() => onQueryTransfer(card.from, card.to)}
-              >
-                <Search className="h-3 w-3" />
-                {t("chat.card.queryTransfer")}
-              </Button>
+    <div className="space-y-2.5 mt-2 w-full">
+      {cards.map((card, ci) => {
+        const isExpanded = expandedCards[ci] ?? false;
+        const trainList = card.type !== "transfer" ? card.trains : [];
+        const visibleTrains = isExpanded ? trainList : trainList.slice(0, 5);
+        const hiddenCount = trainList.length - 5;
+
+        return (
+          <motion.div
+            key={ci}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, delay: ci * 0.08 }}
+            className="rounded-xl border border-primary/15 bg-gradient-to-br from-primary/[0.03] to-accent/20 p-3"
+          >
+            {/* Header */}
+            <div className="flex items-center gap-2 mb-2 px-0.5">
+              {card.type === "fastest_train" ? (
+                <Zap className="h-3.5 w-3.5 text-amber-500" />
+              ) : card.type === "transfer" ? (
+                <ArrowRightLeft className="h-3.5 w-3.5 text-emerald-500" />
+              ) : (
+                <TrainFront className="h-3.5 w-3.5 text-primary" />
+              )}
+              <span className="text-xs font-medium text-foreground/80">
+                {card.type === "train_list"
+                  ? `${card.from} → ${card.to}  ·  ${card.trains.length}${locale === "en" ? " trains" : "趟"}`
+                  : card.type === "transfer"
+                  ? `${card.from} → ${card.to}  ·  ${card.plans.length}${locale === "en" ? " plans" : "个方案"}`
+                  : card.hint || t("chat.quick.fast.label")}
+              </span>
             </div>
-          )}
-        </motion.div>
-      ))}
+
+            {/* Content */}
+            <div className="space-y-1.5">
+              {card.type === "transfer"
+                ? card.plans.map((plan, i) => (
+                    <TransferPlanCard key={i} plan={plan} index={i} />
+                  ))
+                : visibleTrains.map((train, i) => (
+                    <MiniTrainCard
+                      key={`${train.train_no}:${train.from_station}:${i}`}
+                      train={train}
+                      index={i}
+                    />
+                  ))}
+            </div>
+
+            {/* Expand / collapse for train lists */}
+            {card.type !== "transfer" && hiddenCount > 0 && (
+              <button
+                onClick={() => toggleExpand(ci)}
+                className="flex items-center justify-center gap-1 w-full mt-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isExpanded && "rotate-180")} />
+                {isExpanded
+                  ? (locale === "en" ? "Show less" : "收起")
+                  : (locale === "en" ? `Show ${hiddenCount} more` : `展开剩余 ${hiddenCount} 趟`)}
+              </button>
+            )}
+
+            {/* Query transfer button - inline at bottom */}
+            {card.type === "train_list" && onQueryTransfer && (
+              <button
+                onClick={() => onQueryTransfer(card.from, card.to)}
+                className="flex items-center justify-center gap-1.5 w-full mt-1.5 pt-1.5 border-t border-border/40 text-[11px] text-muted-foreground hover:text-primary transition-colors"
+              >
+                <ArrowRightLeft className="h-3 w-3" />
+                {t("chat.card.queryTransfer")}
+              </button>
+            )}
+          </motion.div>
+        );
+      })}
     </div>
   );
 }

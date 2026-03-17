@@ -179,8 +179,9 @@ class TrainService:
     ) -> List[TrainSearchResult]:
         """
         Live 模式：直接调用 12306 API 查询实时数据
-        改进：更好的错误处理和fallback逻辑
+        改进：更好的错误处理和fallback逻辑 + 批量获取票价
         """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
         from app.services.railway_api import get_railway_api
         
         api = get_railway_api()
@@ -188,12 +189,11 @@ class TrainService:
         
         try:
             tickets = api.query_tickets(from_station, to_station, travel_date, train_type)
-            api_success = True  # 12306 接口调用成功（即使返回空列表）
+            api_success = True
             
             if not tickets:
-                # 12306接口成功但无车次 - 可能是当日无车或已过末班
                 logger.info(f"12306 返回空结果：{from_station} -> {to_station} ({travel_date}) 当日无直达车次")
-                return []  # 返回空列表而不是fallback到本地，避免误报"车站不存在"
+                return []
             
             results: List[TrainSearchResult] = []
             
@@ -206,17 +206,44 @@ class TrainService:
                     departure_time=ticket["departure_time"],
                     arrival_time=ticket["arrival_time"],
                     duration_minutes=ticket["duration_minutes"],
-                    price_second_seat=None,  # 12306 余票查询不直接返回票价
+                    price_second_seat=None,
                     price_first_seat=None,
                     price_business_seat=None,
                     remaining_tickets=ticket.get("second_seat") or ticket.get("hard_seat") or 0,
                 )
                 results.append(result)
             
-            # 按出发时间排序
             results.sort(key=lambda x: x.departure_time)
-            
             logger.info(f"从 12306 查询到 {len(results)} 趟车次")
+            
+            # 批量获取票价（前 15 趟，并行请求，5s 超时）
+            price_batch = list(zip(results, tickets))[:15]
+            
+            def _fetch_price(pair):
+                r, raw = pair
+                try:
+                    prices = api.query_ticket_price(
+                        train_no=raw["train_code"],
+                        from_station_code=raw["from_station_code"],
+                        to_station_code=raw["to_station_code"],
+                        seat_types="O,M,A9",
+                        travel_date=travel_date,
+                    )
+                    r.price_second_seat = prices.get("second_seat")
+                    r.price_first_seat = prices.get("first_seat")
+                    r.price_business_seat = prices.get("business_seat")
+                except Exception:
+                    pass
+            
+            if price_batch:
+                try:
+                    with ThreadPoolExecutor(max_workers=5) as pool:
+                        futs = [pool.submit(_fetch_price, p) for p in price_batch]
+                        for f in as_completed(futs, timeout=6):
+                            f.result()
+                except Exception:
+                    logger.debug("部分票价查询超时，已跳过")
+            
             return results
             
         except Exception as e:
