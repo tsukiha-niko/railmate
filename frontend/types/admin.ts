@@ -19,5 +19,22 @@ export interface AdminConfig {
   scheduler_enabled: boolean;
   sync_interval_hours: number;
   openai_model: string;
+  openai_base_url: string;
   openai_api_configured: boolean;
+  openai_api_key_masked: string;
+}
+
+export interface AIConfigUpdate {
+  api_key?: string;
+  base_url?: string;
+  model?: string;
+}
+
+export interface AIConfigResponse {
+  success: boolean;
+  changed: string[];
+  openai_model: string;
+  openai_base_url: string;
+  openai_api_configured: boolean;
+  openai_api_key_masked: string;
 }

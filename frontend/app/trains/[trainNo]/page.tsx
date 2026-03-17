@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Clock, Calendar } from "lucide-react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +17,7 @@ import { cn } from "@/utils/cn";
 import { useI18n } from "@/lib/i18n/i18n";
 
 export default function TrainDetailPage() {
+  const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
   const trainNo = params.trainNo as string;
@@ -32,25 +32,38 @@ export default function TrainDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     async function load() {
       setLoading(true);
+      setError(null);
       try {
         const data = await getTrainSchedule(trainNo, date);
-        setStops(data.stops || []);
+        if (!cancelled) setStops(data.stops || []);
       } catch (err) {
-        setError(err instanceof Error ? err.message : t("common.loadFailed"));
-      } finally { setLoading(false); }
+        if (!cancelled) {
+          const msg = err instanceof Error ? err.message : t("common.loadFailed");
+          if (msg.includes("未找到") || msg.includes("404") || msg.includes("Not Found")) {
+            setStops([]);
+          } else {
+            setError(msg);
+          }
+        }
+      } finally { if (!cancelled) setLoading(false); }
     }
     load();
+    return () => { cancelled = true; };
   }, [trainNo, date, t]);
 
   const trainType = trainNo.charAt(0);
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-5">
-      <Link href="/search" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+    <div className="max-w-2xl mx-auto p-4 space-y-5 overflow-y-auto">
+      <button
+        onClick={() => router.back()}
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
         <ArrowLeft className="h-4 w-4" />{t("train.backToSearch")}
-      </Link>
+      </button>
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <Card>

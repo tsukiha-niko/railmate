@@ -15,6 +15,7 @@ export default function HomePage() {
   const contextOpen = useUIStore((s) => s.contextPanelOpen);
   const conversations = useChatStore((s) => s.conversations);
   const activeId = useChatStore((s) => s.activeConversationId);
+  const hydrated = useChatStore((s) => s._hydrated);
   const createConv = useChatStore((s) => s.createConversation);
   const location = useUserContextStore((s) => s.location);
   const { detectByIP } = useGeoLocation();
@@ -27,15 +28,15 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    if (!hydrated) return;
     if (conversations.length === 0 || !activeId) {
       createConv();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [hydrated]);
 
   return (
-    <div className="flex flex-1 overflow-hidden">
-      {/* Left: conversation list */}
+    <div className="flex flex-1 min-h-0 overflow-hidden">
       <aside
         className={cn(
           "hidden lg:flex flex-col border-r border-border bg-card w-64 shrink-0 transition-all duration-300",
@@ -45,12 +46,10 @@ export default function HomePage() {
         <ConversationList />
       </aside>
 
-      {/* Center: chat */}
-      <section className="flex-1 flex flex-col min-w-0">
+      <section className="flex-1 flex flex-col min-w-0 min-h-0">
         <ChatPanel />
       </section>
 
-      {/* Right: context sidebar */}
       <aside
         className={cn(
           "hidden xl:flex flex-col border-l border-border bg-card w-72 shrink-0 transition-all duration-300",

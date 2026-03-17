@@ -185,6 +185,22 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_transfer_tickets",
+            "description": "查询中转方案。直达车次很少或用户提到'中转/转车/换乘'时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "from_station": {"type": "string", "description": "出发站"},
+                    "to_station": {"type": "string", "description": "到达站"},
+                    "travel_date": {"type": "string", "description": "日期 YYYY-MM-DD"},
+                },
+                "required": ["from_station", "to_station", "travel_date"],
+            },
+        },
+    },
 ]
 
 
@@ -264,6 +280,7 @@ class RailMateAgent:
             "get_current_time": self._tool_get_current_time,
             "find_fastest_train": self._tool_find_fastest_train,
             "set_user_location": self._tool_set_user_location,
+            "search_transfer_tickets": self._tool_search_transfer_tickets,
         }
         
         logger.info(f"🤖 RailMate Agent 初始化完成 (模型: {self.model}, 用户: {user_id})")
@@ -458,6 +475,15 @@ class RailMateAgent:
             "station": self.user_context.location.station,
             "message": f"已记住您的位置：{self.user_context.location.city}，最近火车站：{self.user_context.location.station or '未知'}",
         }, ensure_ascii=False)
+    
+    def _tool_search_transfer_tickets(self, from_station: str, to_station: str, travel_date: str) -> str:
+        """工具：查询中转方案"""
+        logger.info(f"🔧 调用工具 search_transfer_tickets: {from_station} → {to_station}, {travel_date}")
+        return self.train_service.search_transfer_tickets_json(
+            from_station=from_station,
+            to_station=to_station,
+            travel_date=travel_date,
+        )
     
     # ==================== 对话接口 ====================
     

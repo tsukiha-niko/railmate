@@ -13,6 +13,25 @@ export interface TrainCardData {
   date?: string;
 }
 
+export interface TransferLegData {
+  train_no: string;
+  from_station: string;
+  to_station: string;
+  departure_time: string;
+  arrival_time: string;
+  duration_minutes: number;
+  price_second_seat?: number | null;
+}
+
+export interface TransferPlanData {
+  legs: TransferLegData[];
+  via: string[];
+  total_minutes: number;
+  total_price?: number | null;
+  waits: number[];
+  score: number;
+}
+
 export interface TrainListCard {
   type: "train_list";
   from: string;
@@ -27,7 +46,16 @@ export interface FastestTrainCard {
   hint?: string;
 }
 
-export type ChatCard = TrainListCard | FastestTrainCard;
+export interface TransferCard {
+  type: "transfer";
+  from: string;
+  to: string;
+  date: string;
+  plans: TransferPlanData[];
+  directCount: number;
+}
+
+export type ChatCard = TrainListCard | FastestTrainCard | TransferCard;
 
 function normalizeCompactTrain(
   raw: Record<string, unknown>,
@@ -47,7 +75,19 @@ function normalizeCompactTrain(
     duration_minutes: Number(raw.m ?? raw.duration_minutes ?? 0),
     price_second_seat: raw.p != null ? Number(raw.p) : raw.price_second_seat != null ? Number(raw.price_second_seat) : null,
     remaining_tickets: raw.r != null ? Number(raw.r) : raw.remaining_tickets != null ? Number(raw.remaining_tickets) : null,
-    date: (raw.date ?? fallbackDate) as string,
+    date: ((raw.date ?? fallbackDate) || undefined) as string | undefined,
+  };
+}
+
+function normalizeTransferLeg(raw: Record<string, unknown>): TransferLegData {
+  return {
+    train_no: (raw.t ?? raw.train_no ?? "") as string,
+    from_station: (raw.f ?? raw.from_station ?? "") as string,
+    to_station: (raw.o ?? raw.to_station ?? "") as string,
+    departure_time: (raw.d ?? raw.departure_time ?? "") as string,
+    arrival_time: (raw.a ?? raw.arrival_time ?? "") as string,
+    duration_minutes: Number(raw.m ?? raw.duration_minutes ?? 0),
+    price_second_seat: raw.p != null ? Number(raw.p) : null,
   };
 }
 
@@ -66,7 +106,10 @@ export function extractCards(toolCalls?: ToolCall[]): ChatCard[] {
 
   for (const tc of toolCalls) {
     const parsed = tryParse(tc.result);
-    if (!parsed || !parsed.success) continue;
+    if (!parsed) continue;
+
+    const ok = parsed.success ?? parsed.ok;
+    if (ok === false) continue;
 
     const from = (parsed.from ?? "") as string;
     const to = (parsed.to ?? "") as string;
@@ -87,13 +130,36 @@ export function extractCards(toolCalls?: ToolCall[]): ChatCard[] {
         const arr = parsed[key];
         if (Array.isArray(arr)) {
           for (const r of arr) {
-            const t = normalizeCompactTrain(r as Record<string, unknown>, from, to, date);
+            const raw = r as Record<string, unknown>;
+            const trainDate = (raw.date ?? date) as string;
+            const t = normalizeCompactTrain(raw, from, to, trainDate);
             if (t) allTrains.push(t);
           }
         }
       }
       if (allTrains.length > 0) {
         cards.push({ type: "fastest_train", trains: allTrains, hint: parsed.message as string | undefined });
+      }
+    }
+
+    if (tc.tool_name === "search_transfer_tickets" && Array.isArray(parsed.plans)) {
+      const plans: TransferPlanData[] = (parsed.plans as Record<string, unknown>[]).map((p) => ({
+        legs: Array.isArray(p.legs)
+          ? (p.legs as Record<string, unknown>[]).map(normalizeTransferLeg)
+          : [],
+        via: Array.isArray(p.via) ? (p.via as string[]) : [],
+        total_minutes: Number(p.total_min ?? p.total_duration_minutes ?? 0),
+        total_price: p.total_price != null ? Number(p.total_price) : null,
+        waits: Array.isArray(p.waits) ? (p.waits as number[]) : [],
+        score: Number(p.score ?? 0),
+      }));
+      if (plans.length > 0) {
+        cards.push({
+          type: "transfer",
+          from, to, date,
+          plans: plans.sort((a, b) => b.score - a.score).slice(0, 3),
+          directCount: Number(parsed.direct ?? 0),
+        });
       }
     }
   }

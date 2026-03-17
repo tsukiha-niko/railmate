@@ -105,6 +105,7 @@ async def get_config():
     """
     获取当前配置信息（脱敏）
     """
+    key = settings.openai_api_key or ""
     return {
         "app_name": settings.app_name,
         "app_version": settings.app_version,
@@ -112,7 +113,42 @@ async def get_config():
         "scheduler_enabled": settings.scheduler_enabled,
         "sync_interval_hours": settings.sync_interval_hours,
         "openai_model": settings.openai_model,
-        "openai_api_configured": bool(settings.openai_api_key and settings.openai_api_key != "sk-your-api-key-here"),
+        "openai_base_url": settings.openai_base_url,
+        "openai_api_configured": bool(key and key != "sk-your-api-key-here"),
+        "openai_api_key_masked": f"{key[:8]}...{key[-4:]}" if len(key) > 12 else ("***" if key else ""),
+    }
+
+
+@router.post("/ai-config")
+async def update_ai_config(
+    api_key: Optional[str] = None,
+    base_url: Optional[str] = None,
+    model: Optional[str] = None,
+):
+    """
+    运行时更新 AI 配置（不写入 .env，重启后失效）
+    """
+    changed = []
+    if api_key is not None:
+        settings.openai_api_key = api_key
+        changed.append("api_key")
+    if base_url is not None:
+        settings.openai_base_url = base_url
+        changed.append("base_url")
+    if model is not None:
+        settings.openai_model = model
+        changed.append("model")
+    
+    logger.info(f"🔧 AI 配置已更新: {', '.join(changed)}")
+    
+    key = settings.openai_api_key or ""
+    return {
+        "success": True,
+        "changed": changed,
+        "openai_model": settings.openai_model,
+        "openai_base_url": settings.openai_base_url,
+        "openai_api_configured": bool(key and key != "sk-your-api-key-here"),
+        "openai_api_key_masked": f"{key[:8]}...{key[-4:]}" if len(key) > 12 else ("***" if key else ""),
     }
 
 

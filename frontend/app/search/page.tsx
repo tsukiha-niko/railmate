@@ -17,7 +17,7 @@ export default function SearchPage() {
   const handleSearch = (params: TrainSearchParams) => { setSearchDate(params.travel_date); search(params); };
 
   return (
-    <div className="max-w-3xl mx-auto w-full p-4 space-y-5 pb-20 md:pb-4">
+    <div className="max-w-3xl mx-auto w-full p-4 space-y-5 pb-4 overflow-y-auto flex-1">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-xl font-bold mb-1">{t("search.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("search.subtitle")}</p>

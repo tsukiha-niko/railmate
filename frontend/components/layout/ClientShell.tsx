@@ -13,9 +13,9 @@ export function ClientShell({ children }: { children: ReactNode }) {
     <QueryProvider>
       <ThemeProvider>
         <I18nProvider messages={messages}>
-          <div className="flex flex-col min-h-screen">
+          <div className="flex flex-col h-dvh overflow-hidden">
             <Navbar />
-            <main className="flex-1 flex flex-col">{children}</main>
+            <main className="flex-1 flex flex-col min-h-0 pb-14 md:pb-0">{children}</main>
             <MobileNav />
           </div>
         </I18nProvider>

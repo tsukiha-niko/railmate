@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import type { GeoLocation } from "@/types/geo";
 
 interface UserContextState {
@@ -13,34 +14,48 @@ interface UserContextState {
   removeFavoriteStation: (station: string) => void;
 }
 
-export const useUserContextStore = create<UserContextState>((set) => ({
-  location: null,
-  preference: "balanced",
-  favoriteStations: [],
+export const useUserContextStore = create<UserContextState>()(
+  persist(
+    (set) => ({
+      location: null,
+      preference: "balanced",
+      favoriteStations: [],
 
-  setLocation(loc) {
-    set({ location: loc });
-  },
+      setLocation(loc) {
+        set({ location: loc });
+      },
 
-  clearLocation() {
-    set({ location: null });
-  },
+      clearLocation() {
+        set({ location: null });
+      },
 
-  setPreference(pref) {
-    set({ preference: pref });
-  },
+      setPreference(pref) {
+        set({ preference: pref });
+      },
 
-  addFavoriteStation(station) {
-    set((s) => ({
-      favoriteStations: s.favoriteStations.includes(station)
-        ? s.favoriteStations
-        : [...s.favoriteStations, station],
-    }));
-  },
+      addFavoriteStation(station) {
+        set((s) => ({
+          favoriteStations: s.favoriteStations.includes(station)
+            ? s.favoriteStations
+            : [...s.favoriteStations, station],
+        }));
+      },
 
-  removeFavoriteStation(station) {
-    set((s) => ({
-      favoriteStations: s.favoriteStations.filter((st) => st !== station),
-    }));
-  },
-}));
+      removeFavoriteStation(station) {
+        set((s) => ({
+          favoriteStations: s.favoriteStations.filter((st) => st !== station),
+        }));
+      },
+    }),
+    {
+      name: "railmate-user-context",
+      storage: createJSONStorage(() =>
+        typeof window !== "undefined" ? localStorage : {
+          getItem: () => null,
+          setItem: () => {},
+          removeItem: () => {},
+        },
+      ),
+    },
+  ),
+);

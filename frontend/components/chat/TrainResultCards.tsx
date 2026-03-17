@@ -1,13 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Clock, ArrowRight, TrainFront, Zap, Ticket } from "lucide-react";
+import { Clock, ArrowRight, TrainFront, Zap, Ticket, ArrowRightLeft } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/utils/cn";
 import { formatDuration } from "@/utils/date";
 import { formatPrice, formatRemaining, getTrainTypeColor } from "@/utils/format";
-import type { ChatCard, TrainCardData } from "@/utils/parseToolCards";
+import type { ChatCard, TrainCardData, TransferPlanData } from "@/utils/parseToolCards";
 import { useI18n } from "@/lib/i18n/i18n";
 
 function MiniTrainCard({ train, index }: { train: TrainCardData; index: number }) {
@@ -69,8 +69,58 @@ function MiniTrainCard({ train, index }: { train: TrainCardData; index: number }
   );
 }
 
+function TransferPlanCard({ plan, index }: { plan: TransferPlanData; index: number }) {
+  const { locale } = useI18n();
+  const fmtLocale = locale === "en" ? "en" : "zh-CN";
+  const route = plan.legs.length > 0
+    ? [plan.legs[0].from_station, ...plan.via, plan.legs[plan.legs.length - 1].to_station].join(" → ")
+    : plan.via.join(" → ");
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -8 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.2, delay: index * 0.08 }}
+      className="rounded-lg border border-border bg-card/80 backdrop-blur-sm p-3 space-y-2"
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-foreground">{route}</span>
+        <Badge variant="secondary" className="text-[10px]">
+          {formatDuration(plan.total_minutes, fmtLocale)}
+        </Badge>
+      </div>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {plan.legs.map((leg, i) => (
+          <div key={i} className="flex items-center gap-1">
+            <span className={cn(
+              "inline-flex items-center rounded px-1 py-0.5 text-[10px] font-bold text-white",
+              getTrainTypeColor(leg.train_no.charAt(0)),
+            )}>
+              {leg.train_no}
+            </span>
+            <span className="text-[10px] text-muted-foreground tabular-nums">
+              {leg.departure_time}→{leg.arrival_time}
+            </span>
+            {i < plan.legs.length - 1 && plan.waits[i] != null && (
+              <span className="text-[10px] text-warning mx-0.5">
+                {locale === "en" ? `wait ${plan.waits[i]}m` : `候${plan.waits[i]}分`}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+      {plan.total_price != null && (
+        <div className="flex items-center gap-1">
+          <Ticket className="h-3 w-3 text-muted-foreground" />
+          <span className="text-xs font-semibold text-primary">{formatPrice(plan.total_price)}</span>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
 export function TrainResultCards({ cards }: { cards: ChatCard[] }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   return (
     <div className="space-y-3 mt-2">
@@ -85,23 +135,31 @@ export function TrainResultCards({ cards }: { cards: ChatCard[] }) {
           <div className="flex items-center gap-2 mb-2.5 px-1">
             {card.type === "fastest_train" ? (
               <Zap className="h-4 w-4 text-amber-500" />
+            ) : card.type === "transfer" ? (
+              <ArrowRightLeft className="h-4 w-4 text-emerald-500" />
             ) : (
               <TrainFront className="h-4 w-4 text-primary" />
             )}
             <span className="text-xs font-medium text-foreground">
               {card.type === "train_list"
-                ? `${card.from} → ${card.to}  ·  ${card.trains.length} ${t("search.found", { count: card.trains.length }).replace(/\d+/, "").trim()}`
+                ? `${card.from} → ${card.to}  ·  ${card.trains.length} ${locale === "en" ? "trains" : "趟"}`
+                : card.type === "transfer"
+                ? `${card.from} → ${card.to}  ·  ${card.plans.length} ${locale === "en" ? "plans" : "个方案"}`
                 : card.hint || t("chat.quick.fast.label")}
             </span>
           </div>
           <div className="space-y-2">
-            {card.trains.slice(0, 5).map((train, i) => (
-              <MiniTrainCard key={`${train.train_no}:${train.from_station}:${i}`} train={train} index={i} />
-            ))}
+            {card.type === "transfer"
+              ? card.plans.map((plan, i) => (
+                  <TransferPlanCard key={i} plan={plan} index={i} />
+                ))
+              : card.trains.slice(0, 5).map((train, i) => (
+                  <MiniTrainCard key={`${train.train_no}:${train.from_station}:${i}`} train={train} index={i} />
+                ))}
           </div>
-          {card.trains.length > 5 && (
+          {card.type !== "transfer" && card.trains.length > 5 && (
             <p className="text-[11px] text-muted-foreground text-center mt-2">
-              +{card.trains.length - 5} {t("search.type.all").toLowerCase()}...
+              +{card.trains.length - 5} ...
             </p>
           )}
         </motion.div>
