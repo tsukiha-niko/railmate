@@ -55,15 +55,17 @@ async def search_tickets(
 async def get_train_schedule(
     train_no: str,
     run_date: date = Query(..., description="运行日期", example="2026-02-02"),
+    from_station: Optional[str] = Query(None, description="出发站（用于12306实时查询）"),
+    to_station: Optional[str] = Query(None, description="到达站（用于12306实时查询）"),
 ):
     """
     获取车次时刻表
     
-    返回指定车次的完整停靠站信息。
+    优先从本地数据库返回，无数据时从12306实时查询（需要from/to站名）。
     """
     service = TrainService()
     try:
-        schedule = service.get_train_schedule(train_no, run_date)
+        schedule = service.get_train_schedule(train_no, run_date, from_station, to_station)
         return {
             "train_no": train_no,
             "date": str(run_date),

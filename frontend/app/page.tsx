@@ -8,6 +8,7 @@ import { useUIStore } from "@/store/uiStore";
 import { useChatStore } from "@/store/chatStore";
 import { useGeoLocation } from "@/hooks/useGeoLocation";
 import { useUserContextStore } from "@/store/userContextStore";
+import { setUserLocation } from "@/services/chat";
 import { cn } from "@/utils/cn";
 
 export default function HomePage() {
@@ -18,14 +19,19 @@ export default function HomePage() {
   const hydrated = useChatStore((s) => s._hydrated);
   const createConv = useChatStore((s) => s.createConversation);
   const location = useUserContextStore((s) => s.location);
+  const locationHydrated = useUserContextStore((s) => s._hasHydrated);
+  const userId = useChatStore((s) => s.userId);
   const { detectByIP } = useGeoLocation();
 
   useEffect(() => {
-    if (!location) {
+    if (!locationHydrated) return;
+    if (location) {
+      setUserLocation({ city: location.city, station: location.station || undefined }, userId).catch(() => {});
+    } else {
       detectByIP();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [locationHydrated]);
 
   useEffect(() => {
     if (!hydrated) return;

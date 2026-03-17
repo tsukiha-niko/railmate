@@ -19,22 +19,12 @@ class Railway12306API:
     注意：这些接口可能随时变化，需要定期维护
     """
     
-    # 基础 URL
     BASE_URL = "https://kyfw.12306.cn"
-    
-    # 车站数据 URL
     STATION_URL = "https://kyfw.12306.cn/otn/resources/js/framework/station_name.js"
-    
-    # 余票查询 URL
     TICKET_QUERY_URL = "https://kyfw.12306.cn/otn/leftTicket/query"
-    
-    # 票价查询 URL
     PRICE_QUERY_URL = "https://kyfw.12306.cn/otn/leftTicket/queryTicketPrice"
-    
-    # 车次经停站查询
     TRAIN_STOP_URL = "https://kyfw.12306.cn/otn/czxx/queryByTrainNo"
     
-    # 请求头
     HEADERS = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "*/*",
@@ -43,40 +33,46 @@ class Railway12306API:
         "Connection": "keep-alive",
         "Referer": "https://kyfw.12306.cn/otn/leftTicket/init",
     }
+
+    QUERY_URLS = [
+        "https://kyfw.12306.cn/otn/leftTicket/queryZ",
+        "https://kyfw.12306.cn/otn/leftTicket/queryA",
+        "https://kyfw.12306.cn/otn/leftTicket/query",
+        "https://kyfw.12306.cn/otn/leftTicket/queryT",
+    ]
     
     def __init__(self, timeout: float = 15.0):
-        """
-        初始化 API 客户端
-        
-        Args:
-            timeout: 请求超时时间（秒）
-        """
         self.timeout = timeout
-        self._station_cache: Dict[str, Dict[str, str]] = {}  # name -> {code, pinyin, ...}
-        self._station_code_cache: Dict[str, str] = {}  # code -> name
+        self._station_cache: Dict[str, Dict[str, str]] = {}
+        self._station_code_cache: Dict[str, str] = {}
+        self._train_code_cache: Dict[str, List[Dict[str, str]]] = {}
+        self._last_working_query_url: Optional[str] = None
+        self._session_inited = False
+        self._client = httpx.Client(
+            timeout=timeout,
+            follow_redirects=True,
+            headers=self.HEADERS,
+            http2=False,
+        )
+    
+    def _ensure_session(self) -> None:
+        """确保12306会话已初始化（只做一次）"""
+        if self._session_inited:
+            return
+        try:
+            self._client.get("https://kyfw.12306.cn/otn/leftTicket/init")
+            self._session_inited = True
+        except Exception as e:
+            logger.debug(f"会话初始化失败: {e}")
     
     def _request(self, url: str, params: Optional[Dict] = None, init_session: bool = False) -> Any:
-        """
-        发送 HTTP 请求（复用 cookie jar 保持会话）
-        """
-        if not hasattr(self, '_cookies'):
-            self._cookies = httpx.Cookies()
-        
+        """发送 HTTP 请求（复用持久连接）"""
+        if init_session:
+            self._ensure_session()
         try:
-            with httpx.Client(
-                timeout=self.timeout, 
-                follow_redirects=True,
-                cookies=self._cookies,
-            ) as client:
-                if init_session and not self._cookies:
-                    init_url = "https://kyfw.12306.cn/otn/leftTicket/init"
-                    init_resp = client.get(init_url, headers=self.HEADERS)
-                    self._cookies.update(init_resp.cookies)
-                
-                response = client.get(url, params=params, headers=self.HEADERS)
-                self._cookies.update(response.cookies)
-                response.raise_for_status()
-                return response
+            response = self._client.get(url, params=params)
+            response.raise_for_status()
+            return response
         except httpx.TimeoutException:
             logger.error(f"请求超时: {url}")
             raise
@@ -85,7 +81,12 @@ class Railway12306API:
             raise
         except Exception as e:
             logger.error(f"请求失败: {url}, 错误: {e}")
+            self._session_inited = False
             raise
+    
+    def close(self) -> None:
+        """关闭持久连接"""
+        self._client.close()
     
     # ==================== 车站数据 ====================
     
@@ -208,31 +209,24 @@ class Railway12306API:
         
         logger.info(f"查询余票: {from_station}({from_code}) -> {to_station}({to_code}), {travel_date}")
         
-        # 构建请求参数
         params = {
             "leftTicketDTO.train_date": travel_date.strftime("%Y-%m-%d"),
             "leftTicketDTO.from_station": from_code,
             "leftTicketDTO.to_station": to_code,
-            "purpose_codes": "ADULT",  # 成人票
+            "purpose_codes": "ADULT",
         }
         
-        # 尝试多个可能的接口路径（12306 接口路径经常变化）
-        query_urls = [
-            "https://kyfw.12306.cn/otn/leftTicket/queryZ",  # 新接口
-            "https://kyfw.12306.cn/otn/leftTicket/queryA",
-            "https://kyfw.12306.cn/otn/leftTicket/query",   # 旧接口
-            "https://kyfw.12306.cn/otn/leftTicket/queryT",
-        ]
+        urls_to_try = list(self.QUERY_URLS)
+        if self._last_working_query_url:
+            urls_to_try.remove(self._last_working_query_url)
+            urls_to_try.insert(0, self._last_working_query_url)
         
-        for query_url in query_urls:
+        for query_url in urls_to_try:
             try:
-                # 先初始化会话
                 response = self._request(query_url, params, init_session=True)
                 
-                # 检查响应内容
                 content = response.text
                 if not content or content.startswith("<!"):
-                    # HTML 页面，不是 JSON
                     continue
                 
                 data = response.json()
@@ -245,10 +239,12 @@ class Railway12306API:
                 
                 result_data = data.get("data", {})
                 result_list = result_data.get("result", [])
-                station_map = result_data.get("map", {})  # 车站代码映射
+                station_map = result_data.get("map", {})
                 
                 if not result_list:
                     continue
+                
+                self._last_working_query_url = query_url
                 
                 allowed_types = None
                 if train_type:
@@ -262,6 +258,8 @@ class Railway12306API:
                             continue
                         tickets.append(parsed)
                 
+                self._cache_train_codes(from_code, to_code, travel_date, tickets)
+                
                 logger.info(f"查询到 {len(tickets)} 趟车次 (接口: {query_url.split('/')[-1]})")
                 return tickets
                 
@@ -271,6 +269,47 @@ class Railway12306API:
         
         logger.error("所有 12306 接口均查询失败")
         return []
+    
+    def _cache_train_codes(
+        self,
+        from_code: str,
+        to_code: str,
+        travel_date: date,
+        tickets: List[Dict[str, Any]],
+    ) -> None:
+        """缓存车次内部编码，供时刻表查询直接使用"""
+        key = f"{from_code}_{to_code}_{travel_date}"
+        self._train_code_cache[key] = [
+            {
+                "train_no": t["train_no"],
+                "train_code": t["train_code"],
+                "start_station_code": t["start_station_code"],
+                "end_station_code": t["end_station_code"],
+            }
+            for t in tickets
+        ]
+        if len(self._train_code_cache) > 200:
+            oldest = next(iter(self._train_code_cache))
+            del self._train_code_cache[oldest]
+    
+    def find_cached_train_code(
+        self,
+        train_no: str,
+        from_station: str,
+        to_station: str,
+        travel_date: date,
+    ) -> Optional[Dict[str, str]]:
+        """查找缓存的车次内部编码（命中则无需重新查票）"""
+        from_code = self.get_station_code(from_station)
+        to_code = self.get_station_code(to_station)
+        if not from_code or not to_code:
+            return None
+        key = f"{from_code}_{to_code}_{travel_date}"
+        cached = self._train_code_cache.get(key, [])
+        for t in cached:
+            if t["train_no"].upper() == train_no.upper():
+                return t
+        return None
     
     def _parse_ticket_info(self, raw_data: str, station_map: Dict[str, str]) -> Optional[Dict[str, Any]]:
         """

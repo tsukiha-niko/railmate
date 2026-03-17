@@ -4,8 +4,9 @@
 支持 Mock 模式（本地数据库）和 Live 模式（12306 实时 API）
 """
 
+import re
 from datetime import date, time, datetime, timedelta
-from typing import List, Optional, Tuple, Dict, Set
+from typing import Callable, List, Optional, Tuple, Dict, Set
 
 from sqlmodel import Session, and_, or_, select
 
@@ -112,30 +113,98 @@ class TrainService:
         ).all()
         return list(results)
     
-    def get_train_schedule(self, train_no: str, run_date: date) -> List[dict]:
+    def get_train_schedule(
+        self,
+        train_no: str,
+        run_date: date,
+        from_station: Optional[str] = None,
+        to_station: Optional[str] = None,
+    ) -> List[dict]:
         """
-        获取车次时刻表
-        
-        Returns:
-            停靠站列表，包含站名、到发时间等信息
+        获取车次时刻表（优先本地DB，fallback到12306实时查询）
         """
         train = self.get_train_by_no(train_no, run_date)
-        if not train:
-            raise TrainNotFoundError(f"未找到车次 {train_no}（{run_date}）")
-        
-        stops = self.get_train_stops(train.id)
-        
+        if train:
+            stops = self.get_train_stops(train.id)
+            if stops:
+                schedule = []
+                for stop, station in stops:
+                    schedule.append({
+                        "stop_index": stop.stop_index,
+                        "station_code": station.code,
+                        "station_name": station.name,
+                        "arrival_time": stop.arrival_time.strftime("%H:%M") if stop.arrival_time else "--",
+                        "departure_time": stop.departure_time.strftime("%H:%M") if stop.departure_time else "--",
+                        "stop_duration": stop.stop_duration_minutes,
+                    })
+                return schedule
+
+        return self._get_schedule_live(train_no, run_date, from_station, to_station)
+
+    def _get_schedule_live(
+        self,
+        train_no: str,
+        run_date: date,
+        from_station: Optional[str] = None,
+        to_station: Optional[str] = None,
+    ) -> List[dict]:
+        """从12306实时查询车次经停站（优先使用缓存的车次编码）"""
+        from app.services.railway_api import get_railway_api
+        api = get_railway_api()
+
+        if not from_station or not to_station:
+            raise TrainNotFoundError(f"未找到车次 {train_no}（{run_date}）的时刻表")
+
+        cached = api.find_cached_train_code(train_no, from_station, to_station, run_date)
+        if cached:
+            logger.info(f"✅ 命中车次编码缓存: {train_no} → {cached['train_code']}")
+            target = cached
+        else:
+            tickets = api.query_tickets(from_station, to_station, run_date)
+            target = None
+            for t in tickets:
+                if t["train_no"].upper() == train_no.upper():
+                    target = t
+                    break
+            if not target:
+                raise TrainNotFoundError(
+                    f"未找到车次 {train_no}（{from_station}→{to_station}, {run_date}）"
+                )
+
+        raw_stops = api.query_train_stops(
+            train_no=target["train_code"],
+            from_station_code=target["start_station_code"],
+            to_station_code=target["end_station_code"],
+            travel_date=run_date,
+        )
+
+        if not raw_stops:
+            raise TrainNotFoundError(f"车次 {train_no} 暂无经停站数据")
+
+        return self._parse_raw_stops(raw_stops)
+
+    @staticmethod
+    def _parse_raw_stops(raw_stops: List[dict]) -> List[dict]:
+        """将12306原始经停站数据转为标准格式"""
         schedule = []
-        for stop, station in stops:
+        for i, s in enumerate(raw_stops):
+            arr = s.get("arrive_time", "----")
+            dep = s.get("start_time", "----")
+            stopover = s.get("stopover_time", "----")
+
+            stop_minutes = None
+            if stopover and stopover not in ("----", "--"):
+                m = re.search(r"(\d+)", stopover)
+                if m:
+                    stop_minutes = int(m.group(1))
+
             schedule.append({
-                "stop_index": stop.stop_index,
-                "station_code": station.code,
-                "station_name": station.name,
-                "arrival_time": stop.arrival_time.strftime("%H:%M") if stop.arrival_time else "--",
-                "departure_time": stop.departure_time.strftime("%H:%M") if stop.departure_time else "--",
-                "stop_duration": stop.stop_duration_minutes,
+                "stop_index": int(s.get("station_no", i + 1)),
+                "station_name": s.get("station_name", ""),
+                "arrival_time": arr if arr not in ("----", "") else "--",
+                "departure_time": dep if dep not in ("----", "") else "--",
+                "stop_duration": stop_minutes,
             })
-        
         return schedule
     
     # ==================== 票务搜索（核心功能） ====================
@@ -437,7 +506,7 @@ class TrainService:
                     "count": len(data),
                     "query": {"from": from_station, "to": to_station, "date": travel_date},
                     "trains": data,
-                }, ensure_ascii=False, indent=2)
+                }, ensure_ascii=False)
             
         except StationNotFoundError as e:
             return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
@@ -492,6 +561,74 @@ class TrainService:
         "徐州东", "九江", "衡阳东", "株洲西", "鹰潭北", "福州南",
     ]
     
+    CITY_COORDS = {
+        "广州南": (23.0, 113.3), "广州": (23.0, 113.3),
+        "深圳北": (22.6, 114.0), "深圳": (22.6, 114.0),
+        "长沙南": (28.2, 113.0), "长沙": (28.2, 113.0),
+        "武汉": (30.6, 114.3), "武汉站": (30.6, 114.3),
+        "南昌西": (28.7, 115.9), "南昌": (28.7, 115.9),
+        "杭州东": (30.3, 120.2), "杭州": (30.3, 120.2),
+        "南京南": (32.0, 118.8), "南京": (32.0, 118.8),
+        "上海虹桥": (31.2, 121.3), "上海": (31.2, 121.3),
+        "北京西": (39.9, 116.3), "北京": (39.9, 116.3),
+        "郑州东": (34.8, 113.7), "郑州": (34.8, 113.7),
+        "西安北": (34.4, 108.9), "西安": (34.4, 108.9),
+        "石家庄": (38.0, 114.5),
+        "济南西": (36.7, 116.9), "济南": (36.7, 116.9),
+        "合肥南": (31.8, 117.3), "合肥": (31.8, 117.3),
+        "贵阳北": (26.5, 106.6), "贵阳": (26.5, 106.6),
+        "昆明南": (24.9, 102.7), "昆明": (24.9, 102.7),
+        "重庆北": (29.6, 106.5), "重庆": (29.6, 106.5),
+        "成都东": (30.6, 104.1), "成都": (30.6, 104.1),
+        "徐州东": (34.3, 117.2), "徐州": (34.3, 117.2),
+        "九江": (29.7, 115.9),
+        "衡阳东": (26.9, 112.6), "衡阳": (26.9, 112.6),
+        "株洲西": (27.8, 113.0), "株洲": (27.8, 113.0),
+        "鹰潭北": (28.3, 117.0), "鹰潭": (28.3, 117.0),
+        "福州南": (25.9, 119.3), "福州": (25.9, 119.3),
+        "景德镇": (29.3, 117.2), "景德镇北": (29.3, 117.2),
+        "赣州": (25.8, 114.9), "厦门": (24.5, 118.1),
+        "南宁东": (22.8, 108.3), "南宁": (22.8, 108.3),
+        "天津": (39.1, 117.2), "沈阳": (41.8, 123.4),
+    }
+    
+    def _get_coord(self, name: str):
+        """获取站点/城市大致坐标，支持模糊匹配"""
+        if name in self.CITY_COORDS:
+            return self.CITY_COORDS[name]
+        for key, coord in self.CITY_COORDS.items():
+            if name.startswith(key) or key.startswith(name):
+                return coord
+        return None
+    
+    def _prioritize_hubs(self, from_station: str, to_station: str, max_hubs: int = 8) -> List[str]:
+        """基于地理位置智能排序中转站，优先尝试路线沿途的枢纽"""
+        hubs = [h for h in self.MAJOR_TRANSFER_HUBS
+                if h != from_station and h != to_station]
+        
+        from_coord = self._get_coord(from_station)
+        to_coord = self._get_coord(to_station)
+        
+        if not from_coord or not to_coord:
+            return hubs[:max_hubs]
+        
+        mid_lat = (from_coord[0] + to_coord[0]) / 2
+        mid_lon = (from_coord[1] + to_coord[1]) / 2
+        route_dist = max(((from_coord[0] - to_coord[0]) ** 2 + (from_coord[1] - to_coord[1]) ** 2) ** 0.5, 0.1)
+        
+        def hub_distance(hub):
+            coord = self._get_coord(hub)
+            if not coord:
+                return 999
+            dist_to_mid = ((coord[0] - mid_lat) ** 2 + (coord[1] - mid_lon) ** 2) ** 0.5
+            dist_from = ((coord[0] - from_coord[0]) ** 2 + (coord[1] - from_coord[1]) ** 2) ** 0.5
+            dist_to = ((coord[0] - to_coord[0]) ** 2 + (coord[1] - to_coord[1]) ** 2) ** 0.5
+            detour = (dist_from + dist_to) / route_dist - 1.0
+            return dist_to_mid + max(0, detour) * 5
+        
+        hubs.sort(key=hub_distance)
+        return hubs[:max_hubs]
+    
     def search_transfer_tickets(
         self,
         from_station: str,
@@ -500,7 +637,8 @@ class TrainService:
         max_transfers: int = 1,
         max_plans: int = 5,
         min_transfer_minutes: int = 30,
-        max_transfer_minutes: int = 180,
+        max_transfer_minutes: int = 240,
+        on_progress: Optional[Callable] = None,
     ) -> TransferSearchResult:
         """
         查询中转方案
@@ -512,6 +650,7 @@ class TrainService:
             return self._search_transfer_live(
                 from_station, to_station, travel_date,
                 max_plans, min_transfer_minutes, max_transfer_minutes,
+                on_progress=on_progress,
             )
         return self._search_transfer_mock(
             from_station, to_station, travel_date,
@@ -525,37 +664,62 @@ class TrainService:
         travel_date: date,
         max_plans: int = 5,
         min_transfer_minutes: int = 30,
-        max_transfer_minutes: int = 180,
+        max_transfer_minutes: int = 240,
+        on_progress: Optional[Callable] = None,
     ) -> TransferSearchResult:
-        """Live 模式：通过 12306 API 逐段搜索中转方案"""
+        """
+        Live 模式：通过 12306 API 并发搜索中转方案
+        优化：地理优先选择中转站 + 并发查询 + 统一时间计算
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        
+        if on_progress:
+            on_progress(f"正在查询 {from_station}→{to_station} 直达...")
+        
         direct_trains = self.search_tickets(from_station, to_station, travel_date)
         direct_count = len(direct_trains)
         
-        hubs = [h for h in self.MAJOR_TRANSFER_HUBS
-                if h != from_station and h != to_station]
+        hubs = self._prioritize_hubs(from_station, to_station)
+        logger.info(f"🔄 智能选择中转站（按优先级）: {hubs}")
         
         plans: List[TransferPlan] = []
-        searched_hubs = 0
         
-        for hub in hubs:
-            if len(plans) >= max_plans or searched_hubs >= 6:
-                break
-            
+        def query_hub(hub: str):
+            svc = TrainService()
             try:
-                leg1_trains = self.search_tickets(from_station, hub, travel_date)
-                if not leg1_trains:
+                leg1 = svc.search_tickets(from_station, hub, travel_date)
+                if not leg1:
+                    return hub, [], []
+                leg2 = svc.search_tickets(hub, to_station, travel_date)
+                return hub, leg1, leg2
+            except Exception as e:
+                logger.debug(f"中转站 {hub} 查询失败: {e}")
+                return hub, [], []
+            finally:
+                svc.close()
+        
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            futures = {executor.submit(query_hub, hub): hub for hub in hubs}
+            
+            for future in as_completed(futures):
+                hub, leg1_trains, leg2_trains = future.result()
+                if not leg1_trains or not leg2_trains:
                     continue
-                searched_hubs += 1
                 
-                leg2_trains = self.search_tickets(hub, to_station, travel_date)
-                if not leg2_trains:
-                    continue
+                if on_progress:
+                    on_progress(f"匹配经 {hub} 中转方案...")
                 
-                for t1 in leg1_trains[:5]:
-                    for t2 in leg2_trains[:5]:
+                leg2_sorted = sorted(leg2_trains, key=lambda x: x.departure_time)
+                
+                for t1 in leg1_trains:
+                    if len(plans) >= max_plans * 2:
+                        break
+                    for t2 in leg2_sorted:
                         wait = self._calc_wait_minutes(t1.arrival_time, t2.departure_time)
-                        if wait < min_transfer_minutes or wait > max_transfer_minutes:
+                        if wait < min_transfer_minutes:
                             continue
+                        if wait > max_transfer_minutes:
+                            break
                         
                         total_min = t1.duration_minutes + wait + t2.duration_minutes
                         p1 = t1.price_second_seat or 0
@@ -586,9 +750,7 @@ class TrainService:
                         )
                         plan.score = self._score_transfer_plan(plan)
                         plans.append(plan)
-            except Exception as e:
-                logger.debug(f"中转站 {hub} 查询失败: {e}")
-                continue
+                        break
         
         plans.sort(key=lambda x: x.score, reverse=True)
         plans = plans[:max_plans]
@@ -605,14 +767,24 @@ class TrainService:
             message=f"找到{len(plans)}个中转方案" if plans else "未找到合适的中转方案",
         )
     
-    @staticmethod
-    def _calc_wait_minutes(arrival_time: str, departure_time: str) -> int:
-        """计算两个 HH:MM 时间之间的分钟差"""
+    def _calc_wait_minutes(self, arrival, departure) -> int:
+        """计算等待时间（分钟），支持 str("HH:MM") 和 time 对象，处理跨天"""
+        if not arrival or not departure:
+            return -1
         try:
-            arr_h, arr_m = map(int, arrival_time.split(":"))
-            dep_h, dep_m = map(int, departure_time.split(":"))
-            diff = (dep_h * 60 + dep_m) - (arr_h * 60 + arr_m)
-            return diff if diff >= 0 else diff + 1440
+            if isinstance(arrival, str):
+                arr_h, arr_m = map(int, arrival.split(":"))
+            else:
+                arr_h, arr_m = arrival.hour, arrival.minute
+            if isinstance(departure, str):
+                dep_h, dep_m = map(int, departure.split(":"))
+            else:
+                dep_h, dep_m = departure.hour, departure.minute
+            arr_min = arr_h * 60 + arr_m
+            dep_min = dep_h * 60 + dep_m
+            if dep_min < arr_min:
+                dep_min += 24 * 60
+            return dep_min - arr_min
         except Exception:
             return -1
     
@@ -883,19 +1055,6 @@ class TrainService:
         
         return plans
     
-    def _calc_wait_minutes(self, arrival: time, departure: time) -> int:
-        """计算等待时间（分钟），处理跨天情况"""
-        if not arrival or not departure:
-            return -1
-        
-        arr_min = arrival.hour * 60 + arrival.minute
-        dep_min = departure.hour * 60 + departure.minute
-        
-        if dep_min < arr_min:
-            dep_min += 24 * 60  # 跨天
-        
-        return dep_min - arr_min
-    
     def _calc_duration(self, from_stop: TrainStop, to_stop: TrainStop) -> int:
         """计算行程时长"""
         if not from_stop.departure_time or not to_stop.arrival_time:
@@ -1148,7 +1307,7 @@ class TrainService:
             )
             
             # 使用紧凑格式减少token
-            return json.dumps(result.to_compact(), ensure_ascii=False, indent=2)
+            return json.dumps(result.to_compact(), ensure_ascii=False)
             
         except Exception as e:
             logger.error(f"中转查询失败: {e}")

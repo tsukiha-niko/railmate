@@ -34,10 +34,19 @@ SYSTEM_PROMPT = """你是RailMate智轨伴行，中国铁路出行AI助手。
 3. 城市名自动转主要高铁站（广州→广州南，北京→北京西，长沙→长沙南，武汉→武汉站，南昌→南昌西，郑州→郑州东，杭州→杭州东，南京→南京南，西安→西安北，成都→成都东，合肥→合肥南）
 4. 日期推断：今天={today}，明天={tomorrow}，后天={day_after_tomorrow}
 5. 没指定日期时：{current_hour}点前18点查今天，否则查明天
-6. **重要**：如果查询返回"当日无车次"或结果为空，自动查第二天并推荐早班车
-7. **不要传 train_type 参数**，除非用户明确说只要高铁/动车等。不过滤能展示更多选择
+6. **不要传 train_type 参数**，除非用户明确说只要高铁/动车等。不过滤能展示更多选择
 
-## 直达优先原则（重要！）
+## 空结果处理（极其重要！必须严格执行！）
+- 查询返回"当日无车次"或0条结果时：**必须立即调用工具查第二天的票**，拿到结果后再回复
+- 中转方案返回0个结果时：**必须立即用第二天日期再调用 search_transfer_tickets**
+- 如果两天都没有结果，给出具体替代建议（换车站、分段购票、附近城市等）
+- **绝对禁止说"我将为您查询XX"或"建议您查询XX"然后结束对话。要查就立刻调用工具查，查到结果再回复用户**
+- **工具返回 station_not_found 错误时**：站名在12306不存在，绝对不要换日期重试（问题不在日期）。应该：
+  1. 告知用户该站名无法识别
+  2. 如果是自动定位导致的（如定位到国外城市），建议用户在设置页手动设置中国城市
+  3. 直接询问用户实际要从哪个中国城市出发
+
+## 直达优先原则
 - **默认只查直达**：使用 search_tickets 查询，展示结果
 - **只在以下情况调用 search_transfer_tickets**：
   1. 用户明确说了"中转""转车""换乘"
@@ -56,7 +65,8 @@ SYSTEM_PROMPT = """你是RailMate智轨伴行，中国铁路出行AI助手。
 {current_time}
 
 ## 回复风格
-简洁专业，适当用emoji，给推荐时说明理由。先行动后确认。"""
+简洁专业，适当用emoji，给推荐时说明理由。先行动后确认。
+**铁律：你的每一句话都必须有依据。如果你说"我来帮你查"，就必须紧接着调用工具。如果工具返回了hint字段，必须按hint的指示继续调用工具，不能忽略。**"""
 
 
 def get_system_prompt(user_context: Optional[UserContext] = None) -> str:
@@ -158,8 +168,8 @@ TOOLS = [
                     "to_station": {"type": "string", "description": "到达站"},
                     "min_buffer_minutes": {
                         "type": "integer",
-                        "description": "提前量（分钟），默认60",
-                        "default": 60,
+                        "description": "提前量（分钟），默认15",
+                        "default": 15,
                     },
                 },
                 "required": ["from_station", "to_station"],
@@ -290,8 +300,12 @@ class RailMateAgent:
         travel_date: str,
         train_type: Optional[str] = None,
     ) -> str:
-        """工具：查询车票（优化版：智能提示）"""
+        """工具：查询车票（站名验证+智能提示）"""
         logger.info(f"🔧 调用工具 search_tickets: {from_station} -> {to_station}, {travel_date}")
+        
+        err = self._validate_stations(from_station=from_station, to_station=to_station)
+        if err:
+            return err
         
         result_str = self.train_service.search_tickets_json(
             from_station=from_station,
@@ -375,10 +389,14 @@ class RailMateAgent:
         self,
         from_station: str,
         to_station: str,
-        min_buffer_minutes: int = 60,
+        min_buffer_minutes: int = 15,
     ) -> str:
-        """工具：查找最快能出发的车次（改进版：总是尝试第二天）"""
+        """工具：查找最快能出发的车次（站名验证+15分钟提前量）"""
         logger.info(f"🔧 调用工具 find_fastest_train: {from_station} -> {to_station}")
+        
+        err = self._validate_stations(from_station=from_station, to_station=to_station)
+        if err:
+            return err
         
         now = datetime.now()
         earliest_departure = now + timedelta(minutes=min_buffer_minutes)
@@ -470,13 +488,65 @@ class RailMateAgent:
         }, ensure_ascii=False)
     
     def _tool_search_transfer_tickets(self, from_station: str, to_station: str, travel_date: str) -> str:
-        """工具：查询中转方案"""
+        """工具：查询中转方案（站名验证+智能提示+限制日期循环）"""
         logger.info(f"🔧 调用工具 search_transfer_tickets: {from_station} → {to_station}, {travel_date}")
-        return self.train_service.search_transfer_tickets_json(
+        
+        err = self._validate_stations(from_station=from_station, to_station=to_station)
+        if err:
+            return err
+        
+        result_str = self.train_service.search_transfer_tickets_json(
             from_station=from_station,
             to_station=to_station,
             travel_date=travel_date,
         )
+        
+        try:
+            result = json.loads(result_str)
+            plans = result.get("plans", [])
+            if result.get("ok") and len(plans) == 0:
+                travel_dt = datetime.strptime(travel_date, "%Y-%m-%d").date()
+                days_ahead = (travel_dt - date.today()).days
+                
+                if days_ahead <= 1:
+                    tomorrow = travel_dt + timedelta(days=1)
+                    result["hint"] = (
+                        f"当日无合适中转方案。立即调用 search_transfer_tickets 查询 {tomorrow} "
+                        f"的中转方案。"
+                    )
+                else:
+                    result["hint"] = (
+                        "已查询多天仍无中转方案。不要再换日期重试。请直接告诉用户当前没有找到合适的中转路线，"
+                        "并给出建议：1)尝试从其他城市/车站出发 2)考虑飞机/大巴等替代交通 3)分段查看各段是否有车次。"
+                    )
+                return json.dumps(result, ensure_ascii=False)
+        except Exception:
+            pass
+        
+        return result_str
+    
+    # ==================== 工具辅助方法 ====================
+    
+    def _validate_stations(self, **stations) -> Optional[str]:
+        """验证站名是否为有效的中国火车站，无效时立即返回错误JSON（避免无效查询浪费大量时间）"""
+        from app.services.railway_api import get_railway_api
+        api = get_railway_api()
+        invalid = []
+        for name in stations.values():
+            if name and not api.get_station_code(name):
+                invalid.append(f"'{name}'")
+        if invalid:
+            return json.dumps({
+                "success": False,
+                "error": "station_not_found",
+                "msg": f"以下站名在中国铁路12306系统中不存在: {', '.join(invalid)}",
+                "hint": (
+                    "站名无法识别。可能原因：1)自动定位到了国外城市 2)站名输入有误。"
+                    "请告知用户该站名无效，并询问用户实际要从哪个中国城市出发/到达。"
+                    "不要换日期重试，问题不在日期而在站名。"
+                ),
+            }, ensure_ascii=False)
+        return None
     
     # ==================== 对话接口 ====================
     
@@ -517,6 +587,7 @@ class RailMateAgent:
         self.memory.add_message(conv_id, "user", message)
         
         tool_calls_made: List[ToolCall] = []
+        max_tool_rounds = 8
         
         try:
             # 调用 LLM
@@ -530,8 +601,10 @@ class RailMateAgent:
             
             assistant_message = response.choices[0].message
             
-            # 处理工具调用（可能多轮）
-            while assistant_message.tool_calls:
+            # 处理工具调用（可能多轮，设上限防止无限循环）
+            tool_round = 0
+            while assistant_message.tool_calls and tool_round < max_tool_rounds:
+                tool_round += 1
                 logger.info(f"🔧 AI 请求调用 {len(assistant_message.tool_calls)} 个工具")
                 
                 tool_calls_data = [
@@ -567,7 +640,7 @@ class RailMateAgent:
                     tool_calls_made.append(ToolCall(
                         tool_name=func_name,
                         arguments=func_args if isinstance(func_args, dict) else {"raw": str(func_args)},
-                        result=result[:5000] if len(result) > 5000 else result,
+                        result=result[:20000] if len(result) > 20000 else result,
                     ))
                     
                     self.memory.add_tool_result(conv_id, tool_call.id, result)

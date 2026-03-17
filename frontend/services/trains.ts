@@ -10,8 +10,17 @@ export async function searchTickets(params: TrainSearchParams): Promise<TrainSea
   });
 }
 
-export async function getTrainSchedule(trainNo: string, date: string): Promise<TrainSchedule> {
-  return get<TrainSchedule>(`/api/v1/trains/${trainNo}/schedule`, { run_date: date });
+export async function getTrainSchedule(
+  trainNo: string,
+  date: string,
+  fromStation?: string,
+  toStation?: string,
+): Promise<TrainSchedule> {
+  return get<TrainSchedule>(`/api/v1/trains/${trainNo}/schedule`, {
+    run_date: date,
+    ...(fromStation ? { from_station: fromStation } : {}),
+    ...(toStation ? { to_station: toStation } : {}),
+  });
 }
 
 export async function listStations(city?: string): Promise<Station[]> {

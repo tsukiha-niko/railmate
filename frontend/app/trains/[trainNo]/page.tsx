@@ -37,7 +37,7 @@ export default function TrainDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await getTrainSchedule(trainNo, date);
+        const data = await getTrainSchedule(trainNo, date, fromStation || undefined, toStation || undefined);
         if (!cancelled) setStops(data.stops || []);
       } catch (err) {
         if (!cancelled) {
@@ -52,12 +52,16 @@ export default function TrainDetailPage() {
     }
     load();
     return () => { cancelled = true; };
-  }, [trainNo, date, t]);
+  }, [trainNo, date, fromStation, toStation, t]);
 
   const trainType = trainNo.charAt(0);
 
+  const originStop = stops.length > 0 ? stops[0] : null;
+  const terminalStop = stops.length > 1 ? stops[stops.length - 1] : null;
+  const totalStops = stops.length;
+
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-5 overflow-y-auto">
+    <div className="w-full max-w-3xl mx-auto px-4 py-4 space-y-4 overflow-y-auto">
       <button
         onClick={() => router.back()}
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -67,23 +71,43 @@ export default function TrainDetailPage() {
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-3">
-              <span className={cn("inline-flex items-center rounded-lg px-3 py-1 text-sm font-bold text-white", getTrainTypeColor(trainType))}>{trainNo}</span>
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-center gap-3 mb-4">
+              <span className={cn("inline-flex items-center rounded-lg px-3 py-1.5 text-base font-bold text-white", getTrainTypeColor(trainType))}>{trainNo}</span>
               <Badge variant="secondary">{getTrainTypeLabel(trainType)}</Badge>
               <div className="flex items-center gap-1.5 ml-auto text-xs text-muted-foreground">
                 <Calendar className="h-3.5 w-3.5" />{formatDateLocalized(date, dateLocale)}
               </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            {fromStation && toStation && (
-              <div className="flex items-center gap-3 mb-4 text-lg">
-                <span className="font-semibold">{fromStation}</span>
-                <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                <span className="font-semibold">{toStation}</span>
+
+            {(fromStation && toStation) || (originStop && terminalStop) ? (
+              <div className="flex items-center justify-between gap-4 rounded-lg bg-muted/50 px-4 py-3">
+                <div className="text-center">
+                  <p className="text-lg font-semibold">{fromStation || originStop?.station_name}</p>
+                  {originStop && (
+                    <p className="text-sm text-muted-foreground tabular-nums">{originStop.departure_time !== "--" ? originStop.departure_time : ""}</p>
+                  )}
+                </div>
+                <div className="flex flex-col items-center gap-0.5 flex-1 min-w-0">
+                  <div className="flex items-center gap-1 w-full">
+                    <div className="h-px flex-1 bg-border" />
+                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                  {totalStops > 0 && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {locale === "en" ? `${totalStops} stops` : `共${totalStops}站`}
+                    </span>
+                  )}
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-semibold">{toStation || terminalStop?.station_name}</p>
+                  {terminalStop && (
+                    <p className="text-sm text-muted-foreground tabular-nums">{terminalStop.arrival_time !== "--" ? terminalStop.arrival_time : ""}</p>
+                  )}
+                </div>
               </div>
-            )}
+            ) : null}
           </CardContent>
         </Card>
       </motion.div>
@@ -95,14 +119,14 @@ export default function TrainDetailPage() {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="space-y-4">{Array.from({ length: 6 }).map((_, i) => (<Skeleton key={i} className="h-6 w-full" />))}</div>
+              <div className="space-y-4">{Array.from({ length: 8 }).map((_, i) => (<Skeleton key={i} className="h-6 w-full" />))}</div>
             ) : error ? (
               <div className="text-center py-8">
                 <p className="text-sm text-destructive">{error}</p>
                 <Button variant="outline" size="sm" className="mt-3" onClick={() => window.location.reload()}>{t("common.retry")}</Button>
               </div>
             ) : stops.length > 0 ? (
-              <TrainTimeline stops={stops} />
+              <TrainTimeline stops={stops} highlightFrom={fromStation} highlightTo={toStation} />
             ) : (
               <p className="text-sm text-muted-foreground text-center py-8">{t("train.noSchedule")}</p>
             )}

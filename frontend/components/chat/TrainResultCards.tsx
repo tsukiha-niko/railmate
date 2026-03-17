@@ -11,10 +11,25 @@ import { formatPrice, formatRemaining, getTrainTypeColor } from "@/utils/format"
 import type { ChatCard, TrainCardData, TransferPlanData } from "@/utils/parseToolCards";
 import { useI18n } from "@/lib/i18n/i18n";
 
+function getDateLabel(trainDate: string | undefined, locale: string): string | null {
+  if (!trainDate) return null;
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  if (trainDate === todayStr) return null;
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
+  if (trainDate === tomorrowStr) return locale === "en" ? "Tomorrow" : "明天";
+  const m = trainDate.slice(5, 7).replace(/^0/, "");
+  const d = trainDate.slice(8, 10).replace(/^0/, "");
+  return `${m}/${d}`;
+}
+
 function MiniTrainCard({ train, index }: { train: TrainCardData; index: number }) {
   const { locale, t } = useI18n();
   const fmtLocale = locale === "en" ? "en" : "zh-CN";
   const href = `/trains/${train.train_no}?date=${train.date || ""}&from=${encodeURIComponent(train.from_station)}&to=${encodeURIComponent(train.to_station)}`;
+  const dateLabel = getDateLabel(train.date, locale);
 
   return (
     <motion.div
@@ -25,7 +40,7 @@ function MiniTrainCard({ train, index }: { train: TrainCardData; index: number }
       <Link href={href} className="block group">
         <div className="rounded-lg border border-border/60 bg-card/60 backdrop-blur-sm p-2.5 hover:border-primary/30 hover:bg-card/80 transition-all duration-200">
           <div className="flex items-center justify-between gap-2">
-            {/* Left: train badge + times */}
+            {/* Left: train badge + date label + times */}
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <span className={cn(
                 "inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-bold text-white shrink-0",
@@ -33,6 +48,11 @@ function MiniTrainCard({ train, index }: { train: TrainCardData; index: number }
               )}>
                 {train.train_no}
               </span>
+              {dateLabel && (
+                <span className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 shrink-0">
+                  {dateLabel}
+                </span>
+              )}
               <div className="flex items-center gap-1 text-sm tabular-nums font-semibold">
                 <span>{train.departure_time}</span>
                 <div className="flex items-center gap-0.5 text-muted-foreground">
@@ -53,9 +73,9 @@ function MiniTrainCard({ train, index }: { train: TrainCardData; index: number }
                 <span className="text-xs font-semibold text-primary">{formatPrice(train.price_second_seat)}</span>
               )}
               <span className={cn(
-                "text-[10px]",
+                "text-[10px] font-medium",
                 train.remaining_tickets === 0 ? "text-destructive" :
-                train.remaining_tickets != null && train.remaining_tickets < 10 ? "text-warning" : "text-muted-foreground",
+                train.remaining_tickets != null && train.remaining_tickets < 10 ? "text-warning" : "text-emerald-600 dark:text-emerald-400",
               )}>
                 {formatRemaining(train.remaining_tickets, fmtLocale)}
               </span>

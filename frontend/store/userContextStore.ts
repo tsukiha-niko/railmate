@@ -6,6 +6,7 @@ interface UserContextState {
   location: GeoLocation | null;
   preference: "fast" | "cheap" | "balanced";
   favoriteStations: string[];
+  _hasHydrated: boolean;
 
   setLocation: (loc: GeoLocation) => void;
   clearLocation: () => void;
@@ -20,6 +21,7 @@ export const useUserContextStore = create<UserContextState>()(
       location: null,
       preference: "balanced",
       favoriteStations: [],
+      _hasHydrated: false,
 
       setLocation(loc) {
         set({ location: loc });
@@ -56,6 +58,9 @@ export const useUserContextStore = create<UserContextState>()(
           removeItem: () => {},
         },
       ),
+      onRehydrateStorage: () => () => {
+        useUserContextStore.setState({ _hasHydrated: true });
+      },
     },
   ),
 );
