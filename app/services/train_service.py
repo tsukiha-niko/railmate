@@ -285,8 +285,9 @@ class TrainService:
             results.sort(key=lambda x: x.departure_time)
             logger.info(f"从 12306 查询到 {len(results)} 趟车次")
             
-            # 串行获取票价（前 8 趟，共享会话 cookie）
-            price_batch = list(zip(results, tickets))[:8]
+            # 串行获取票价（覆盖更多车次，供中转汇总总价使用；共享会话 cookie）
+            # 注意：12306 票价接口偶发失败，不能 break，否则会导致后续全部车次都无票价
+            price_batch = list(zip(results, tickets))[:30]
             if price_batch:
                 for r, raw in price_batch:
                     try:
@@ -302,7 +303,7 @@ class TrainService:
                             r.price_first_seat = prices.get("first_seat")
                             r.price_business_seat = prices.get("business_seat")
                     except Exception:
-                        break
+                        continue
             
             return results
             
