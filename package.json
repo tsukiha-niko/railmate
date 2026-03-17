@@ -1,0 +1,16 @@
+{
+  "name": "railmate",
+  "version": "0.1.0",
+  "private": true,
+  "description": "RailMate 智轨伴行 — 铁路出行 AI 助手",
+  "scripts": {
+    "dev": "concurrently -k -n BE,FE -c green,cyan \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "./venv/bin/python main.py",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "lint": "npm --prefix frontend run lint"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

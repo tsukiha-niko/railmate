@@ -62,7 +62,6 @@ htmlcov/
 
 # Root node_modules (concurrently etc.)
 node_modules/
-package-lock.json
 
 # Frontend
 frontend/node_modules/
