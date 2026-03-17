@@ -1,0 +1,46 @@
+import { create } from "zustand";
+import type { GeoLocation } from "@/types/geo";
+
+interface UserContextState {
+  location: GeoLocation | null;
+  preference: "fast" | "cheap" | "balanced";
+  favoriteStations: string[];
+
+  setLocation: (loc: GeoLocation) => void;
+  clearLocation: () => void;
+  setPreference: (pref: "fast" | "cheap" | "balanced") => void;
+  addFavoriteStation: (station: string) => void;
+  removeFavoriteStation: (station: string) => void;
+}
+
+export const useUserContextStore = create<UserContextState>((set) => ({
+  location: null,
+  preference: "balanced",
+  favoriteStations: [],
+
+  setLocation(loc) {
+    set({ location: loc });
+  },
+
+  clearLocation() {
+    set({ location: null });
+  },
+
+  setPreference(pref) {
+    set({ preference: pref });
+  },
+
+  addFavoriteStation(station) {
+    set((s) => ({
+      favoriteStations: s.favoriteStations.includes(station)
+        ? s.favoriteStations
+        : [...s.favoriteStations, station],
+    }));
+  },
+
+  removeFavoriteStation(station) {
+    set((s) => ({
+      favoriteStations: s.favoriteStations.filter((st) => st !== station),
+    }));
+  },
+}));

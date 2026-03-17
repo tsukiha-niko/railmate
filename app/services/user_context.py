@@ -5,7 +5,9 @@
 
 import json
 from datetime import datetime, date, time, timedelta
+from pathlib import Path
 from typing import Any, Dict, List, Optional
+
 from dataclasses import dataclass, field, asdict
 
 from app.core.logger import logger
@@ -40,6 +42,10 @@ class UserPreferences:
     max_duration_hours: Optional[float] = None    # 最长可接受时长
     avoid_night_train: bool = True                # 避免夜间列车
     prefer_direct: bool = True                    # 偏好直达
+    # 更倾向快速还是省钱: speed / budget / balanced
+    prefer_speed_vs_budget: str = "balanced"
+    # 更期待享受风景/运转还是更快到达: scenery / arrival / balanced
+    prefer_scenery_vs_arrival: str = "balanced"
     
     def to_dict(self) -> dict:
         return asdict(self)
@@ -53,6 +59,48 @@ class TravelHistory:
     travel_date: date
     train_no: str
     timestamp: datetime = field(default_factory=datetime.now)
+
+
+# 用户偏好持久化文件名（项目根目录或当前工作目录）
+PREFERENCES_FILENAME = ".railmate_preferences"
+
+
+def _load_preferences_from_env_and_file() -> Dict[str, str]:
+    """从环境变量和本地文件加载用户偏好，供 UserContext 使用。"""
+    result: Dict[str, str] = {}
+    try:
+        from app.core.config import settings
+        if settings.railmate_prefer_speed_or_budget:
+            result["prefer_speed_vs_budget"] = settings.railmate_prefer_speed_or_budget
+        if settings.railmate_prefer_scenery_or_arrival:
+            result["prefer_scenery_vs_arrival"] = settings.railmate_prefer_scenery_or_arrival
+    except Exception:
+        pass
+    # 未在 env 中设置的，尝试从本地文件读取
+    for path in (Path.cwd() / PREFERENCES_FILENAME, Path(__file__).resolve().parents[2] / PREFERENCES_FILENAME):
+        if path.exists():
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+                if result.get("prefer_speed_vs_budget") is None and data.get("prefer_speed_vs_budget"):
+                    result["prefer_speed_vs_budget"] = data["prefer_speed_vs_budget"]
+                if result.get("prefer_scenery_vs_arrival") is None and data.get("prefer_scenery_vs_arrival"):
+                    result["prefer_scenery_vs_arrival"] = data["prefer_scenery_vs_arrival"]
+            except Exception:
+                pass
+            break
+    return result
+
+
+def save_preferences_to_file(prefer_speed_vs_budget: str, prefer_scenery_vs_arrival: str) -> Path:
+    """将用户偏好写入本地文件（首次选择后持久化）。"""
+    path = Path.cwd() / PREFERENCES_FILENAME
+    data = {
+        "prefer_speed_vs_budget": prefer_speed_vs_budget,
+        "prefer_scenery_vs_arrival": prefer_scenery_vs_arrival,
+    }
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    logger.info(f"用户偏好已保存到 {path}")
+    return path
 
 
 class UserContext:
@@ -113,6 +161,12 @@ class UserContext:
         self.user_id = user_id
         self.location: Optional[UserLocation] = None
         self.preferences = UserPreferences()
+        # 从 env 或 .railmate_preferences 文件加载偏好
+        loaded = _load_preferences_from_env_and_file()
+        if loaded.get("prefer_speed_vs_budget"):
+            self.preferences.prefer_speed_vs_budget = loaded["prefer_speed_vs_budget"]
+        if loaded.get("prefer_scenery_vs_arrival"):
+            self.preferences.prefer_scenery_vs_arrival = loaded["prefer_scenery_vs_arrival"]
         self.history: List[TravelHistory] = []
         self._created_at = datetime.now()
     
@@ -241,6 +295,14 @@ class UserContext:
             type_map = {"G": "高铁", "D": "动车", "C": "城际", "Z": "直达", "T": "特快", "K": "快速"}
             types = [type_map.get(t, t) for t in pref.preferred_train_types]
             pref_parts.append(f"偏好车型: {'/'.join(types)}")
+        # 速度 vs 省钱
+        speed_budget_map = {"speed": "更倾向快速到达", "budget": "更倾向省钱", "balanced": "速度与价格平衡"}
+        if pref.prefer_speed_vs_budget and pref.prefer_speed_vs_budget != "balanced":
+            pref_parts.append(speed_budget_map.get(pref.prefer_speed_vs_budget, pref.prefer_speed_vs_budget))
+        # 风景/运转 vs 更快到达
+        scenery_arrival_map = {"scenery": "更期待享受风景和运转", "arrival": "更期待更快到达目的地", "balanced": "两者平衡"}
+        if pref.prefer_scenery_vs_arrival and pref.prefer_scenery_vs_arrival != "balanced":
+            pref_parts.append(scenery_arrival_map.get(pref.prefer_scenery_vs_arrival, pref.prefer_scenery_vs_arrival))
         if pref_parts:
             parts.append("用户偏好: " + "，".join(pref_parts))
         

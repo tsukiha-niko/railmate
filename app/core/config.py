@@ -4,9 +4,15 @@
 """
 
 from functools import lru_cache
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+# 用户偏好：速度 vs 省钱
+PreferSpeedOrBudget = Literal["speed", "budget", "balanced"]
+# 用户偏好：享受风景/运转 vs 更快到达
+PreferSceneryOrArrival = Literal["scenery", "arrival", "balanced"]
 
 
 class Settings(BaseSettings):
@@ -40,6 +46,12 @@ class Settings(BaseSettings):
     # 定时任务
     scheduler_enabled: bool = True
     sync_interval_hours: int = 1
+    
+    # 用户偏好（可从 .env 预设，未设置时首次启动会引导选择）
+    # 更倾向快速还是省钱: speed / budget / balanced
+    railmate_prefer_speed_or_budget: Optional[Literal["speed", "budget", "balanced"]] = None
+    # 更期待享受风景和运转还是更快到达: scenery / arrival / balanced
+    railmate_prefer_scenery_or_arrival: Optional[Literal["scenery", "arrival", "balanced"]] = None
 
 
 @lru_cache

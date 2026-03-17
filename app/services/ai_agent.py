@@ -24,122 +24,94 @@ from app.services.train_service import TrainService
 from app.services.user_context import UserContext, get_user_context
 
 
-# ==================== System Prompt ====================
+# ==================== System Prompt（优化版v2：智能中转）====================
 
-SYSTEM_PROMPT = """你是 RailMate（智轨伴行），一位资深的中国铁路出行专家和私人出行助理。
+SYSTEM_PROMPT = """你是RailMate智轨伴行，中国铁路出行AI助手。
 
-## 🎯 核心能力
-1. **智能查票**：查询全国火车票信息（车次、时刻、余票、票价）
-2. **出行规划**：根据用户需求推荐最优出行方案
-3. **上下文感知**：记住用户位置、偏好，提供个性化服务
+## 核心规则
+1. 收到查票请求立即调用工具，不问确认问题
+2. 用户没说出发地时，用其位置作为出发地
+3. 城市名自动转主要高铁站（广州→广州南，北京→北京西，长沙→长沙南，武汉→武汉站/汉口，南昌→南昌西）
+4. 日期推断：今天={today}，明天={tomorrow}，后天={day_after_tomorrow}
+5. 没指定日期时：{current_hour}点前18点查今天，否则查明天
+6. **重要**：如果查询返回"当日无车次"或结果为空，自动查第二天并推荐早班车
 
-## 🧠 智能推断规则
+## 中转方案规划（关键！）
+当直达车次<5趟或用户提"转车/中转/换乘"时：
+1. **先思考中转站**：根据地理位置选择2-3个合理的中转城市
+   - 景德镇→广州：可经南昌、长沙、杭州
+   - 北京→昆明：可经武汉、长沙、贵阳
+   - 上海→成都：可经武汉、南京、重庆
+2. **分段查票**：对每个中转方案，分别调用search_tickets查询各段
+3. **组合推荐**：根据总耗时、换乘等待时间、票价综合推荐最优方案
 
-### 出发地推断
-- 如果用户没有说明出发地，使用用户当前位置的最近火车站
-- 例如：用户在景德镇，说"去广州"，你应该查询"景德镇北 -> 广州南"
+换乘时间建议：到达后至少预留40-60分钟换乘，避免太紧张或等太久（超过3小时）
 
-### 目的地推断  
-- 如果用户只说城市名，智能选择该城市的主要高铁站
-- 例如："去广州" -> "广州南"，"去北京" -> "北京西"
+## 时间映射
+- 最快=最近能赶上的车（+1h提前量）
+- 早上=06-12点，下午=12-18点，晚上=18-24点
 
-### 日期推断
-- "今天" = {today}
-- "明天" = {tomorrow}  
-- "后天" = {day_after_tomorrow}
-- "周末" = 最近的周六({weekend})
-- "下周X" = 计算具体日期
-- 如果用户没指定日期，默认查询最近的合适时间：
-  - 现在是 {current_hour} 点，如果现在还早（< 20:00），可以查今天剩余车次
-  - 如果太晚了，建议查明天的票
-
-### 时间推断
-- "最快" = 最近一班能赶上的车（考虑当前时间 + 1小时提前量）
-- "早上" = 06:00-12:00 的车次
-- "下午" = 12:00-18:00 的车次
-- "晚上" = 18:00-24:00 的车次
-
-## 📍 用户上下文
+## 用户上下文
 {user_context}
+（推荐时请结合用户偏好：更倾向快速/省钱、更期待风景运转/更快到达等。）
 
-## ⏰ 当前时间
+## 当前时间
 {current_time}
 
-## 🎨 回复风格
-- 使用自然、专业的中文
-- 适当使用 emoji 增加亲和力
-- 给出具体推荐时说明理由（最快/最便宜/余票多等）
-- 如果没有查到数据，诚实告知并给出替代建议
-
-## ⚠️ 重要提醒
-1. **最重要**：收到查票请求后立即调用工具查询，不要问任何确认问题！
-2. **关键**：如果用户没说出发地但你知道他的位置，直接用他的位置作为出发地
-3. **关键**：如果用户没说日期，现在是 {current_hour} 点：
-   - 如果 < 18 点，查今天的票
-   - 如果 >= 18 点，查明天的票
-4. 用户说"去XX"、"到XX"、"XX的票"时，都是在问车票，直接查询！
-5. 先行动，后确认。用户可以在你给出结果后再调整需求
-6. 不要问"您是打算今天出发还是..."这种问题，直接查！
-"""
+## 回复风格
+简洁专业，适当用emoji，给推荐时说明理由。先行动后确认。"""
 
 
 def get_system_prompt(user_context: Optional[UserContext] = None) -> str:
-    """生成带有上下文的系统提示词"""
+    """生成带有上下文的系统提示词（优化版）"""
     today = date.today()
     now = datetime.now()
     
-    # 计算周末日期
-    days_until_saturday = (5 - today.weekday()) % 7
-    if days_until_saturday == 0:
-        days_until_saturday = 7
-    weekend = today + timedelta(days=days_until_saturday)
-    
-    # 用户上下文
+    # 用户上下文（含位置与用户偏好，用于影响推荐）
     if user_context:
         context_str = user_context.get_context_summary()
     else:
-        context_str = "用户位置: 未知\n用户偏好: 默认（高铁/动车，二等座）"
+        context_str = "位置:未知"
     
     weekday_names = ['一', '二', '三', '四', '五', '六', '日']
-    current_time_str = f"{now.strftime('%Y年%m月%d日 %H:%M:%S')} (星期{weekday_names[now.weekday()]})"
+    current_time_str = f"{now.strftime('%m/%d %H:%M')} 周{weekday_names[now.weekday()]}"
     
     return SYSTEM_PROMPT.format(
         today=today.strftime("%Y-%m-%d"),
         tomorrow=(today + timedelta(days=1)).strftime("%Y-%m-%d"),
         day_after_tomorrow=(today + timedelta(days=2)).strftime("%Y-%m-%d"),
-        weekend=weekend.strftime("%Y-%m-%d"),
         current_time=current_time_str,
         current_hour=now.hour,
         user_context=context_str,
     )
 
 
-# ==================== 工具定义 ====================
+# ==================== 工具定义（优化版：更精简的描述） ====================
 
 TOOLS = [
     {
         "type": "function",
         "function": {
             "name": "search_tickets",
-            "description": "查询指定日期两地之间的火车票、车次和时间。当用户询问火车票、车次、时刻表时调用此工具。",
+            "description": "查询直达火车票。用户问票/车次时调用。",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "from_station": {
                         "type": "string",
-                        "description": "出发站名称。如果用户没有指定出发地，使用用户当前位置的最近火车站。如果用户只说城市名，使用该城市的主要高铁站（如'广州'->'广州南'）。",
+                        "description": "出发站（城市名自动转高铁站）",
                     },
                     "to_station": {
                         "type": "string",
-                        "description": "到达站名称。如果用户只说城市名，使用该城市的主要高铁站。",
+                        "description": "到达站",
                     },
                     "travel_date": {
                         "type": "string",
-                        "description": "出行日期，格式 YYYY-MM-DD。根据用户意图和当前时间推断具体日期。",
+                        "description": "日期 YYYY-MM-DD",
                     },
                     "train_type": {
                         "type": "string",
-                        "description": "车次类型过滤（可选）：G=高铁, D=动车, C=城际, Z=直达, T=特快, K=快速。不指定则返回所有类型。",
+                        "description": "车型过滤",
                         "enum": ["G", "D", "C", "Z", "T", "K"],
                     },
                 },
@@ -151,40 +123,28 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "get_user_location",
-            "description": "获取用户当前的位置信息（城市和最近火车站）。当需要确定用户出发地或不确定用户位置时调用。",
-            "parameters": {
-                "type": "object",
-                "properties": {},
-            },
+            "description": "获取用户位置。需确定出发地时调用。",
+            "parameters": {"type": "object", "properties": {}},
         },
     },
     {
         "type": "function",
         "function": {
             "name": "get_current_time",
-            "description": "获取当前精确时间，用于判断今天还有哪些车次可以赶上。",
-            "parameters": {
-                "type": "object",
-                "properties": {},
-            },
+            "description": "获取当前时间。判断能赶上哪些车时调用。",
+            "parameters": {"type": "object", "properties": {}},
         },
     },
     {
         "type": "function",
         "function": {
             "name": "get_train_schedule",
-            "description": "查询某趟列车的完整时刻表（所有停靠站信息）。当用户想了解某趟车的详细停站信息时调用。",
+            "description": "查询某车次时刻表（所有停靠站）。",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "train_no": {
-                        "type": "string",
-                        "description": "车次号，如 G1002、D2001",
-                    },
-                    "run_date": {
-                        "type": "string",
-                        "description": "运行日期，格式 YYYY-MM-DD",
-                    },
+                    "train_no": {"type": "string", "description": "车次号如G1002"},
+                    "run_date": {"type": "string", "description": "日期YYYY-MM-DD"},
                 },
                 "required": ["train_no", "run_date"],
             },
@@ -194,21 +154,15 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "find_fastest_train",
-            "description": "查找最快能出发的车次。当用户说'最快'、'最近一班'、'马上走'时调用。会自动考虑当前时间和提前量。",
+            "description": "找最快能出发的车。用户说'最快/最近一班/马上走'时调用。",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "from_station": {
-                        "type": "string",
-                        "description": "出发站名称",
-                    },
-                    "to_station": {
-                        "type": "string",
-                        "description": "到达站名称",
-                    },
+                    "from_station": {"type": "string", "description": "出发站"},
+                    "to_station": {"type": "string", "description": "到达站"},
                     "min_buffer_minutes": {
                         "type": "integer",
-                        "description": "最少提前多少分钟到站（默认60分钟）",
+                        "description": "提前量（分钟），默认60",
                         "default": 60,
                     },
                 },
@@ -220,18 +174,12 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "set_user_location",
-            "description": "设置或更新用户的位置信息。当用户告知自己在哪里时调用（如'我在景德镇'、'我现在在北京'）。",
+            "description": "设置用户位置。用户说'我在XX'时调用。",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "city": {
-                        "type": "string",
-                        "description": "城市名称，如'景德镇'、'广州'",
-                    },
-                    "station": {
-                        "type": "string",
-                        "description": "具体火车站名称（可选），如'景德镇北'",
-                    },
+                    "city": {"type": "string", "description": "城市名"},
+                    "station": {"type": "string", "description": "站名（可选）"},
                 },
                 "required": ["city"],
             },
@@ -329,17 +277,37 @@ class RailMateAgent:
         travel_date: str,
         train_type: Optional[str] = None,
     ) -> str:
-        """工具：查询车票"""
+        """工具：查询车票（优化版：智能提示）"""
         logger.info(f"🔧 调用工具 search_tickets: {from_station} -> {to_station}, {travel_date}")
         
-        result = self.train_service.search_tickets_json(
+        result_str = self.train_service.search_tickets_json(
             from_station=from_station,
             to_station=to_station,
             travel_date=travel_date,
             train_type=train_type,
         )
         
-        return result
+        try:
+            result = json.loads(result_str)
+            count = result.get("count", 0)
+            
+            if result.get("success"):
+                if count == 0:
+                    # 当天没车，计算明天日期
+                    try:
+                        travel_dt = datetime.strptime(travel_date, "%Y-%m-%d").date()
+                        tomorrow = travel_dt + timedelta(days=1)
+                        result["hint"] = f"当日无直达车次。建议：1)查询{tomorrow}的票 2)考虑中转方案（如经南昌、长沙、武汉等枢纽站）"
+                    except:
+                        result["hint"] = "当日无直达车次，建议查第二天或考虑中转方案"
+                elif count < 5:
+                    result["hint"] = "直达车次较少，如需更多选择可考虑中转方案（分段查票组合）"
+                
+                return json.dumps(result, ensure_ascii=False)
+        except:
+            pass
+        
+        return result_str
     
     def _tool_get_train_schedule(self, train_no: str, run_date: str) -> str:
         """工具：查询列车时刻表"""
@@ -399,19 +367,19 @@ class RailMateAgent:
         to_station: str,
         min_buffer_minutes: int = 60,
     ) -> str:
-        """工具：查找最快能出发的车次"""
+        """工具：查找最快能出发的车次（改进版：总是尝试第二天）"""
         logger.info(f"🔧 调用工具 find_fastest_train: {from_station} -> {to_station}")
         
         now = datetime.now()
         earliest_departure = now + timedelta(minutes=min_buffer_minutes)
         
-        # 先查今天的
         today = date.today()
+        tomorrow = today + timedelta(days=1)
         today_results = []
         tomorrow_results = []
         
+        # 1. 查今天的票
         try:
-            # 查今天的票
             today_tickets = self.train_service.search_tickets(
                 from_station=from_station,
                 to_station=to_station,
@@ -424,58 +392,59 @@ class RailMateAgent:
                     dep_time = datetime.strptime(f"{today} {ticket.departure_time}", "%Y-%m-%d %H:%M")
                     if dep_time >= earliest_departure:
                         remaining = ticket.remaining_tickets or 0
-                        if remaining > 0:
-                            today_results.append({
-                                **ticket.model_dump(),
-                                "date": str(today),
-                                "can_catch": True,
-                                "time_until_departure": int((dep_time - now).total_seconds() / 60),
-                            })
+                        # 放宽条件：即使余票显示0也列出（可能是数据延迟）
+                        today_results.append({
+                            **ticket.model_dump(),
+                            "date": str(today),
+                            "can_catch": True,
+                            "time_until_departure": int((dep_time - now).total_seconds() / 60),
+                        })
                 except:
                     pass
-            
-            # 如果今天没有合适的，查明天的
-            if not today_results:
-                tomorrow = today + timedelta(days=1)
-                tomorrow_tickets = self.train_service.search_tickets(
-                    from_station=from_station,
-                    to_station=to_station,
-                    travel_date=tomorrow,
-                )
-                for ticket in tomorrow_tickets[:5]:
-                    remaining = ticket.remaining_tickets or 0
-                    if remaining > 0:
-                        tomorrow_results.append({
-                            **ticket.model_dump(),
-                            "date": str(tomorrow),
-                            "can_catch": True,
-                        })
-            
-            if today_results:
-                # 按出发时间排序，取最早的5趟
-                today_results.sort(key=lambda x: x["departure_time"])
-                return json.dumps({
-                    "success": True,
-                    "message": f"今天还有 {len(today_results)} 趟车可以赶上",
-                    "current_time": now.strftime("%H:%M"),
-                    "earliest_catchable": earliest_departure.strftime("%H:%M"),
-                    "trains": today_results[:5],
-                }, ensure_ascii=False, indent=2)
-            elif tomorrow_results:
-                return json.dumps({
-                    "success": True,
-                    "message": f"今天的车已经赶不上了，明天最早的车次如下",
-                    "trains": tomorrow_results[:5],
-                }, ensure_ascii=False, indent=2)
-            else:
-                return json.dumps({
-                    "success": False,
-                    "message": "暂时没有找到有余票的车次",
-                }, ensure_ascii=False)
-                
         except Exception as e:
-            logger.error(f"查找最快车次失败: {e}")
-            return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
+            logger.warning(f"查询今天车次失败: {e}")
+        
+        # 2. 总是查明天的票（不管今天有没有结果，提供更多选择）
+        try:
+            tomorrow_tickets = self.train_service.search_tickets(
+                from_station=from_station,
+                to_station=to_station,
+                travel_date=tomorrow,
+            )
+            for ticket in tomorrow_tickets[:8]:  # 明天取前8趟
+                tomorrow_results.append({
+                    **ticket.model_dump(),
+                    "date": str(tomorrow),
+                })
+        except Exception as e:
+            logger.warning(f"查询明天车次失败: {e}")
+        
+        # 3. 构建响应
+        if today_results:
+            today_results.sort(key=lambda x: x["departure_time"])
+            return json.dumps({
+                "success": True,
+                "message": f"今天还有 {len(today_results)} 趟车可以赶上（{earliest_departure.strftime('%H:%M')}之后发车）",
+                "current_time": now.strftime("%H:%M"),
+                "today_trains": today_results[:5],
+                "tomorrow_trains": tomorrow_results[:3] if tomorrow_results else [],
+                "hint": "如已过末班车时间，明天早班车也已列出" if tomorrow_results else None,
+            }, ensure_ascii=False)
+        elif tomorrow_results:
+            return json.dumps({
+                "success": True,
+                "message": f"今天已无合适车次，推荐明天({tomorrow})的早班车",
+                "current_time": now.strftime("%H:%M"),
+                "today_trains": [],
+                "tomorrow_trains": tomorrow_results[:5],
+            }, ensure_ascii=False)
+        else:
+            # 两天都没查到
+            return json.dumps({
+                "success": False,
+                "message": f"今明两天暂未查到{from_station}→{to_station}的直达车次。建议：1)检查站名是否正确 2)考虑中转方案（如经南昌、长沙、武汉等枢纽）",
+                "hint": "可分段查票组合中转方案",
+            }, ensure_ascii=False)
     
     def _tool_set_user_location(self, city: str, station: Optional[str] = None) -> str:
         """工具：设置用户位置"""

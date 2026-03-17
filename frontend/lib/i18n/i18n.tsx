@@ -1,0 +1,67 @@
+"use client";
+
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+
+export type Locale = "zh-CN" | "en";
+
+type Messages = Record<string, string>;
+
+type I18nContextValue = {
+  locale: Locale;
+  setLocale: (locale: Locale) => void;
+  t: (key: string, vars?: Record<string, string | number>) => string;
+};
+
+const I18nContext = createContext<I18nContextValue | null>(null);
+
+const STORAGE_KEY = "railmate.locale";
+
+function format(str: string, vars?: Record<string, string | number>) {
+  if (!vars) return str;
+  return str.replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k] ?? `{${k}}`));
+}
+
+export function I18nProvider({
+  children,
+  messages,
+  defaultLocale = "zh-CN",
+}: {
+  children: React.ReactNode;
+  messages: Record<Locale, Messages>;
+  defaultLocale?: Locale;
+}) {
+  const [locale, setLocaleState] = useState<Locale>(() => {
+    if (typeof window === "undefined") return defaultLocale;
+    const stored = window.localStorage.getItem(STORAGE_KEY) as Locale | null;
+    return stored === "zh-CN" || stored === "en" ? stored : defaultLocale;
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem(STORAGE_KEY, locale);
+    if (typeof document !== "undefined") {
+      document.documentElement.lang = locale;
+      document.documentElement.dataset.locale = locale;
+    }
+  }, [locale]);
+
+  const setLocale = useCallback((l: Locale) => setLocaleState(l), []);
+
+  const t = useCallback(
+    (key: string, vars?: Record<string, string | number>) => {
+      const table = messages[locale] ?? messages[defaultLocale];
+      const fallbackTable = messages[defaultLocale];
+      const raw = table?.[key] ?? fallbackTable?.[key] ?? key;
+      return format(raw, vars);
+    },
+    [defaultLocale, locale, messages],
+  );
+
+  const value = useMemo(() => ({ locale, setLocale, t }), [locale, setLocale, t]);
+  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
+}
+
+export function useI18n() {
+  const ctx = useContext(I18nContext);
+  if (!ctx) throw new Error("useI18n must be used within I18nProvider");
+  return ctx;
+}

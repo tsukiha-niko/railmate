@@ -13,6 +13,23 @@ RailMate 开发者调试控制台
 import sys
 from datetime import date, timedelta
 
+# 尝试导入 readline 以改善终端输入体验（支持方向键、删除键等）
+try:
+    import readline
+    # 启用历史记录
+    readline.set_history_length(1000)
+    # 设置编辑模式为 emacs（更好的兼容性）
+    readline.parse_and_bind("set editing-mode emacs")
+    # 启用自动补全（可选）
+    readline.parse_and_bind("tab: complete")
+except ImportError:
+    # Windows 系统可能没有 readline，使用 pyreadline 或忽略
+    try:
+        import pyreadline3 as readline
+        readline.set_history_length(1000)
+    except ImportError:
+        readline = None
+
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -59,6 +76,7 @@ def print_help():
 | `/autolocate` | 重新自动定位（通过 IP） |
 | `/where` | 查看当前位置 |
 | `/time` | 查看当前时间 |
+| `/preferences` | 查看或重新设置用户偏好（快速/省钱、风景/更快到达） |
 
 ## 🔧 调试命令
 
@@ -330,6 +348,126 @@ def auto_detect_location(agent):
         return False
 
 
+def _user_preferences_need_init() -> bool:
+    """判断是否需要首次引导用户设置偏好（env 与本地文件均未设置时返回 True）。"""
+    try:
+        from app.core.config import settings
+        if settings.railmate_prefer_speed_or_budget and settings.railmate_prefer_scenery_or_arrival:
+            return False
+    except Exception:
+        pass
+    from pathlib import Path
+    from app.services.user_context import PREFERENCES_FILENAME
+    path = Path.cwd() / PREFERENCES_FILENAME
+    if path.exists():
+        try:
+            import json
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if data.get("prefer_speed_vs_budget") and data.get("prefer_scenery_vs_arrival"):
+                return False
+        except Exception:
+            pass
+    return True
+
+
+def run_preference_wizard() -> bool:
+    """
+    交互式用户偏好引导（首次加载或 /preferences 时调用）。
+    返回是否成功完成并保存。
+    """
+    from app.services.user_context import save_preferences_to_file
+
+    console.print(Panel(
+        "[bold]请设置您的出行偏好[/bold]\n"
+        "这些偏好会影响 AI 的推荐（如优先推荐快车/便宜车、直达/风景线等）",
+        title="🎯 用户偏好",
+        border_style="cyan",
+    ))
+    console.print()
+
+    # 1. 更倾向快速还是省钱
+    console.print("[bold]1. 您更倾向「快速到达」还是「省钱」？[/bold]")
+    console.print("   [dim]1) 快速 — 优先高铁/动车，少考虑票价[/dim]")
+    console.print("   [dim]2) 省钱 — 优先普速/便宜车次[/dim]")
+    console.print("   [dim]3) 平衡 — 综合考虑[/dim]")
+    try:
+        choice1 = input("   请选 1 / 2 / 3 (默认 3): ").strip() or "3"
+    except (EOFError, KeyboardInterrupt):
+        return False
+    speed_budget = "balanced"
+    if choice1 == "1":
+        speed_budget = "speed"
+    elif choice1 == "2":
+        speed_budget = "budget"
+    else:
+        speed_budget = "balanced"
+
+    # 2. 更期待享受风景和运转还是更快到达
+    console.print()
+    console.print("[bold]2. 您更期待「享受风景和运转」还是「更快到达目的地」？[/bold]")
+    console.print("   [dim]1) 风景/运转 — 喜欢看风景、体验车次运转，可接受稍慢[/dim]")
+    console.print("   [dim]2) 更快到达 — 优先总时长最短[/dim]")
+    console.print("   [dim]3) 平衡 — 两者兼顾[/dim]")
+    try:
+        choice2 = input("   请选 1 / 2 / 3 (默认 3): ").strip() or "3"
+    except (EOFError, KeyboardInterrupt):
+        return False
+    scenery_arrival = "balanced"
+    if choice2 == "1":
+        scenery_arrival = "scenery"
+    elif choice2 == "2":
+        scenery_arrival = "arrival"
+    else:
+        scenery_arrival = "balanced"
+
+    save_preferences_to_file(speed_budget, scenery_arrival)
+    labels = {"speed": "快速", "budget": "省钱", "balanced": "平衡"}
+    labels2 = {"scenery": "风景/运转", "arrival": "更快到达", "balanced": "平衡"}
+    console.print(f"\n[success]✅ 已保存：速度/省钱 → {labels.get(speed_budget, speed_budget)}，风景/到达 → {labels2.get(scenery_arrival, scenery_arrival)}[/success]")
+    return True
+
+
+def cmd_preferences(agent):
+    """查看当前用户偏好，并可选重新设置。"""
+    from app.services.user_context import (
+        _load_preferences_from_env_and_file,
+        PREFERENCES_FILENAME,
+    )
+    from pathlib import Path
+
+    loaded = _load_preferences_from_env_and_file()
+    speed_budget = loaded.get("prefer_speed_vs_budget") or "balanced"
+    scenery_arrival = loaded.get("prefer_scenery_vs_arrival") or "balanced"
+
+    labels = {"speed": "快速", "budget": "省钱", "balanced": "平衡"}
+    labels2 = {"scenery": "风景/运转", "arrival": "更快到达", "balanced": "平衡"}
+
+    try:
+        from app.core.config import settings
+        from_env = bool(settings.railmate_prefer_speed_or_budget or settings.railmate_prefer_scenery_or_arrival)
+    except Exception:
+        from_env = False
+    path = Path.cwd() / PREFERENCES_FILENAME
+    source = "环境变量 .env" if from_env else (f"本地文件 {path}" if path.exists() else "默认（未持久化）")
+
+    console.print(Panel(
+        f"更倾向快速/省钱: [bold]{labels.get(speed_budget, speed_budget)}[/bold]\n"
+        f"更期待风景/到达: [bold]{labels2.get(scenery_arrival, scenery_arrival)}[/bold]\n\n"
+        f"[dim]来源: {source}[/dim]\n"
+        f"[dim]重新设置请输入 y[/dim]",
+        title="🎯 用户偏好",
+        border_style="cyan",
+    ))
+    try:
+        if input("重新设置? (y/N): ").strip().lower() == "y":
+            if run_preference_wizard() and agent:
+                reloaded = _load_preferences_from_env_and_file()
+                agent.user_context.preferences.prefer_speed_vs_budget = reloaded.get("prefer_speed_vs_budget") or "balanced"
+                agent.user_context.preferences.prefer_scenery_vs_arrival = reloaded.get("prefer_scenery_vs_arrival") or "balanced"
+    except (EOFError, KeyboardInterrupt):
+        pass
+
+
 def main():
     """主函数"""
     print_banner()
@@ -339,6 +477,12 @@ def main():
     from app.core.database import init_db
     init_db()
     
+    # 首次加载时引导用户设置偏好（可从 .env 预设，未设置则交互选择）
+    if _user_preferences_need_init():
+        console.print("[info]🎯 首次使用，请设置您的出行偏好（也可在 .env 中配置）[/info]")
+        run_preference_wizard()
+        console.print()
+
     # 初始化 AI Agent
     console.print("[info]🤖 初始化 AI Agent...[/info]")
     try:
@@ -375,9 +519,18 @@ def main():
             # 构建提示符
             loc_hint = ""
             if agent and agent.user_context.location:
-                loc_hint = f" [dim]📍{agent.user_context.location.city}[/dim]"
+                loc_hint = f" 📍{agent.user_context.location.city}"
             
-            user_input = console.input(f"[bold green]You{loc_hint}>[/bold green] ").strip()
+            # 显示提示符（使用 Rich 格式化）
+            prompt_text = f"[bold green]You{loc_hint}[/bold green]> "
+            console.print(prompt_text, end="")
+            
+            # 使用标准 input()，readline 模块已导入会自动启用行编辑功能
+            # 这样可以正确处理方向键、删除键等特殊按键
+            try:
+                user_input = input().strip()
+            except (KeyboardInterrupt, EOFError):
+                raise
             
             if not user_input:
                 continue
@@ -416,6 +569,8 @@ def main():
                         console.print("[error]Agent 未初始化[/error]")
                 elif cmd == "/time":
                     cmd_time()
+                elif cmd == "/preferences":
+                    cmd_preferences(agent)
                 elif cmd == "/debug":
                     if agent and conversation_id:
                         cmd_debug(agent, conversation_id)

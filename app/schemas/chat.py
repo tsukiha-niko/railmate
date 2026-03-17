@@ -3,7 +3,7 @@ AI 对话相关的 Schema
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
@@ -104,4 +104,85 @@ class TrainSearchResult(BaseModel):
                 "duration_minutes": 150,
                 "price_second_seat": 314.0,
             }
+        }
+
+
+class TransferLeg(BaseModel):
+    """中转行程段"""
+    
+    train_no: str
+    train_type: str
+    from_station: str
+    to_station: str
+    departure_time: str
+    arrival_time: str
+    duration_minutes: int
+    price_second_seat: Optional[float] = None
+    
+    def to_compact(self) -> dict:
+        """返回紧凑格式，减少token消耗"""
+        return {
+            "t": self.train_no,  # train
+            "f": self.from_station,  # from
+            "o": self.to_station,  # to
+            "d": self.departure_time,  # depart
+            "a": self.arrival_time,  # arrive
+            "m": self.duration_minutes,  # minutes
+            "p": self.price_second_seat,  # price
+        }
+
+
+class TransferPlan(BaseModel):
+    """中转方案"""
+    
+    legs: List[TransferLeg] = Field(..., description="行程段列表")
+    transfer_count: int = Field(..., description="中转次数（1或2）")
+    transfer_stations: List[str] = Field(..., description="中转站列表")
+    total_duration_minutes: int = Field(..., description="总耗时（含候车）")
+    total_price: Optional[float] = Field(default=None, description="总票价（二等座）")
+    wait_times: List[int] = Field(..., description="各中转站等待时间（分钟）")
+    score: float = Field(default=0.0, description="方案评分（越高越优）")
+    
+    @property
+    def summary(self) -> str:
+        """生成方案摘要"""
+        route = " → ".join([self.legs[0].from_station] + self.transfer_stations + [self.legs[-1].to_station])
+        trains = "/".join([leg.train_no for leg in self.legs])
+        hours = self.total_duration_minutes // 60
+        mins = self.total_duration_minutes % 60
+        return f"{route} [{trains}] {hours}h{mins}m ¥{self.total_price or '?'}"
+    
+    def to_compact(self) -> dict:
+        """返回紧凑格式用于AI响应"""
+        return {
+            "legs": [leg.to_compact() for leg in self.legs],
+            "via": self.transfer_stations,
+            "total_min": self.total_duration_minutes,
+            "total_price": self.total_price,
+            "waits": self.wait_times,
+            "score": round(self.score, 1),
+        }
+
+
+class TransferSearchResult(BaseModel):
+    """中转查询结果"""
+    
+    success: bool
+    from_station: str
+    to_station: str
+    date: str
+    direct_count: int = Field(..., description="直达车次数量")
+    plans: List[TransferPlan] = Field(default_factory=list, description="中转方案列表")
+    message: Optional[str] = None
+    
+    def to_compact(self) -> dict:
+        """紧凑格式，减少token"""
+        return {
+            "ok": self.success,
+            "from": self.from_station,
+            "to": self.to_station,
+            "date": self.date,
+            "direct": self.direct_count,
+            "plans": [p.to_compact() for p in self.plans],
+            "msg": self.message,
         }
