@@ -548,7 +548,7 @@ class RailMateAgent:
                     tool_calls_made.append(ToolCall(
                         tool_name=func_name,
                         arguments=func_args if isinstance(func_args, dict) else {"raw": str(func_args)},
-                        result=result[:500] if len(result) > 500 else result,
+                        result=result[:5000] if len(result) > 5000 else result,
                     ))
                     
                     self.memory.add_tool_result(conv_id, tool_call.id, result)

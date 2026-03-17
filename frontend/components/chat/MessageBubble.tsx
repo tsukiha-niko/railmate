@@ -1,10 +1,13 @@
 "use client";
 
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { Bot, User, Wrench } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { ChatMessage } from "@/types/chat";
 import { cn } from "@/utils/cn";
+import { extractCards } from "@/utils/parseToolCards";
+import { TrainResultCards } from "./TrainResultCards";
 
 interface Props {
   message: ChatMessage;
@@ -13,6 +16,10 @@ interface Props {
 
 export function MessageBubble({ message, index }: Props) {
   const isUser = message.role === "user";
+  const cards = useMemo(
+    () => (isUser ? [] : extractCards(message.tool_calls)),
+    [isUser, message.tool_calls],
+  );
 
   return (
     <motion.div
@@ -21,7 +28,6 @@ export function MessageBubble({ message, index }: Props) {
       transition={{ duration: 0.25, delay: Math.min(index * 0.05, 0.3) }}
       className={cn("flex gap-3 max-w-full", isUser ? "flex-row-reverse" : "flex-row")}
     >
-      {/* Avatar */}
       <div
         className={cn(
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white",
@@ -31,9 +37,7 @@ export function MessageBubble({ message, index }: Props) {
         {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
       </div>
 
-      {/* Content */}
       <div className={cn("flex flex-col gap-1.5 max-w-[80%]", isUser ? "items-end" : "items-start")}>
-        {/* Tool calls */}
         {!isUser && message.tool_calls && message.tool_calls.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-1">
             {message.tool_calls.map((tc, i) => (
@@ -45,7 +49,6 @@ export function MessageBubble({ message, index }: Props) {
           </div>
         )}
 
-        {/* Bubble */}
         <div
           className={cn(
             "rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
@@ -56,6 +59,8 @@ export function MessageBubble({ message, index }: Props) {
         >
           {message.content}
         </div>
+
+        {cards.length > 0 && <TrainResultCards cards={cards} />}
       </div>
     </motion.div>
   );

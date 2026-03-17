@@ -21,6 +21,12 @@ function format(str: string, vars?: Record<string, string | number>) {
   return str.replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k] ?? `{${k}}`));
 }
 
+function readStoredLocale(): Locale | null {
+  if (typeof window === "undefined") return null;
+  const v = window.localStorage.getItem(STORAGE_KEY);
+  return v === "zh-CN" || v === "en" ? v : null;
+}
+
 export function I18nProvider({
   children,
   messages,
@@ -30,18 +36,19 @@ export function I18nProvider({
   messages: Record<Locale, Messages>;
   defaultLocale?: Locale;
 }) {
-  const [locale, setLocaleState] = useState<Locale>(() => {
-    if (typeof window === "undefined") return defaultLocale;
-    const stored = window.localStorage.getItem(STORAGE_KEY) as Locale | null;
-    return stored === "zh-CN" || stored === "en" ? stored : defaultLocale;
-  });
+  // Always start with defaultLocale so SSR and first client render match
+  const [locale, setLocaleState] = useState<Locale>(defaultLocale);
+
+  // After mount, sync from localStorage if different
+  useEffect(() => {
+    const stored = readStoredLocale();
+    if (stored && stored !== defaultLocale) setLocaleState(stored);
+  }, [defaultLocale]);
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, locale);
-    if (typeof document !== "undefined") {
-      document.documentElement.lang = locale;
-      document.documentElement.dataset.locale = locale;
-    }
+    document.documentElement.lang = locale;
+    document.documentElement.dataset.locale = locale;
   }, [locale]);
 
   const setLocale = useCallback((l: Locale) => setLocaleState(l), []);

@@ -8,6 +8,7 @@ import { useChat } from "@/hooks/useChat";
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput } from "./ChatInput";
 import { QuickActions } from "./QuickActions";
+import { RobotAnimation } from "./RobotAnimation";
 import { useI18n } from "@/lib/i18n/i18n";
 
 export function ChatPanel() {
@@ -35,9 +36,7 @@ export function ChatPanel() {
               transition={{ duration: 0.4 }}
               className="flex flex-col items-center gap-4 max-w-md text-center"
             >
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-lg">
-                <Train className="h-8 w-8" />
-              </div>
+              <RobotAnimation className="w-36 h-36 md:w-44 md:h-44" />
               <h2 className="text-xl font-semibold text-foreground">
                 {t("chat.welcome.title")}
               </h2>

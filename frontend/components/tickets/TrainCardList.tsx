@@ -9,16 +9,22 @@ import { useI18n } from "@/lib/i18n/i18n";
 
 interface Props { trains: TrainSearchResult[]; date: string; loading?: boolean; emptyMessage?: string; }
 
+function uid(t: TrainSearchResult) {
+  return `${t.train_no}:${t.from_station}`;
+}
+
 function annotateTrains(trains: TrainSearchResult[], tr: (key: string) => string) {
   if (trains.length === 0) return [];
   const cheapest = trains.reduce((a, b) => (a.price_second_seat ?? Infinity) < (b.price_second_seat ?? Infinity) ? a : b);
   const fastest = trains.reduce((a, b) => a.duration_minutes < b.duration_minutes ? a : b);
   const earliest = trains.reduce((a, b) => a.departure_time < b.departure_time ? a : b);
+  const earliestId = uid(earliest), fastestId = uid(fastest), cheapestId = uid(cheapest);
   return trains.map((train) => {
+    const id = uid(train);
     const tags: string[] = [];
-    if (train.train_no === earliest.train_no) tags.push(tr("tickets.tag.earliest"));
-    if (train.train_no === fastest.train_no && fastest.train_no !== earliest.train_no) tags.push(tr("tickets.tag.fastest"));
-    if (train.train_no === cheapest.train_no && cheapest.train_no !== earliest.train_no && cheapest.train_no !== fastest.train_no) tags.push(tr("tickets.tag.cheapest"));
+    if (id === earliestId) tags.push(tr("tickets.tag.earliest"));
+    if (id === fastestId && fastestId !== earliestId) tags.push(tr("tickets.tag.fastest"));
+    if (id === cheapestId && cheapestId !== earliestId && cheapestId !== fastestId) tags.push(tr("tickets.tag.cheapest"));
     return { train, tags };
   });
 }
@@ -32,5 +38,5 @@ export function TrainCardList({ trains, date, loading, emptyMessage }: Props) {
     </motion.div>
   );
   const annotated = annotateTrains(trains, t);
-  return (<div className="space-y-3">{annotated.map(({ train, tags }, i) => (<TrainCard key={train.train_no} train={train} date={date} index={i} tags={tags} />))}</div>);
+  return (<div className="space-y-3">{annotated.map(({ train, tags }, i) => (<TrainCard key={`${train.train_no}:${train.from_station}`} train={train} date={date} index={i} tags={tags} />))}</div>);
 }

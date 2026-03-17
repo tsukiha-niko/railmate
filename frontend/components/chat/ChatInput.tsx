@@ -5,6 +5,7 @@ import { Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 import { useI18n } from "@/lib/i18n/i18n";
+import { VoiceButton } from "./VoiceButton";
 
 interface Props {
   onSend: (text: string) => void;
@@ -33,6 +34,11 @@ export function ChatInput({ onSend, loading }: Props) {
     if (el) { el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 160) + "px"; }
   };
 
+  const handleVoiceTranscript = useCallback((transcript: string) => {
+    setText((prev) => prev + transcript);
+    textareaRef.current?.focus();
+  }, []);
+
   return (
     <div className="flex items-end gap-2 p-4 border-t border-border bg-card">
       <textarea
@@ -46,6 +52,7 @@ export function ChatInput({ onSend, loading }: Props) {
           "max-h-40",
         )}
       />
+      <VoiceButton onTranscript={handleVoiceTranscript} disabled={loading} />
       <Button onClick={handleSend} disabled={!text.trim() || loading} size="icon" className="shrink-0 h-10 w-10 rounded-xl">
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
       </Button>

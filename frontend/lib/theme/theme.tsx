@@ -26,12 +26,23 @@ function applyThemeClass(mode: ThemeMode) {
   root.dataset.theme = mode;
 }
 
+function readStoredTheme(): ThemeMode | null {
+  if (typeof window === "undefined") return null;
+  const v = window.localStorage.getItem(STORAGE_KEY);
+  return v === "system" || v === "light" || v === "dark" ? v : null;
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeMode>(() => {
-    if (typeof window === "undefined") return "system";
-    const stored = window.localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
-    return stored === "system" || stored === "light" || stored === "dark" ? stored : "system";
-  });
+  // Always start with "system" so SSR and first client render match
+  const [theme, setThemeState] = useState<ThemeMode>("system");
+
+  // After mount, sync from localStorage if different
+  useEffect(() => {
+    const stored = readStoredTheme();
+    if (stored && stored !== "system") setThemeState(stored);
+    // Apply theme class immediately on mount (even for "system")
+    applyThemeClass(stored ?? "system");
+  }, []);
 
   useEffect(() => {
     applyThemeClass(theme);
