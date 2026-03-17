@@ -57,26 +57,24 @@ class Railway12306API:
     
     def _request(self, url: str, params: Optional[Dict] = None, init_session: bool = False) -> Any:
         """
-        发送 HTTP 请求
-        
-        Args:
-            url: 请求 URL
-            params: 查询参数
-            init_session: 是否先初始化会话（访问首页获取 cookie）
+        发送 HTTP 请求（复用 cookie jar 保持会话）
         """
+        if not hasattr(self, '_cookies'):
+            self._cookies = httpx.Cookies()
+        
         try:
             with httpx.Client(
                 timeout=self.timeout, 
                 follow_redirects=True,
-                cookies=self._cookies if hasattr(self, '_cookies') else None,
+                cookies=self._cookies,
             ) as client:
-                # 如果需要初始化会话，先访问首页
-                if init_session:
+                if init_session and not self._cookies:
                     init_url = "https://kyfw.12306.cn/otn/leftTicket/init"
                     init_resp = client.get(init_url, headers=self.HEADERS)
-                    self._cookies = init_resp.cookies
+                    self._cookies.update(init_resp.cookies)
                 
                 response = client.get(url, params=params, headers=self.HEADERS)
+                self._cookies.update(response.cookies)
                 response.raise_for_status()
                 return response
         except httpx.TimeoutException:
@@ -396,16 +394,8 @@ class Railway12306API:
     ) -> Dict[str, Optional[float]]:
         """
         查询票价
-        
-        Args:
-            train_no: 车次编码（非车次号，是内部编码）
-            from_station_code: 出发站代码
-            to_station_code: 到达站代码
-            seat_types: 座位类型编码
-            travel_date: 出行日期
-            
-        Returns:
-            各座位类型票价字典
+
+        需要先初始化会话获取 cookie，否则 12306 返回空内容。
         """
         params = {
             "train_no": train_no,
@@ -416,7 +406,12 @@ class Railway12306API:
         }
         
         try:
-            response = self._request(self.PRICE_QUERY_URL, params)
+            response = self._request(self.PRICE_QUERY_URL, params, init_session=True)
+            
+            content = response.text.strip()
+            if not content or content.startswith("<!"):
+                return {}
+            
             data = response.json()
             
             if data.get("status") is not True:
@@ -424,21 +419,20 @@ class Railway12306API:
             
             price_data = data.get("data", {})
             
-            # 解析票价
             prices = {
-                "business_seat": self._parse_price(price_data.get("A9")),  # 商务座
-                "first_seat": self._parse_price(price_data.get("M")),      # 一等座
-                "second_seat": self._parse_price(price_data.get("O")),     # 二等座
-                "soft_sleeper": self._parse_price(price_data.get("A4")),   # 软卧
-                "hard_sleeper": self._parse_price(price_data.get("A3")),   # 硬卧
-                "hard_seat": self._parse_price(price_data.get("A1")),      # 硬座
-                "no_seat": self._parse_price(price_data.get("WZ")),        # 无座
+                "business_seat": self._parse_price(price_data.get("A9")),
+                "first_seat": self._parse_price(price_data.get("M")),
+                "second_seat": self._parse_price(price_data.get("O")),
+                "soft_sleeper": self._parse_price(price_data.get("A4")),
+                "hard_sleeper": self._parse_price(price_data.get("A3")),
+                "hard_seat": self._parse_price(price_data.get("A1")),
+                "no_seat": self._parse_price(price_data.get("WZ")),
             }
             
             return prices
             
         except Exception as e:
-            logger.warning(f"查询票价失败: {e}")
+            logger.debug(f"票价查询跳过: {train_no} ({e.__class__.__name__})")
             return {}
     
     def _parse_price(self, price_str: Optional[str]) -> Optional[float]:

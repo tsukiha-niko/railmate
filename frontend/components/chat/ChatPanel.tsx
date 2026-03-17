@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { motion } from "framer-motion";
-import { Train } from "lucide-react";
+import { Train, Search, Ticket, Bot } from "lucide-react";
 import { useChatStore } from "@/store/chatStore";
 import { useChat } from "@/hooks/useChat";
 import { MessageBubble } from "./MessageBubble";
@@ -11,13 +11,57 @@ import { QuickActions } from "./QuickActions";
 import { RobotAnimation } from "./RobotAnimation";
 import { useI18n } from "@/lib/i18n/i18n";
 
+const LOADING_STEPS_ZH = ["正在分析您的需求...", "正在查询车次...", "正在获取票价..."];
+const LOADING_STEPS_EN = ["Analyzing your request...", "Searching trains...", "Fetching prices..."];
+
+function ChatLoadingIndicator({ locale }: { locale: string }) {
+  const steps = locale === "en" ? LOADING_STEPS_EN : LOADING_STEPS_ZH;
+  const [stepIdx, setStepIdx] = useState(0);
+
+  useEffect(() => {
+    setStepIdx(0);
+    const t1 = setTimeout(() => setStepIdx(1), 1500);
+    const t2 = setTimeout(() => setStepIdx(2), 4000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex gap-3"
+    >
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 text-white">
+        <Bot className="h-4 w-4" />
+      </div>
+      <div className="rounded-2xl rounded-bl-md bg-secondary px-4 py-3">
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" />
+            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:0.15s]" />
+            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:0.3s]" />
+          </div>
+          <motion.span
+            key={stepIdx}
+            initial={{ opacity: 0, x: -4 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="text-xs text-muted-foreground"
+          >
+            {steps[stepIdx]}
+          </motion.span>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export function ChatPanel() {
   const activeConv = useChatStore((s) =>
     s.conversations.find((c) => c.id === s.activeConversationId),
   );
   const { sendMessage, loading } = useChat();
   const bottomRef = useRef<HTMLDivElement>(null);
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -66,20 +110,7 @@ export function ChatPanel() {
                 onQueryTransfer={handleQueryTransfer}
               />
             ))}
-            {loading && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 text-white">
-                  <Train className="h-4 w-4" />
-                </div>
-                <div className="rounded-2xl rounded-bl-md bg-secondary px-4 py-3">
-                  <div className="flex gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce" />
-                    <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:0.15s]" />
-                    <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:0.3s]" />
-                  </div>
-                </div>
-              </motion.div>
-            )}
+            {loading && <ChatLoadingIndicator locale={locale} />}
             <div ref={bottomRef} />
           </div>
         )}

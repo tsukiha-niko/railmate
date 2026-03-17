@@ -216,33 +216,24 @@ class TrainService:
             results.sort(key=lambda x: x.departure_time)
             logger.info(f"从 12306 查询到 {len(results)} 趟车次")
             
-            # 批量获取票价（前 15 趟，并行请求，5s 超时）
-            price_batch = list(zip(results, tickets))[:15]
-            
-            def _fetch_price(pair):
-                r, raw = pair
-                try:
-                    prices = api.query_ticket_price(
-                        train_no=raw["train_code"],
-                        from_station_code=raw["from_station_code"],
-                        to_station_code=raw["to_station_code"],
-                        seat_types="O,M,A9",
-                        travel_date=travel_date,
-                    )
-                    r.price_second_seat = prices.get("second_seat")
-                    r.price_first_seat = prices.get("first_seat")
-                    r.price_business_seat = prices.get("business_seat")
-                except Exception:
-                    pass
-            
+            # 串行获取票价（前 8 趟，共享会话 cookie）
+            price_batch = list(zip(results, tickets))[:8]
             if price_batch:
-                try:
-                    with ThreadPoolExecutor(max_workers=5) as pool:
-                        futs = [pool.submit(_fetch_price, p) for p in price_batch]
-                        for f in as_completed(futs, timeout=6):
-                            f.result()
-                except Exception:
-                    logger.debug("部分票价查询超时，已跳过")
+                for r, raw in price_batch:
+                    try:
+                        prices = api.query_ticket_price(
+                            train_no=raw["train_code"],
+                            from_station_code=raw["from_station_code"],
+                            to_station_code=raw["to_station_code"],
+                            seat_types="O,M,A9",
+                            travel_date=travel_date,
+                        )
+                        if prices:
+                            r.price_second_seat = prices.get("second_seat")
+                            r.price_first_seat = prices.get("first_seat")
+                            r.price_business_seat = prices.get("business_seat")
+                    except Exception:
+                        break
             
             return results
             
