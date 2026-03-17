@@ -467,7 +467,138 @@ class TrainService:
     
     # ==================== 中转查询（新增） ====================
     
+    MAJOR_TRANSFER_HUBS = [
+        "武汉", "长沙南", "南昌西", "南京南", "杭州东", "郑州东",
+        "西安北", "石家庄", "济南西", "合肥南", "贵阳北", "昆明南",
+        "深圳北", "广州南", "北京西", "上海虹桥", "重庆北", "成都东",
+        "徐州东", "九江", "衡阳东", "株洲西", "鹰潭北", "福州南",
+    ]
+    
     def search_transfer_tickets(
+        self,
+        from_station: str,
+        to_station: str,
+        travel_date: date,
+        max_transfers: int = 1,
+        max_plans: int = 5,
+        min_transfer_minutes: int = 30,
+        max_transfer_minutes: int = 180,
+    ) -> TransferSearchResult:
+        """
+        查询中转方案
+        live 模式下使用 12306 API 逐段搜索
+        """
+        logger.info(f"🔄 查询中转方案: {from_station} -> {to_station}, 日期: {travel_date}")
+        
+        if settings.data_sync_mode == "live":
+            return self._search_transfer_live(
+                from_station, to_station, travel_date,
+                max_plans, min_transfer_minutes, max_transfer_minutes,
+            )
+        return self._search_transfer_mock(
+            from_station, to_station, travel_date,
+            max_transfers, max_plans, min_transfer_minutes, max_transfer_minutes,
+        )
+    
+    def _search_transfer_live(
+        self,
+        from_station: str,
+        to_station: str,
+        travel_date: date,
+        max_plans: int = 5,
+        min_transfer_minutes: int = 30,
+        max_transfer_minutes: int = 180,
+    ) -> TransferSearchResult:
+        """Live 模式：通过 12306 API 逐段搜索中转方案"""
+        direct_trains = self.search_tickets(from_station, to_station, travel_date)
+        direct_count = len(direct_trains)
+        
+        hubs = [h for h in self.MAJOR_TRANSFER_HUBS
+                if h != from_station and h != to_station]
+        
+        plans: List[TransferPlan] = []
+        searched_hubs = 0
+        
+        for hub in hubs:
+            if len(plans) >= max_plans or searched_hubs >= 6:
+                break
+            
+            try:
+                leg1_trains = self.search_tickets(from_station, hub, travel_date)
+                if not leg1_trains:
+                    continue
+                searched_hubs += 1
+                
+                leg2_trains = self.search_tickets(hub, to_station, travel_date)
+                if not leg2_trains:
+                    continue
+                
+                for t1 in leg1_trains[:5]:
+                    for t2 in leg2_trains[:5]:
+                        wait = self._calc_wait_minutes(t1.arrival_time, t2.departure_time)
+                        if wait < min_transfer_minutes or wait > max_transfer_minutes:
+                            continue
+                        
+                        total_min = t1.duration_minutes + wait + t2.duration_minutes
+                        p1 = t1.price_second_seat or 0
+                        p2 = t2.price_second_seat or 0
+                        
+                        plan = TransferPlan(
+                            legs=[
+                                TransferLeg(
+                                    train_no=t1.train_no, train_type=t1.train_type,
+                                    from_station=t1.from_station, to_station=t1.to_station,
+                                    departure_time=t1.departure_time, arrival_time=t1.arrival_time,
+                                    duration_minutes=t1.duration_minutes,
+                                    price_second_seat=t1.price_second_seat,
+                                ),
+                                TransferLeg(
+                                    train_no=t2.train_no, train_type=t2.train_type,
+                                    from_station=t2.from_station, to_station=t2.to_station,
+                                    departure_time=t2.departure_time, arrival_time=t2.arrival_time,
+                                    duration_minutes=t2.duration_minutes,
+                                    price_second_seat=t2.price_second_seat,
+                                ),
+                            ],
+                            transfer_count=1,
+                            transfer_stations=[hub],
+                            total_duration_minutes=total_min,
+                            total_price=round(p1 + p2, 1) if (p1 or p2) else None,
+                            wait_times=[wait],
+                        )
+                        plan.score = self._score_transfer_plan(plan)
+                        plans.append(plan)
+            except Exception as e:
+                logger.debug(f"中转站 {hub} 查询失败: {e}")
+                continue
+        
+        plans.sort(key=lambda x: x.score, reverse=True)
+        plans = plans[:max_plans]
+        
+        logger.info(f"✅ 找到 {len(plans)} 个中转方案（直达 {direct_count} 趟）")
+        
+        return TransferSearchResult(
+            success=True,
+            from_station=from_station,
+            to_station=to_station,
+            date=str(travel_date),
+            direct_count=direct_count,
+            plans=plans,
+            message=f"找到{len(plans)}个中转方案" if plans else "未找到合适的中转方案",
+        )
+    
+    @staticmethod
+    def _calc_wait_minutes(arrival_time: str, departure_time: str) -> int:
+        """计算两个 HH:MM 时间之间的分钟差"""
+        try:
+            arr_h, arr_m = map(int, arrival_time.split(":"))
+            dep_h, dep_m = map(int, departure_time.split(":"))
+            diff = (dep_h * 60 + dep_m) - (arr_h * 60 + arr_m)
+            return diff if diff >= 0 else diff + 1440
+        except Exception:
+            return -1
+    
+    def _search_transfer_mock(
         self,
         from_station: str,
         to_station: str,
@@ -477,78 +608,47 @@ class TrainService:
         min_transfer_minutes: int = 30,
         max_transfer_minutes: int = 180,
     ) -> TransferSearchResult:
-        """
-        查询中转方案
-        
-        Args:
-            from_station: 出发站
-            to_station: 到达站
-            travel_date: 出行日期
-            max_transfers: 最大中转次数（1或2）
-            max_plans: 最多返回方案数
-            min_transfer_minutes: 最短换乘时间（分钟）
-            max_transfer_minutes: 最长换乘等待时间（分钟）
-            
-        Returns:
-            中转查询结果
-        """
-        logger.info(f"🔄 查询中转方案: {from_station} -> {to_station}, 日期: {travel_date}")
-        
-        # 1. 解析车站
+        """Mock 模式：使用本地数据库搜索中转方案"""
         from_station_obj = self.get_station(from_station)
         to_station_obj = self.get_station(to_station)
         
         if not from_station_obj:
             return TransferSearchResult(
-                success=False,
-                from_station=from_station,
-                to_station=to_station,
-                date=str(travel_date),
-                direct_count=0,
-                message=f"未找到出发站: {from_station}"
+                success=False, from_station=from_station, to_station=to_station,
+                date=str(travel_date), direct_count=0,
+                message=f"未找到出发站: {from_station}",
             )
         if not to_station_obj:
             return TransferSearchResult(
-                success=False,
-                from_station=from_station,
-                to_station=to_station,
-                date=str(travel_date),
-                direct_count=0,
-                message=f"未找到到达站: {to_station}"
+                success=False, from_station=from_station, to_station=to_station,
+                date=str(travel_date), direct_count=0,
+                message=f"未找到到达站: {to_station}",
             )
         
-        # 2. 先检查直达车次数量
         direct_trains = self.search_tickets(from_station, to_station, travel_date)
         direct_count = len(direct_trains)
         
-        # 3. 获取从出发站出发的所有车次和可达站
         outbound_trains = self._get_outbound_trains(from_station_obj.id, travel_date)
-        
-        # 4. 获取到达终点站的所有车次和来源站
         inbound_trains = self._get_inbound_trains(to_station_obj.id, travel_date)
         
-        # 5. 查找一次中转方案
         plans: List[TransferPlan] = []
         
-        # 一次中转：找出发可达站与到达来源站的交集
         one_transfer_plans = self._find_one_transfer_plans(
             from_station_obj, to_station_obj, travel_date,
             outbound_trains, inbound_trains,
-            min_transfer_minutes, max_transfer_minutes
+            min_transfer_minutes, max_transfer_minutes,
         )
         plans.extend(one_transfer_plans)
         
-        # 6. 如果需要且一次中转方案不足，查找二次中转方案
         if max_transfers >= 2 and len(plans) < max_plans:
             two_transfer_plans = self._find_two_transfer_plans(
                 from_station_obj, to_station_obj, travel_date,
                 outbound_trains, inbound_trains,
                 min_transfer_minutes, max_transfer_minutes,
-                max_plans - len(plans)
+                max_plans - len(plans),
             )
             plans.extend(two_transfer_plans)
         
-        # 7. 对方案评分并排序
         for plan in plans:
             plan.score = self._score_transfer_plan(plan)
         
@@ -564,7 +664,7 @@ class TrainService:
             date=str(travel_date),
             direct_count=direct_count,
             plans=plans,
-            message=f"找到{len(plans)}个中转方案" if plans else "未找到合适的中转方案"
+            message=f"找到{len(plans)}个中转方案" if plans else "未找到合适的中转方案",
         )
     
     def _get_outbound_trains(self, station_id: int, travel_date: date) -> Dict[int, List[dict]]:

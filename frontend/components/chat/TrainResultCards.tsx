@@ -1,9 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Clock, ArrowRight, TrainFront, Zap, Ticket, ArrowRightLeft } from "lucide-react";
+import { Clock, ArrowRight, TrainFront, Zap, Ticket, ArrowRightLeft, Search } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 import { formatDuration } from "@/utils/date";
 import { formatPrice, formatRemaining, getTrainTypeColor } from "@/utils/format";
@@ -119,7 +120,12 @@ function TransferPlanCard({ plan, index }: { plan: TransferPlanData; index: numb
   );
 }
 
-export function TrainResultCards({ cards }: { cards: ChatCard[] }) {
+interface TrainResultCardsProps {
+  cards: ChatCard[];
+  onQueryTransfer?: (from: string, to: string) => void;
+}
+
+export function TrainResultCards({ cards, onQueryTransfer }: TrainResultCardsProps) {
   const { t, locale } = useI18n();
 
   return (
@@ -161,6 +167,19 @@ export function TrainResultCards({ cards }: { cards: ChatCard[] }) {
             <p className="text-[11px] text-muted-foreground text-center mt-2">
               +{card.trains.length - 5} ...
             </p>
+          )}
+          {card.type === "train_list" && onQueryTransfer && (
+            <div className="mt-2.5 flex justify-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-xs text-muted-foreground hover:text-primary"
+                onClick={() => onQueryTransfer(card.from, card.to)}
+              >
+                <Search className="h-3 w-3" />
+                {t("chat.card.queryTransfer")}
+              </Button>
+            </div>
           )}
         </motion.div>
       ))}

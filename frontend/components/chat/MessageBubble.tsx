@@ -12,9 +12,10 @@ import { TrainResultCards } from "./TrainResultCards";
 interface Props {
   message: ChatMessage;
   index: number;
+  onQueryTransfer?: (from: string, to: string) => void;
 }
 
-export function MessageBubble({ message, index }: Props) {
+export function MessageBubble({ message, index, onQueryTransfer }: Props) {
   const isUser = message.role === "user";
   const cards = useMemo(
     () => (isUser ? [] : extractCards(message.tool_calls)),
@@ -60,7 +61,9 @@ export function MessageBubble({ message, index }: Props) {
           {message.content}
         </div>
 
-        {cards.length > 0 && <TrainResultCards cards={cards} />}
+        {cards.length > 0 && (
+          <TrainResultCards cards={cards} onQueryTransfer={onQueryTransfer} />
+        )}
       </div>
     </motion.div>
   );

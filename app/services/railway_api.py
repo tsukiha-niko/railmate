@@ -252,12 +252,15 @@ class Railway12306API:
                 if not result_list:
                     continue
                 
+                allowed_types = None
+                if train_type:
+                    allowed_types = {t.strip().upper() for t in train_type.split(",")}
+                
                 tickets = []
                 for item in result_list:
                     parsed = self._parse_ticket_info(item, station_map)
                     if parsed:
-                        # 过滤车次类型
-                        if train_type and parsed["train_type"] != train_type.upper():
+                        if allowed_types and parsed["train_type"] not in allowed_types:
                             continue
                         tickets.append(parsed)
                 

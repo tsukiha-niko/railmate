@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Train } from "lucide-react";
 import { useChatStore } from "@/store/chatStore";
@@ -22,6 +22,14 @@ export function ChatPanel() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeConv?.messages.length]);
+
+  const handleQueryTransfer = useCallback(
+    (from: string, to: string) => {
+      const msg = t("chat.card.queryTransferFor", { from, to });
+      sendMessage(msg);
+    },
+    [sendMessage, t],
+  );
 
   const messages = activeConv?.messages ?? [];
 
@@ -51,7 +59,12 @@ export function ChatPanel() {
         ) : (
           <div className="space-y-4 p-4">
             {messages.map((msg, i) => (
-              <MessageBubble key={msg.id} message={msg} index={i} />
+              <MessageBubble
+                key={msg.id}
+                message={msg}
+                index={i}
+                onQueryTransfer={handleQueryTransfer}
+              />
             ))}
             {loading && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">

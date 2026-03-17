@@ -29,23 +29,20 @@ from app.services.user_context import UserContext, get_user_context
 SYSTEM_PROMPT = """你是RailMate智轨伴行，中国铁路出行AI助手。
 
 ## 核心规则
-1. 收到查票请求立即调用工具，不问确认问题
+1. 收到查票请求立即调用 search_tickets，不问确认问题
 2. 用户没说出发地时，用其位置作为出发地
-3. 城市名自动转主要高铁站（广州→广州南，北京→北京西，长沙→长沙南，武汉→武汉站/汉口，南昌→南昌西）
+3. 城市名自动转主要高铁站（广州→广州南，北京→北京西，长沙→长沙南，武汉→武汉站，南昌→南昌西，郑州→郑州东，杭州→杭州东，南京→南京南，西安→西安北，成都→成都东，合肥→合肥南）
 4. 日期推断：今天={today}，明天={tomorrow}，后天={day_after_tomorrow}
 5. 没指定日期时：{current_hour}点前18点查今天，否则查明天
 6. **重要**：如果查询返回"当日无车次"或结果为空，自动查第二天并推荐早班车
+7. **不要传 train_type 参数**，除非用户明确说只要高铁/动车等。不过滤能展示更多选择
 
-## 中转方案规划（关键！）
-当直达车次<5趟或用户提"转车/中转/换乘"时：
-1. **先思考中转站**：根据地理位置选择2-3个合理的中转城市
-   - 景德镇→广州：可经南昌、长沙、杭州
-   - 北京→昆明：可经武汉、长沙、贵阳
-   - 上海→成都：可经武汉、南京、重庆
-2. **分段查票**：对每个中转方案，分别调用search_tickets查询各段
-3. **组合推荐**：根据总耗时、换乘等待时间、票价综合推荐最优方案
-
-换乘时间建议：到达后至少预留40-60分钟换乘，避免太紧张或等太久（超过3小时）
+## 直达优先原则（重要！）
+- **默认只查直达**：使用 search_tickets 查询，展示结果
+- **只在以下情况调用 search_transfer_tickets**：
+  1. 用户明确说了"中转""转车""换乘"
+  2. 用户问"怎么去XX"且 search_tickets 返回 0 趟直达车次
+- **绝对不要在有直达车次时主动推荐中转方案**
 
 ## 时间映射
 - 最快=最近能赶上的车（+1h提前量）
@@ -111,8 +108,7 @@ TOOLS = [
                     },
                     "train_type": {
                         "type": "string",
-                        "description": "车型过滤",
-                        "enum": ["G", "D", "C", "Z", "T", "K"],
+                        "description": "车型过滤，多个用逗号分隔（如 G,D）。不传则不过滤",
                     },
                 },
                 "required": ["from_station", "to_station", "travel_date"],
@@ -310,15 +306,12 @@ class RailMateAgent:
             
             if result.get("success"):
                 if count == 0:
-                    # 当天没车，计算明天日期
                     try:
                         travel_dt = datetime.strptime(travel_date, "%Y-%m-%d").date()
                         tomorrow = travel_dt + timedelta(days=1)
-                        result["hint"] = f"当日无直达车次。建议：1)查询{tomorrow}的票 2)考虑中转方案（如经南昌、长沙、武汉等枢纽站）"
+                        result["hint"] = f"当日无直达车次。建议查询{tomorrow}的票。如用户需要也可调用search_transfer_tickets查中转"
                     except:
-                        result["hint"] = "当日无直达车次，建议查第二天或考虑中转方案"
-                elif count < 5:
-                    result["hint"] = "直达车次较少，如需更多选择可考虑中转方案（分段查票组合）"
+                        result["hint"] = "当日无直达车次，建议查第二天"
                 
                 return json.dumps(result, ensure_ascii=False)
         except:
