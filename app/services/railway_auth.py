@@ -129,6 +129,10 @@ class Railway12306Auth:
         返回 {"success": True, "uuid": "...", "image": "<base64 PNG>"}
         """
         try:
+            try:
+                self._client.get(f"{self.OTN}/resources/login.html")
+            except Exception:
+                pass
             resp = self._client.get(
                 f"{self.PASSPORT}/web/create-qr64",
                 params={"appid": "otn"},

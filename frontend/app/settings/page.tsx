@@ -28,6 +28,8 @@ export default function SettingsPage() {
   const location = useUserContextStore((s) => s.location);
   const preference = useUserContextStore((s) => s.preference);
   const setPreference = useUserContextStore((s) => s.setPreference);
+  const planningMode = useUserContextStore((s) => s.planningMode);
+  const setPlanningMode = useUserContextStore((s) => s.setPlanningMode);
   const setLocationStore = useUserContextStore((s) => s.setLocation);
   const userId = useChatStore((s) => s.userId);
   const { detectByIP, detectByGPS, loading, error } = useGeoLocation();
@@ -40,7 +42,6 @@ export default function SettingsPage() {
 
   // ── 12306 登录 ──────────────────────────────────────────────────────────────
   const [rail12306, setRail12306] = useState<Auth12306Status | null>(null);
-  const [qrUuid, setQrUuid] = useState<string | null>(null);
   const [qrImage, setQrImage] = useState<string | null>(null);
   const [qrStatus, setQrStatus] = useState<"idle" | "loading" | "waiting" | "scanned" | "confirmed" | "expired" | "error">("idle");
   const [qrMsg, setQrMsg] = useState("");
@@ -71,7 +72,6 @@ export default function SettingsPage() {
         setQrMsg(res.message || "获取二维码失败");
         return;
       }
-      setQrUuid(res.uuid);
       setQrImage(res.image);
       setQrStatus("waiting");
 
@@ -125,7 +125,6 @@ export default function SettingsPage() {
       setRail12306(null);
       setQrStatus("idle");
       setQrImage(null);
-      setQrUuid(null);
       setQrMsg("");
     } finally { setRailLoading(false); }
   }, []);
@@ -187,6 +186,11 @@ export default function SettingsPage() {
     { value: "cheap", label: t("settings.pref.cheap"), desc: t("settings.pref.cheap.desc") },
     { value: "balanced", label: t("settings.pref.balanced"), desc: t("settings.pref.balanced.desc") },
   ];
+  const MODES = [
+    { value: "efficient", label: t("settings.tripMode.efficient"), desc: t("settings.tripMode.efficient.desc") },
+    { value: "rail_experience", label: t("settings.tripMode.rail"), desc: t("settings.tripMode.rail.desc") },
+    { value: "stopover_explore", label: t("settings.tripMode.stopover"), desc: t("settings.tripMode.stopover.desc") },
+  ] as const;
 
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-5 overflow-y-auto flex-1">
@@ -285,6 +289,31 @@ export default function SettingsPage() {
         </Card>
       </motion.div>
 
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}>
+        <Card>
+          <CardHeader><CardTitle className="text-base flex items-center gap-2"><Bot className="h-4 w-4 text-primary" />{t("settings.tripMode")}</CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid gap-2">
+              {MODES.map((mode) => (
+                <button
+                  key={mode.value}
+                  onClick={() => setPlanningMode(mode.value)}
+                  className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-all ${planningMode === mode.value ? "border-primary bg-primary/5" : "border-border hover:border-primary/20 hover:bg-secondary/50"}`}
+                >
+                  <div className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors ${planningMode === mode.value ? "border-primary bg-primary" : "border-border"}`}>
+                    {planningMode === mode.value && <Check className="h-3 w-3 text-primary-foreground" />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{mode.label}</p>
+                    <p className="text-xs text-muted-foreground">{mode.desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
       <Separator />
 
       {/* ── 12306 登录 ── */}
@@ -299,9 +328,7 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             {/* 说明 */}
             <p className="text-xs text-muted-foreground leading-relaxed">
-              {locale === "en"
-                ? "Log in with your 12306 account to enable real-time ticket prices (no extra configuration needed)."
-                : "登录 12306 账户后，票价查询将自动生效，无需任何额外配置。"}
+              {t("settings.railAccount.desc")}
             </p>
 
             {/* 状态 */}
@@ -310,7 +337,9 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-2.5 min-w-0">
                   <ShieldCheck className="h-5 w-5 text-emerald-500 shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{rail12306.username || locale === "en" ? "Logged in" : "已登录"}</p>
+                    <p className="text-sm font-medium truncate">
+                      {rail12306.username || (locale === "en" ? "Logged in" : "已登录")}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {locale === "en"
                         ? `Cookie valid for ${rail12306.remaining_days} day(s)`

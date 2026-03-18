@@ -25,6 +25,7 @@ class Railway12306API:
     STATION_URL = "https://kyfw.12306.cn/otn/resources/js/framework/station_name.js"
     TICKET_QUERY_URL = "https://kyfw.12306.cn/otn/leftTicket/query"
     PRICE_QUERY_URL = "https://kyfw.12306.cn/otn/leftTicket/queryTicketPrice"
+    PUBLIC_PRICE_QUERY_URL = "https://kyfw.12306.cn/otn/leftTicketPrice/queryAllPublicPrice"
     TRAIN_STOP_URL = "https://kyfw.12306.cn/otn/czxx/queryByTrainNo"
     
     HEADERS = {
@@ -53,6 +54,7 @@ class Railway12306API:
         # 全局 train_no 缓存：键为 "{train_no}_{travel_date}"，跨路线查询均可命中
         self._train_by_no: Dict[str, Dict[str, Any]] = {}
         self._price_cache: Dict[str, Dict[str, Optional[float]]] = {}
+        self._public_price_cache: Dict[str, Dict[str, Dict[str, Optional[float]]]] = {}
         self._last_working_query_url: Optional[str] = None
         self._session_inited = False
         self._client = httpx.Client(
@@ -95,6 +97,31 @@ class Railway12306API:
             return "; ".join(f"{k}={v}" for k, v in device.items() if v)
 
         return ""
+
+    @staticmethod
+    def _parse_cookie_str(cookie_str: str) -> Dict[str, str]:
+        cookies: Dict[str, str] = {}
+        if not cookie_str:
+            return cookies
+        for chunk in cookie_str.split(";"):
+            part = chunk.strip()
+            if not part or "=" not in part:
+                continue
+            name, value = part.split("=", 1)
+            if name and value:
+                cookies[name.strip()] = value.strip()
+        return cookies
+
+    def _build_request_cookies(self, extra_cookie_str: str = "") -> Dict[str, str]:
+        """
+        为请求构建最终 Cookie 集合。
+        关键点：不能只用手写 Cookie 字符串覆盖整个请求，否则会把会话初始化阶段拿到的 JSESSIONID 一并覆盖掉。
+        """
+        merged: Dict[str, str] = {}
+        for cookie in self._client.cookies.jar:
+            merged[cookie.name] = cookie.value
+        merged.update(self._parse_cookie_str(extra_cookie_str))
+        return merged
 
     def _ensure_session(self) -> None:
         """
@@ -537,11 +564,10 @@ class Railway12306API:
 
         try:
             self._ensure_session()
-            extra_headers = {"Cookie": cookie_str} if cookie_str else {}
             response = self._client.get(
                 self.PRICE_QUERY_URL,
                 params=params,
-                headers=extra_headers,
+                cookies=self._build_request_cookies(cookie_str),
             )
             content = response.text.strip()
             if not content or content.startswith("<!"):
@@ -575,6 +601,132 @@ class Railway12306API:
             logger.debug(f"票价查询跳过: {train_no} ({e.__class__.__name__})")
             self._price_cache[cache_key] = {}
             return {}
+
+    def query_public_route_prices(
+        self,
+        from_station: str,
+        to_station: str,
+        travel_date: date,
+    ) -> Dict[str, Dict[str, Optional[float]]]:
+        """
+        查询 12306 官方“公布票价”页使用的公开票价接口。
+        这是 route 级别接口，不依赖登录态，适合做票价回退链路。
+        """
+        from_code = self.get_station_code(from_station)
+        to_code = self.get_station_code(to_station)
+        if not from_code or not to_code:
+            return {}
+
+        cache_key = f"{from_code}_{to_code}_{travel_date}"
+        cached = self._public_price_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        params = {
+            "leftTicketDTO.train_date": travel_date.strftime("%Y-%m-%d"),
+            "leftTicketDTO.from_station": from_code,
+            "leftTicketDTO.to_station": to_code,
+            "purpose_codes": "ADULT",
+        }
+
+        headers = dict(self.HEADERS)
+        headers["Referer"] = "https://kyfw.12306.cn/otn/view/queryPublicIndex.html"
+
+        try:
+            self._ensure_session()
+            response = self._client.get(
+                self.PUBLIC_PRICE_QUERY_URL,
+                params=params,
+                headers=headers,
+                cookies=self._build_request_cookies(),
+            )
+            content = response.text.strip()
+            if not content or content.startswith("<!"):
+                self._public_price_cache[cache_key] = {}
+                return {}
+
+            data = response.json()
+            if data.get("status") is not True:
+                self._public_price_cache[cache_key] = {}
+                return {}
+
+            result: Dict[str, Dict[str, Optional[float]]] = {}
+            for item in data.get("data", []) or []:
+                dto = item.get("queryLeftNewDTO", item) if isinstance(item, dict) else {}
+                train_no = str(
+                    dto.get("station_train_code")
+                    or dto.get("stationTrainCode")
+                    or dto.get("train_no")
+                    or dto.get("trainNo")
+                    or ""
+                ).upper()
+                if not train_no:
+                    continue
+
+                seat_prices = self._parse_public_price_info(
+                    str(dto.get("infoAll_list") or dto.get("infoAllList") or "")
+                )
+                if not any(value is not None for value in seat_prices.values()):
+                    result[train_no] = result.get(train_no, {})
+                    continue
+                result[train_no] = seat_prices
+
+            self._public_price_cache[cache_key] = result
+            if len(self._public_price_cache) > 200:
+                oldest = next(iter(self._public_price_cache))
+                del self._public_price_cache[oldest]
+            return result
+        except Exception as e:
+            logger.debug(f"公开票价查询跳过: {from_station}->{to_station} ({e.__class__.__name__})")
+            self._public_price_cache[cache_key] = {}
+            return {}
+
+    def _parse_public_price_info(self, info_all_list: str) -> Dict[str, Optional[float]]:
+        """
+        解析 12306 公布票价页的 `infoAll_list` 字段。
+        字段格式参考 queryPublicIndex 官方页面脚本。
+        """
+        seat_map: Dict[str, float] = {}
+        if not info_all_list:
+            return {
+                "business_seat": None,
+                "first_seat": None,
+                "second_seat": None,
+                "soft_sleeper": None,
+                "hard_sleeper": None,
+                "hard_seat": None,
+                "no_seat": None,
+            }
+
+        for raw in info_all_list.split("#"):
+            raw = raw.strip()
+            if len(raw) < 6:
+                continue
+            code = raw[0]
+            subtype = ""
+            if len(raw) > 9 and raw[9] != "0":
+                subtype = raw[9]
+            price_fragment = raw[1:6]
+            try:
+                price = round(int(price_fragment) / 10, 1)
+            except ValueError:
+                continue
+
+            seat_map[f"{code}{subtype}"] = price if subtype else seat_map.get(code, price)
+            if subtype:
+                seat_map.setdefault(code, price)
+            else:
+                seat_map[code] = price
+
+        return {
+            "business_seat": seat_map.get("9") or seat_map.get("P") or seat_map.get("E"),
+            "first_seat": seat_map.get("M") or seat_map.get("D"),
+            "second_seat": seat_map.get("O") or seat_map.get("S"),
+            "soft_sleeper": seat_map.get("4") or seat_map.get("41") or seat_map.get("43"),
+            "hard_sleeper": seat_map.get("3") or seat_map.get("31") or seat_map.get("32") or seat_map.get("33"),
+            "hard_seat": seat_map.get("1"),
+            "no_seat": seat_map.get("W"),
+        }
     
     def _parse_price(self, price_str: Optional[str]) -> Optional[float]:
         """解析票价字符串"""

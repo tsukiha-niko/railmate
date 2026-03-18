@@ -17,15 +17,18 @@ const NAV_ITEMS = [
 
 export function Navbar() {
   const pathname = usePathname();
-  const toggleSidebar = useUIStore((s) => s.toggleSidebar);
+  const toggleMobileSidebar = useUIStore((s) => s.toggleMobileSidebar);
   const location = useUserContextStore((s) => s.location);
   const { t } = useI18n();
+  const showAssistantMenu = pathname === "/";
 
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center gap-4 border-b border-border bg-card/80 backdrop-blur-md px-4 lg:px-6">
-      <Button variant="ghost" size="icon" className="lg:hidden" onClick={toggleSidebar}>
-        <Menu className="h-5 w-5" />
-      </Button>
+      {showAssistantMenu ? (
+        <Button variant="ghost" size="icon" className="lg:hidden" onClick={toggleMobileSidebar} aria-label={t("chat.sidebar.open")}>
+          <Menu className="h-5 w-5" />
+        </Button>
+      ) : null}
 
       <Link href="/" className="flex items-center gap-2 font-bold text-primary">
         <Train className="h-5 w-5" />

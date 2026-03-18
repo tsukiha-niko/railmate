@@ -10,8 +10,15 @@ from pydantic import BaseModel, Field
 
 from app.core.exceptions import AIAgentError
 from app.core.logger import logger
-from app.schemas.chat import ChatRequest, ChatResponse, UserLocationInput
+from app.schemas.chat import (
+    ChatJobCreateResponse,
+    ChatJobStatusResponse,
+    ChatRequest,
+    ChatResponse,
+    UserLocationInput,
+)
 from app.services.ai_agent import get_agent
+from app.services.chat_jobs import get_chat_job_manager
 
 router = APIRouter()
 
@@ -75,6 +82,7 @@ async def chat(request: ChatRequest):
         response = agent.chat(
             message=request.message,
             conversation_id=request.conversation_id,
+            planning_mode=request.planning_mode,
         )
         
         return response
@@ -85,6 +93,27 @@ async def chat(request: ChatRequest):
     except Exception as e:
         logger.error(f"对话接口异常: {e}")
         raise HTTPException(status_code=500, detail=f"服务内部错误: {str(e)}")
+
+
+@router.post("/jobs", response_model=ChatJobCreateResponse)
+async def create_chat_job(request: ChatRequest):
+    """创建一个后台聊天任务，前端可轮询真实进度。"""
+    try:
+        manager = get_chat_job_manager()
+        return manager.create_job(request)
+    except Exception as e:
+        logger.error(f"创建聊天任务失败: {e}")
+        raise HTTPException(status_code=500, detail=f"创建任务失败: {str(e)}")
+
+
+@router.get("/jobs/{job_id}", response_model=ChatJobStatusResponse)
+async def get_chat_job(job_id: str):
+    """获取聊天任务当前状态。"""
+    manager = get_chat_job_manager()
+    job = manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="聊天任务不存在")
+    return job
 
 
 @router.delete("/{conversation_id}")

@@ -1,10 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { TrainFront, Loader2, Search, Ticket } from "lucide-react";
+import { TrainFront, Loader2, Search } from "lucide-react";
 import { TrainCard } from "./TrainCard";
 import type { TrainSearchResult } from "@/types/trains";
 import { useI18n } from "@/lib/i18n/i18n";
+import { getLowestFare } from "@/utils/format";
 
 interface Props {
   trains: TrainSearchResult[];
@@ -20,7 +21,7 @@ function uid(t: TrainSearchResult) {
 function annotateTrains(trains: TrainSearchResult[], tr: (key: string) => string) {
   if (trains.length === 0) return [];
   const cheapest = trains.reduce((a, b) =>
-    (a.price_second_seat ?? Infinity) < (b.price_second_seat ?? Infinity) ? a : b,
+    (getLowestFare(a)?.price ?? Infinity) < (getLowestFare(b)?.price ?? Infinity) ? a : b,
   );
   const fastest = trains.reduce((a, b) =>
     a.duration_minutes < b.duration_minutes ? a : b,
@@ -42,13 +43,7 @@ function annotateTrains(trains: TrainSearchResult[], tr: (key: string) => string
   });
 }
 
-const PROGRESS_STEPS = {
-  "zh-CN": ["正在连接 12306...", "正在查询车次...", "正在获取票价信息..."],
-  en: ["Connecting to 12306...", "Querying trains...", "Fetching ticket prices..."],
-};
-
 function LoadingSkeleton({ locale }: { locale: string }) {
-  const steps = locale === "en" ? PROGRESS_STEPS.en : PROGRESS_STEPS["zh-CN"];
   return (
     <div className="space-y-4">
       <motion.div
@@ -69,18 +64,14 @@ function LoadingSkeleton({ locale }: { locale: string }) {
           </motion.div>
         </div>
         <div className="flex flex-col items-center gap-1.5">
-          {steps.map((step, i) => (
-            <motion.div
-              key={step}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 1.2, duration: 0.3 }}
-              className="flex items-center gap-2 text-sm text-muted-foreground"
-            >
-              {i === 2 ? <Ticket className="h-3.5 w-3.5" /> : <TrainFront className="h-3.5 w-3.5" />}
-              {step}
-            </motion.div>
-          ))}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <TrainFront className="h-3.5 w-3.5" />
+            {locale === "en" ? "Querying real-time trains..." : "正在查询实时车次..."}
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Search className="h-3.5 w-3.5" />
+            {locale === "en" ? "Fares may load progressively." : "票价会在结果返回后逐步补齐。"}
+          </div>
         </div>
       </motion.div>
     </div>

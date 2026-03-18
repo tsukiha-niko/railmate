@@ -33,6 +33,7 @@ export default function TrainDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [prices, setPrices] = useState<TrainPrices | null>(null);
   const [pricesLoading, setPricesLoading] = useState(false);
+  const [priceMeta, setPriceMeta] = useState<{ logged_in?: boolean; requires_login?: boolean; source?: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,7 +65,14 @@ export default function TrainDetailPage() {
       setPricesLoading(true);
       try {
         const res = await getTrainPrices(trainNo, date, fromStation!, toStation!);
-        if (!cancelled) setPrices(res.prices);
+        if (!cancelled) {
+          setPrices(res.prices);
+          setPriceMeta({
+            logged_in: res.logged_in,
+            requires_login: res.requires_login,
+            source: res.source,
+          });
+        }
       } catch {
         // price fetch is best-effort
       } finally {
@@ -171,9 +179,28 @@ export default function TrainDetailPage() {
                     ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground text-center py-3">
-                  {locale === "en" ? "Prices unavailable (login to 12306 for real-time prices)" : "暂无票价（登录 12306 账户后可查看实时票价）"}
-                </p>
+                <div className="flex flex-col items-center gap-3 py-3 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    {t("train.price.unavailable")}
+                  </p>
+                  <p className="max-w-md text-xs text-muted-foreground">
+                    {priceMeta?.requires_login
+                      ? t("train.price.needLogin")
+                      : locale === "en"
+                        ? "The backend did not receive enough fare data this time. You can retry once more."
+                        : "本次后端没有拿到足够的实时票价数据，可以再重试一次。"}
+                  </p>
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    {priceMeta?.requires_login ? (
+                      <Button variant="default" size="sm" onClick={() => router.push("/settings")}>
+                        {t("train.price.goLogin")}
+                      </Button>
+                    ) : null}
+                    <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                      {t("train.price.retry")}
+                    </Button>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>

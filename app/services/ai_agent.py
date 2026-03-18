@@ -11,10 +11,11 @@ AI Agent 核心模块
 
 import json
 import uuid
+from time import perf_counter
 from datetime import date, datetime, time, timedelta
 from typing import Any, Callable, Dict, List, Optional
 
-from openai import OpenAI
+from openai import APITimeoutError, OpenAI
 
 from app.core.config import settings
 from app.core.exceptions import AIAgentError
@@ -53,6 +54,9 @@ SYSTEM_PROMPT = """你是RailMate智轨伴行，中国铁路出行AI助手。
   2. 用户问"怎么去XX"且 search_tickets 返回 0 趟直达车次
 - **绝对不要在有直达车次时主动推荐中转方案**
 
+## 当前规划模式
+{planning_mode_rules}
+
 ## 时间映射
 - 最快=最近能赶上的车（+1h提前量）
 - 早上=06-12点，下午=12-18点，晚上=18-24点
@@ -69,7 +73,10 @@ SYSTEM_PROMPT = """你是RailMate智轨伴行，中国铁路出行AI助手。
 **铁律：你的每一句话都必须有依据。如果你说"我来帮你查"，就必须紧接着调用工具。如果工具返回了hint字段，必须按hint的指示继续调用工具，不能忽略。**"""
 
 
-def get_system_prompt(user_context: Optional[UserContext] = None) -> str:
+def get_system_prompt(
+    user_context: Optional[UserContext] = None,
+    planning_mode: str = "efficient",
+) -> str:
     """生成带有上下文的系统提示词（优化版）"""
     today = date.today()
     now = datetime.now()
@@ -82,6 +89,21 @@ def get_system_prompt(user_context: Optional[UserContext] = None) -> str:
     
     weekday_names = ['一', '二', '三', '四', '五', '六', '日']
     current_time_str = f"{now.strftime('%m/%d %H:%M')} 周{weekday_names[now.weekday()]}"
+
+    planning_rules_map = {
+        "efficient": (
+            "当前为【高效赶路】模式：优先直达；如必须中转，最多按1次中转来规划。"
+            "应重点比较更快到达 / 更省钱 / 时间价格均衡。"
+        ),
+        "rail_experience": (
+            "当前为【铁路运转】模式：用户更重视乘车体验、线路丰富度、列车运行过程。"
+            "可主动考虑1到2次中转，不必一味最短时长。若有多段铁路运行体验更丰富的方案，可优先展示原因。"
+        ),
+        "stopover_explore": (
+            "当前为【沿途游玩】模式：用户接受在中转城市停留、分段旅行。"
+            "可主动考虑1到2次中转，并在回复中把『铁路行程段』与『沿途城市停留建议』分开说清楚。若用户提到想顺路去某城市，优先围绕该城市规划。"
+        ),
+    }
     
     return SYSTEM_PROMPT.format(
         today=today.strftime("%Y-%m-%d"),
@@ -90,6 +112,7 @@ def get_system_prompt(user_context: Optional[UserContext] = None) -> str:
         current_time=current_time_str,
         current_hour=now.hour,
         user_context=context_str,
+        planning_mode_rules=planning_rules_map.get(planning_mode, planning_rules_map["efficient"]),
     )
 
 
@@ -195,13 +218,22 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "search_transfer_tickets",
-            "description": "查询中转方案。直达车次很少或用户提到'中转/转车/换乘'时调用。",
+            "description": "查询中转方案。高效赶路模式最多1次中转；铁路运转/沿途游玩模式可查到2次中转。",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "from_station": {"type": "string", "description": "出发站"},
                     "to_station": {"type": "string", "description": "到达站"},
                     "travel_date": {"type": "string", "description": "日期 YYYY-MM-DD"},
+                    "max_transfers": {
+                        "type": "integer",
+                        "description": "最大中转次数。高效赶路建议1；体验/沿途游玩可用2",
+                        "default": 1,
+                    },
+                    "preferred_via": {
+                        "type": "string",
+                        "description": "希望优先经过的中转城市/车站，如桂林、长沙南",
+                    },
                 },
                 "required": ["from_station", "to_station", "travel_date"],
             },
@@ -269,6 +301,8 @@ class RailMateAgent:
             self.client = OpenAI(
                 api_key=settings.openai_api_key,
                 base_url=settings.openai_base_url,
+                timeout=settings.openai_timeout_seconds,
+                max_retries=settings.openai_max_retries,
             )
         
         self.model = settings.openai_model
@@ -277,6 +311,7 @@ class RailMateAgent:
         
         # 用户上下文
         self.user_context = get_user_context(user_id)
+        self._active_planning_mode = "efficient"
         
         # 注册工具函数
         self.tool_functions: Dict[str, Callable] = {
@@ -290,6 +325,36 @@ class RailMateAgent:
         }
         
         logger.info(f"🤖 RailMate Agent 初始化完成 (模型: {self.model}, 用户: {user_id})")
+
+    def _create_completion(self, messages: List[Dict[str, Any]]):
+        """统一封装 LLM 调用，便于控制超时与日志。"""
+        start = perf_counter()
+        logger.info(
+            f"🧠 调用 LLM: model={self.model}, timeout={settings.openai_timeout_seconds}s, "
+            f"messages={len(messages)}"
+        )
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                tools=TOOLS,
+                tool_choice="auto",
+                temperature=0.7,
+                timeout=settings.openai_timeout_seconds,
+            )
+            elapsed = perf_counter() - start
+            logger.info(f"🧠 LLM 返回成功: {elapsed:.2f}s")
+            return response
+        except APITimeoutError as exc:
+            elapsed = perf_counter() - start
+            logger.error(
+                f"🧠 LLM 调用超时: {elapsed:.2f}s "
+                f"(timeout={settings.openai_timeout_seconds}s, model={self.model})"
+            )
+            raise AIAgentError(
+                f"LLM 调用超时（{elapsed:.1f}s）。当前后端超时配置为 {settings.openai_timeout_seconds:.0f}s，"
+                "可在 .env 中调大 OPENAI_TIMEOUT_SECONDS。"
+            ) from exc
     
     # ==================== 工具函数实现 ====================
     
@@ -487,18 +552,40 @@ class RailMateAgent:
             "message": f"已记住您的位置：{self.user_context.location.city}，最近火车站：{self.user_context.location.station or '未知'}",
         }, ensure_ascii=False)
     
-    def _tool_search_transfer_tickets(self, from_station: str, to_station: str, travel_date: str) -> str:
+    def _tool_search_transfer_tickets(
+        self,
+        from_station: str,
+        to_station: str,
+        travel_date: str,
+        max_transfers: int = 1,
+        preferred_via: Optional[str] = None,
+    ) -> str:
         """工具：查询中转方案（站名验证+智能提示+限制日期循环）"""
-        logger.info(f"🔧 调用工具 search_transfer_tickets: {from_station} → {to_station}, {travel_date}")
+        logger.info(
+            f"🔧 调用工具 search_transfer_tickets: {from_station} → {to_station}, "
+            f"{travel_date}, max_transfers={max_transfers}, preferred_via={preferred_via}"
+        )
         
         err = self._validate_stations(from_station=from_station, to_station=to_station)
         if err:
             return err
+
+        if preferred_via:
+            via_err = self._validate_stations(via=preferred_via)
+            if via_err:
+                return via_err
+
+        if self._active_planning_mode in ("rail_experience", "stopover_explore"):
+            max_transfers = max(max_transfers, 2)
+        else:
+            max_transfers = min(max_transfers, 1)
         
         result_str = self.train_service.search_transfer_tickets_json(
             from_station=from_station,
             to_station=to_station,
             travel_date=travel_date,
+            max_transfers=max_transfers,
+            preferred_via=preferred_via,
         )
         
         try:
@@ -562,12 +649,34 @@ class RailMateAgent:
         except Exception as e:
             logger.error(f"工具执行失败: {e}")
             return json.dumps({"error": str(e)})
+
+    @staticmethod
+    def _report_progress(
+        on_progress: Optional[Callable[[Dict[str, Any]], None]],
+        *,
+        status: str,
+        percent: int,
+        message: str,
+        detail: Optional[str] = None,
+    ) -> None:
+        if not on_progress:
+            return
+        on_progress(
+            {
+                "status": status,
+                "percent": max(0, min(100, percent)),
+                "message": message,
+                "detail": detail,
+            }
+        )
     
     def chat(
         self,
         message: str,
         conversation_id: Optional[str] = None,
         stream: bool = False,
+        planning_mode: str = "efficient",
+        on_progress: Optional[Callable[[Dict[str, Any]], None]] = None,
     ) -> ChatResponse:
         """
         与 Agent 对话
@@ -579,33 +688,58 @@ class RailMateAgent:
         conv_id, history = self.memory.get_or_create(conversation_id)
         
         # 构建消息列表（包含上下文感知的 System Prompt）
-        messages = [{"role": "system", "content": get_system_prompt(self.user_context)}]
+        self._active_planning_mode = planning_mode or "efficient"
+
+        messages = [{"role": "system", "content": get_system_prompt(self.user_context, self._active_planning_mode)}]
         messages.extend(history)
         messages.append({"role": "user", "content": message})
         
         # 记录用户消息
         self.memory.add_message(conv_id, "user", message)
+
+        self._report_progress(
+            on_progress,
+            status="running",
+            percent=8,
+            message="正在理解你的需求",
+            detail="已构建上下文与历史消息",
+        )
         
         tool_calls_made: List[ToolCall] = []
         max_tool_rounds = 8
         
         try:
             # 调用 LLM
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                tools=TOOLS,
-                tool_choice="auto",
-                temperature=0.7,
+            self._report_progress(
+                on_progress,
+                status="running",
+                percent=12,
+                message="正在等待模型规划",
+                detail=f"模型 {self.model} 正在决定是否调用工具",
             )
+            response = self._create_completion(messages)
             
             assistant_message = response.choices[0].message
+            self._report_progress(
+                on_progress,
+                status="running",
+                percent=20,
+                message="已完成需求分析",
+                detail="正在决定是否调用查票/中转工具",
+            )
             
             # 处理工具调用（可能多轮，设上限防止无限循环）
             tool_round = 0
             while assistant_message.tool_calls and tool_round < max_tool_rounds:
                 tool_round += 1
                 logger.info(f"🔧 AI 请求调用 {len(assistant_message.tool_calls)} 个工具")
+                self._report_progress(
+                    on_progress,
+                    status="running",
+                    percent=min(80, 20 + tool_round * 8),
+                    message=f"正在执行第 {tool_round} 轮查询",
+                    detail="AI 已决定调用铁路工具",
+                )
                 
                 tool_calls_data = [
                     {
@@ -626,7 +760,8 @@ class RailMateAgent:
                 })
                 
                 # 执行每个工具调用
-                for tool_call in assistant_message.tool_calls:
+                tool_count = len(assistant_message.tool_calls)
+                for tool_index, tool_call in enumerate(assistant_message.tool_calls, start=1):
                     func_name = tool_call.function.name
                     try:
                         func_args = json.loads(tool_call.function.arguments)
@@ -634,6 +769,13 @@ class RailMateAgent:
                         func_args = {}
                     
                     logger.info(f"  - {func_name}: {func_args}")
+                    self._report_progress(
+                        on_progress,
+                        status="running",
+                        percent=min(86, 24 + tool_round * 12 + tool_index * max(4, 16 // max(tool_count, 1))),
+                        message=f"正在执行工具：{func_name}",
+                        detail=json.dumps(func_args, ensure_ascii=False)[:160] if func_args else "无额外参数",
+                    )
                     
                     result = self._execute_tool(func_name, func_args)
                     
@@ -649,19 +791,34 @@ class RailMateAgent:
                         "tool_call_id": tool_call.id,
                         "content": result,
                     })
+                    self._report_progress(
+                        on_progress,
+                        status="running",
+                        percent=min(90, 30 + tool_round * 12 + tool_index * max(5, 20 // max(tool_count, 1))),
+                        message=f"已拿到 {func_name} 结果",
+                        detail="正在整理工具结果",
+                    )
                 
                 # 再次调用 LLM
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=messages,
-                    tools=TOOLS,
-                    tool_choice="auto",
-                    temperature=0.7,
+                self._report_progress(
+                    on_progress,
+                    status="running",
+                    percent=min(92, 40 + tool_round * 10),
+                    message="正在整合查询结果",
+                    detail="AI 正在读取工具返回内容并继续推理",
                 )
+                response = self._create_completion(messages)
                 
                 assistant_message = response.choices[0].message
             
             # 获取最终回复
+            self._report_progress(
+                on_progress,
+                status="running",
+                percent=95,
+                message="正在生成最终回复",
+                detail="准备输出推荐与说明",
+            )
             final_answer = assistant_message.content or "抱歉，我无法生成回复。"
             
             self.memory.add_message(conv_id, "assistant", final_answer)
@@ -674,9 +831,13 @@ class RailMateAgent:
                 tool_calls=tool_calls_made,
             )
             
+        except AIAgentError:
+            raise
         except Exception as e:
             logger.error(f"❌ 对话失败: {e}")
             raise AIAgentError(f"对话处理失败: {str(e)}")
+        finally:
+            self._active_planning_mode = "efficient"
     
     def set_location(self, city: str, station: Optional[str] = None):
         """直接设置用户位置（API 调用）"""

@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_base_url: str = "https://api.openai.com/v1"
     openai_model: str = "gpt-4-turbo-preview"
+    openai_timeout_seconds: float = 120.0
+    openai_max_retries: int = 1
     
     # 数据同步模式
     data_sync_mode: Literal["mock", "live"] = "mock"

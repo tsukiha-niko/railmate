@@ -38,7 +38,14 @@ export async function getTrainPrices(
   runDate: string,
   fromStation: string,
   toStation: string,
-): Promise<{ train_no: string; date: string; prices: TrainPrices }> {
+): Promise<{
+  train_no: string;
+  date: string;
+  prices: TrainPrices;
+  logged_in?: boolean;
+  requires_login?: boolean;
+  source?: string;
+}> {
   return get(`/api/v1/trains/${trainNo}/prices`, {
     run_date: runDate,
     from_station: fromStation,

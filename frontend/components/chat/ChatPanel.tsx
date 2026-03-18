@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Train, Search, Ticket, Bot } from "lucide-react";
 import { useChatStore } from "@/store/chatStore";
 import { useChat } from "@/hooks/useChat";
 import { MessageBubble } from "./MessageBubble";
@@ -11,57 +10,13 @@ import { QuickActions } from "./QuickActions";
 import { RobotAnimation } from "./RobotAnimation";
 import { useI18n } from "@/lib/i18n/i18n";
 
-const LOADING_STEPS_ZH = ["正在分析您的需求...", "正在查询车次...", "正在获取票价..."];
-const LOADING_STEPS_EN = ["Analyzing your request...", "Searching trains...", "Fetching prices..."];
-
-function ChatLoadingIndicator({ locale }: { locale: string }) {
-  const steps = locale === "en" ? LOADING_STEPS_EN : LOADING_STEPS_ZH;
-  const [stepIdx, setStepIdx] = useState(0);
-
-  useEffect(() => {
-    setStepIdx(0);
-    const t1 = setTimeout(() => setStepIdx(1), 1500);
-    const t2 = setTimeout(() => setStepIdx(2), 4000);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, []);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="flex gap-3"
-    >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 text-white">
-        <Bot className="h-4 w-4" />
-      </div>
-      <div className="rounded-2xl rounded-bl-md bg-secondary px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="flex gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" />
-            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:0.15s]" />
-            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:0.3s]" />
-          </div>
-          <motion.span
-            key={stepIdx}
-            initial={{ opacity: 0, x: -4 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="text-xs text-muted-foreground"
-          >
-            {steps[stepIdx]}
-          </motion.span>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
 export function ChatPanel() {
   const activeConv = useChatStore((s) =>
     s.conversations.find((c) => c.id === s.activeConversationId),
   );
   const { sendMessage, loading } = useChat();
   const bottomRef = useRef<HTMLDivElement>(null);
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -78,10 +33,10 @@ export function ChatPanel() {
   const messages = activeConv?.messages ?? [];
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full w-full flex-col">
       <div className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full px-4">
+          <div className="flex h-full w-full flex-col items-center justify-center px-4 sm:px-6 lg:px-8 2xl:mx-auto 2xl:max-w-6xl">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -101,7 +56,7 @@ export function ChatPanel() {
             </motion.div>
           </div>
         ) : (
-          <div className="space-y-4 p-4">
+          <div className="w-full space-y-4 px-4 py-4 sm:px-6 lg:px-8 2xl:mx-auto 2xl:max-w-6xl">
             {messages.map((msg, i) => (
               <MessageBubble
                 key={msg.id}
@@ -110,12 +65,15 @@ export function ChatPanel() {
                 onQueryTransfer={handleQueryTransfer}
               />
             ))}
-            {loading && <ChatLoadingIndicator locale={locale} />}
             <div ref={bottomRef} />
           </div>
         )}
       </div>
-      <ChatInput onSend={sendMessage} loading={loading} />
+      <div className="border-t border-border bg-background/85 px-4 py-4 backdrop-blur-sm sm:px-6 lg:px-8">
+        <div className="w-full 2xl:mx-auto 2xl:max-w-6xl">
+          <ChatInput onSend={sendMessage} loading={loading} />
+        </div>
+      </div>
     </div>
   );
 }

@@ -9,6 +9,12 @@ export interface TrainCardData {
   arrival_time: string;
   duration_minutes: number;
   price_second_seat?: number | null;
+  price_first_seat?: number | null;
+  price_business_seat?: number | null;
+  price_soft_sleeper?: number | null;
+  price_hard_sleeper?: number | null;
+  price_hard_seat?: number | null;
+  price_no_seat?: number | null;
   remaining_tickets?: number | null;
   date?: string;
 }
@@ -74,6 +80,12 @@ function normalizeCompactTrain(
     arrival_time: (raw.a ?? raw.arrival_time ?? "") as string,
     duration_minutes: Number(raw.m ?? raw.duration_minutes ?? 0),
     price_second_seat: raw.p != null ? Number(raw.p) : raw.price_second_seat != null ? Number(raw.price_second_seat) : null,
+    price_first_seat: raw.price_first_seat != null ? Number(raw.price_first_seat) : null,
+    price_business_seat: raw.price_business_seat != null ? Number(raw.price_business_seat) : null,
+    price_soft_sleeper: raw.price_soft_sleeper != null ? Number(raw.price_soft_sleeper) : null,
+    price_hard_sleeper: raw.price_hard_sleeper != null ? Number(raw.price_hard_sleeper) : null,
+    price_hard_seat: raw.price_hard_seat != null ? Number(raw.price_hard_seat) : null,
+    price_no_seat: raw.price_no_seat != null ? Number(raw.price_no_seat) : null,
     remaining_tickets: raw.r != null ? Number(raw.r) : raw.remaining_tickets != null ? Number(raw.remaining_tickets) : null,
     date: ((raw.date ?? fallbackDate) || undefined) as string | undefined,
   };

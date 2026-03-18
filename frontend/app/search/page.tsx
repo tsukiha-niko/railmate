@@ -5,7 +5,6 @@ import { AlertCircle, TrainFront } from "lucide-react";
 import { SearchForm } from "@/components/search/SearchForm";
 import { TrainCardList } from "@/components/tickets/TrainCardList";
 import { useTicketSearch } from "@/hooks/useTicketSearch";
-import { getToday } from "@/utils/date";
 import type { TrainSearchParams } from "@/types/trains";
 import { useI18n } from "@/lib/i18n/i18n";
 

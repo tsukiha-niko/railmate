@@ -1,9 +1,23 @@
-import type { ChatRequest, ChatResponse, UserLocationInput } from "@/types/chat";
+import type {
+  ChatJobCreateResponse,
+  ChatJobStatusResponse,
+  ChatRequest,
+  ChatResponse,
+  UserLocationInput,
+} from "@/types/chat";
 import type { GeoLocationResponse, GPSLocationInput, UserContextResponse, UserLocationResponse } from "@/types/geo";
 import { get, post, del } from "./http";
 
 export async function postChat(req: ChatRequest): Promise<ChatResponse> {
   return post<ChatResponse>("/api/v1/chat/", req);
+}
+
+export async function createChatJob(req: ChatRequest): Promise<ChatJobCreateResponse> {
+  return post<ChatJobCreateResponse>("/api/v1/chat/jobs", req);
+}
+
+export async function getChatJob(jobId: string): Promise<ChatJobStatusResponse> {
+  return get<ChatJobStatusResponse>(`/api/v1/chat/jobs/${jobId}`);
 }
 
 export async function clearConversation(conversationId: string, userId = "default"): Promise<void> {

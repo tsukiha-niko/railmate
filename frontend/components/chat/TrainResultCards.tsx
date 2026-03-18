@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/utils/cn";
 import { formatDuration } from "@/utils/date";
-import { formatPrice, formatRemaining, getTrainTypeColor } from "@/utils/format";
+import { formatPrice, formatRemaining, getLowestFare, getTrainTypeColor } from "@/utils/format";
 import type { ChatCard, TrainCardData, TransferPlanData } from "@/utils/parseToolCards";
 import { useI18n } from "@/lib/i18n/i18n";
 
@@ -30,6 +30,7 @@ function MiniTrainCard({ train, index }: { train: TrainCardData; index: number }
   const fmtLocale = locale === "en" ? "en" : "zh-CN";
   const href = `/trains/${train.train_no}?date=${train.date || ""}&from=${encodeURIComponent(train.from_station)}&to=${encodeURIComponent(train.to_station)}`;
   const dateLabel = getDateLabel(train.date, locale);
+  const lowestFare = getLowestFare(train);
 
   return (
     <motion.div
@@ -69,8 +70,8 @@ function MiniTrainCard({ train, index }: { train: TrainCardData; index: number }
 
             {/* Right: price + remaining */}
             <div className="flex items-center gap-2 shrink-0">
-              {train.price_second_seat != null && (
-                <span className="text-xs font-semibold text-primary">{formatPrice(train.price_second_seat)}</span>
+              {lowestFare != null && (
+                <span className="text-xs font-semibold text-primary">{formatPrice(lowestFare.price)}</span>
               )}
               <span className={cn(
                 "text-[10px] font-medium",

@@ -18,6 +18,8 @@ interface ChatState {
   setActiveConversation: (id: string) => void;
   deleteConversation: (id: string) => void;
   addMessage: (conversationId: string, message: ChatMessage) => void;
+  upsertMessage: (conversationId: string, message: ChatMessage) => void;
+  updateMessage: (conversationId: string, messageId: string, patch: Partial<ChatMessage>) => void;
   updateConversationId: (oldId: string, newId: string) => void;
   setPendingConvId: (id: string | null) => void;
 }
@@ -72,6 +74,33 @@ export const useChatStore = create<ChatState>()(
             const msgs = [...c.messages, message];
             const title = c.messages.length === 0 && message.role === "user" ? message.content.slice(0, 20) : c.title;
             return { ...c, messages: msgs, title, updatedAt: Date.now() };
+          }),
+        }));
+      },
+
+      upsertMessage(conversationId, message) {
+        set((s) => ({
+          conversations: s.conversations.map((c) => {
+            if (c.id !== conversationId) return c;
+            const idx = c.messages.findIndex((m) => m.id === message.id);
+            const msgs = idx >= 0
+              ? c.messages.map((m, i) => (i === idx ? { ...m, ...message } : m))
+              : [...c.messages, message];
+            const title = c.messages.length === 0 && message.role === "user" ? message.content.slice(0, 20) : c.title;
+            return { ...c, messages: msgs, title, updatedAt: Date.now() };
+          }),
+        }));
+      },
+
+      updateMessage(conversationId, messageId, patch) {
+        set((s) => ({
+          conversations: s.conversations.map((c) => {
+            if (c.id !== conversationId) return c;
+            return {
+              ...c,
+              messages: c.messages.map((m) => (m.id === messageId ? { ...m, ...patch } : m)),
+              updatedAt: Date.now(),
+            };
           }),
         }));
       },

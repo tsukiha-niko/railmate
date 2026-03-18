@@ -17,7 +17,7 @@ export function MobileNav() {
   const { t } = useI18n();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 flex md:hidden items-center justify-around border-t border-border bg-card/95 backdrop-blur-md h-14 pb-safe">
+    <nav className="z-40 flex shrink-0 md:hidden items-center justify-around border-t border-border bg-card/95 px-2 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] backdrop-blur-md">
       {TABS.map((tab) => {
         const active = tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href);
         return (
@@ -25,7 +25,7 @@ export function MobileNav() {
             key={tab.href}
             href={tab.href}
             className={cn(
-              "flex flex-col items-center gap-0.5 px-3 py-1.5 text-xs transition-colors",
+              "flex min-w-0 flex-1 flex-col items-center gap-0.5 px-3 py-1 text-xs transition-colors",
               active ? "text-primary" : "text-muted-foreground",
             )}
           >

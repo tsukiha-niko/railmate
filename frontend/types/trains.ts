@@ -9,6 +9,10 @@ export interface TrainSearchResult {
   price_second_seat?: number | null;
   price_first_seat?: number | null;
   price_business_seat?: number | null;
+  price_soft_sleeper?: number | null;
+  price_hard_sleeper?: number | null;
+  price_hard_seat?: number | null;
+  price_no_seat?: number | null;
   remaining_tickets?: number | null;
 }
 

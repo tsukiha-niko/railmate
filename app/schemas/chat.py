@@ -3,7 +3,7 @@ AI 对话相关的 Schema
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Literal
 
 from pydantic import BaseModel, Field
 
@@ -24,6 +24,10 @@ class ChatRequest(BaseModel):
     conversation_id: Optional[str] = Field(default=None, description="会话 ID，用于多轮对话")
     user_id: Optional[str] = Field(default="default", description="用户 ID")
     location: Optional[UserLocationInput] = Field(default=None, description="用户位置（前端可传入 GPS 定位）")
+    planning_mode: Literal["efficient", "rail_experience", "stopover_explore"] = Field(
+        default="efficient",
+        description="规划模式：efficient=高效赶路，rail_experience=铁路运转体验，stopover_explore=沿途游玩",
+    )
     
     class Config:
         json_schema_extra = {
@@ -75,6 +79,39 @@ class ChatResponse(BaseModel):
                 ],
             }
         }
+
+
+class ProgressEvent(BaseModel):
+    """后端真实进度事件"""
+
+    status: Literal["queued", "running", "completed", "failed"] = Field(..., description="事件状态")
+    percent: int = Field(default=0, ge=0, le=100, description="当前进度百分比")
+    message: str = Field(..., description="给前端展示的进度文案")
+    detail: Optional[str] = Field(default=None, description="更细的阶段信息")
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+
+class ChatJobCreateResponse(BaseModel):
+    """创建聊天任务后的响应"""
+
+    job_id: str
+    conversation_id: str
+    status: Literal["queued", "running", "completed", "failed"] = "queued"
+    progress_percent: int = Field(default=0, ge=0, le=100)
+    current_message: str = "任务已创建"
+
+
+class ChatJobStatusResponse(BaseModel):
+    """聊天任务轮询状态"""
+
+    job_id: str
+    conversation_id: str
+    status: Literal["queued", "running", "completed", "failed"]
+    progress_percent: int = Field(default=0, ge=0, le=100)
+    current_message: str
+    events: List[ProgressEvent] = Field(default_factory=list)
+    result: Optional[ChatResponse] = None
+    error: Optional[str] = None
 
 
 class TrainSearchResult(BaseModel):

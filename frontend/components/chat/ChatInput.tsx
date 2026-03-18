@@ -40,7 +40,7 @@ export function ChatInput({ onSend, loading }: Props) {
   }, []);
 
   return (
-    <div className="flex items-end gap-2 p-4 border-t border-border bg-card">
+    <div className="flex items-end gap-2 rounded-2xl border border-border bg-card p-3 shadow-sm">
       <textarea
         ref={textareaRef} value={text}
         onChange={(e) => setText(e.target.value)}

@@ -2,11 +2,11 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Clock, ArrowRight, Ticket } from "lucide-react";
+import { Clock, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { TrainSearchResult } from "@/types/trains";
 import { formatDuration } from "@/utils/date";
-import { formatPrice, formatRemaining, getTrainTypeLabel, getTrainTypeColor } from "@/utils/format";
+import { formatPrice, formatRemaining, getAvailableFares, getFareLabel, getLowestFare, getTrainTypeLabel, getTrainTypeColor } from "@/utils/format";
 import { cn } from "@/utils/cn";
 import { useI18n } from "@/lib/i18n/i18n";
 
@@ -15,7 +15,8 @@ interface Props { train: TrainSearchResult; date: string; index?: number; tags?:
 export function TrainCard({ train, date, index = 0, tags = [] }: Props) {
   const { locale, t } = useI18n();
   const fmtLocale = locale === "en" ? "en" : "zh-CN";
-  const hasAnyPrice = train.price_second_seat != null || train.price_first_seat != null || train.price_business_seat != null;
+  const lowestFare = getLowestFare(train);
+  const additionalFares = getAvailableFares(train).filter((fare) => fare.key !== lowestFare?.key).slice(0, 2);
 
   return (
     <motion.div
@@ -28,9 +29,8 @@ export function TrainCard({ train, date, index = 0, tags = [] }: Props) {
         className="block group"
       >
         <div className="rounded-xl border border-border bg-card p-4 hover:border-primary/30 hover:shadow-md transition-all duration-200 group-hover:scale-[1.003]">
-          {/* Top row: badge + type + tags + remaining */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <span className={cn(
                 "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold text-white",
                 getTrainTypeColor(train.train_type),
@@ -44,16 +44,30 @@ export function TrainCard({ train, date, index = 0, tags = [] }: Props) {
                 <Badge key={tag} variant="warning" className="text-[10px]">{tag}</Badge>
               ))}
             </div>
-            <span className={cn(
-              "text-xs font-medium",
-              train.remaining_tickets === 0 ? "text-destructive" :
-              train.remaining_tickets != null && train.remaining_tickets < 10 ? "text-warning" : "text-success",
-            )}>
-              {formatRemaining(train.remaining_tickets, fmtLocale)}
-            </span>
+
+            <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
+              {lowestFare && (
+                <div className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/8 px-2.5 py-1">
+                  <span className="text-[11px] text-muted-foreground">{t("tickets.fare.from")}</span>
+                  <span className="text-sm font-semibold text-primary">{formatPrice(lowestFare.price)}</span>
+                </div>
+              )}
+              {additionalFares.map((fare) => (
+                <div className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1">
+                  <span className="text-[11px] text-muted-foreground">{getFareLabel(fare.key, fmtLocale)}</span>
+                  <span className="text-sm font-medium text-foreground/80">{formatPrice(fare.price)}</span>
+                </div>
+              ))}
+              <span className={cn(
+                "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium",
+                train.remaining_tickets === 0 ? "bg-destructive/10 text-destructive" :
+                train.remaining_tickets != null && train.remaining_tickets < 10 ? "bg-amber-500/10 text-warning" : "bg-emerald-500/10 text-success",
+              )}>
+                {formatRemaining(train.remaining_tickets, fmtLocale)}
+              </span>
+            </div>
           </div>
 
-          {/* Middle: time/station row */}
           <div className="flex items-center gap-3">
             <div className="flex-1">
               <p className="text-2xl font-bold tabular-nums">{train.departure_time}</p>
@@ -74,31 +88,6 @@ export function TrainCard({ train, date, index = 0, tags = [] }: Props) {
               <p className="text-sm text-muted-foreground mt-0.5">{train.to_station}</p>
             </div>
           </div>
-
-          {/* Bottom: prices */}
-          {hasAnyPrice && (
-            <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border/60">
-              <Ticket className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              {train.price_second_seat != null && (
-                <div className="flex items-center gap-1">
-                  <span className="text-[11px] text-muted-foreground">{t("tickets.seat.second")}</span>
-                  <span className="text-sm font-semibold text-primary">{formatPrice(train.price_second_seat)}</span>
-                </div>
-              )}
-              {train.price_first_seat != null && (
-                <div className="flex items-center gap-1">
-                  <span className="text-[11px] text-muted-foreground">{t("tickets.seat.first")}</span>
-                  <span className="text-sm font-medium text-foreground/80">{formatPrice(train.price_first_seat)}</span>
-                </div>
-              )}
-              {train.price_business_seat != null && (
-                <div className="flex items-center gap-1">
-                  <span className="text-[11px] text-muted-foreground">{t("tickets.seat.business")}</span>
-                  <span className="text-sm font-medium text-foreground/80">{formatPrice(train.price_business_seat)}</span>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </Link>
     </motion.div>

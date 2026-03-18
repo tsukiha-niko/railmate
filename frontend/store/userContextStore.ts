@@ -1,16 +1,19 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { GeoLocation } from "@/types/geo";
+import type { PlanningMode } from "@/types/chat";
 
 interface UserContextState {
   location: GeoLocation | null;
   preference: "fast" | "cheap" | "balanced";
+  planningMode: PlanningMode;
   favoriteStations: string[];
   _hasHydrated: boolean;
 
   setLocation: (loc: GeoLocation) => void;
   clearLocation: () => void;
   setPreference: (pref: "fast" | "cheap" | "balanced") => void;
+  setPlanningMode: (mode: PlanningMode) => void;
   addFavoriteStation: (station: string) => void;
   removeFavoriteStation: (station: string) => void;
 }
@@ -20,6 +23,7 @@ export const useUserContextStore = create<UserContextState>()(
     (set) => ({
       location: null,
       preference: "balanced",
+      planningMode: "efficient",
       favoriteStations: [],
       _hasHydrated: false,
 
@@ -33,6 +37,10 @@ export const useUserContextStore = create<UserContextState>()(
 
       setPreference(pref) {
         set({ preference: pref });
+      },
+
+      setPlanningMode(mode) {
+        set({ planningMode: mode });
       },
 
       addFavoriteStation(station) {

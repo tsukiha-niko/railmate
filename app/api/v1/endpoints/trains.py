@@ -63,8 +63,10 @@ async def get_train_prices(
     需要后台设备 Cookie 已就绪或用户已登录 12306。
     """
     from app.services.railway_api import get_railway_api
+    from app.services.railway_auth import get_auth_instance
 
     api = get_railway_api()
+    auth = get_auth_instance()
 
     # 优先查全局缓存（无需重新查票）
     target = api.find_train_by_no(train_no, run_date)
@@ -84,7 +86,14 @@ async def get_train_prices(
             pass
 
     if not target:
-        return {"train_no": train_no, "date": str(run_date), "prices": {}}
+        return {
+            "train_no": train_no,
+            "date": str(run_date),
+            "prices": {},
+            "logged_in": auth.is_logged_in,
+            "requires_login": not auth.is_logged_in,
+            "source": "not_found",
+        }
 
     prices = api.query_ticket_price(
         train_no=target.get("train_code", ""),
@@ -93,7 +102,24 @@ async def get_train_prices(
         seat_types="O,M,A9,A4,A3,A1,WZ",
         travel_date=run_date,
     )
-    return {"train_no": train_no, "date": str(run_date), "prices": prices}
+    source = "12306_live_precise" if any(value is not None for value in prices.values()) else "unavailable"
+
+    if not any(value is not None for value in prices.values()):
+        public_prices = api.query_public_route_prices(from_station, to_station, run_date)
+        public_match = public_prices.get(train_no.upper(), {})
+        if any(value is not None for value in public_match.values()):
+            prices = public_match
+            source = "12306_public"
+
+    has_prices = any(value is not None for value in prices.values())
+    return {
+        "train_no": train_no,
+        "date": str(run_date),
+        "prices": prices,
+        "logged_in": auth.is_logged_in,
+        "requires_login": not has_prices and not auth.is_logged_in,
+        "source": source if has_prices else "unavailable",
+    }
 
 
 @router.get("/{train_no}/schedule")

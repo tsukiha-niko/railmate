@@ -12,6 +12,7 @@ import { useI18n } from "@/lib/i18n/i18n";
 export function ContextSidebar() {
   const location = useUserContextStore((s) => s.location);
   const preference = useUserContextStore((s) => s.preference);
+  const planningMode = useUserContextStore((s) => s.planningMode);
   const favorites = useUserContextStore((s) => s.favoriteStations);
   const { detectByIP, loading } = useGeoLocation();
   const { t } = useI18n();
@@ -20,6 +21,11 @@ export function ContextSidebar() {
     fast: t("context.pref.fast"),
     cheap: t("context.pref.cheap"),
     balanced: t("context.pref.balanced"),
+  };
+  const modeLabels: Record<string, string> = {
+    efficient: t("context.mode.efficient"),
+    rail_experience: t("context.mode.rail_experience"),
+    stopover_explore: t("context.mode.stopover_explore"),
   };
 
   return (
@@ -62,6 +68,17 @@ export function ContextSidebar() {
         </CardHeader>
         <CardContent className="p-4 pt-0">
           <Badge variant="default">{prefLabels[preference]}</Badge>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="p-4 pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" />
+            {t("context.mode")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 pt-0">
+          <Badge variant="secondary">{modeLabels[planningMode]}</Badge>
         </CardContent>
       </Card>
       {favorites.length > 0 && (

@@ -7,7 +7,11 @@ import { useChatStore } from "@/store/chatStore";
 import { cn } from "@/utils/cn";
 import { useI18n } from "@/lib/i18n/i18n";
 
-export function ConversationList() {
+interface Props {
+  onAction?: () => void;
+}
+
+export function ConversationList({ onAction }: Props) {
   const conversations = useChatStore((s) => s.conversations);
   const activeId = useChatStore((s) => s.activeConversationId);
   const setActive = useChatStore((s) => s.setActiveConversation);
@@ -18,7 +22,15 @@ export function ConversationList() {
   return (
     <div className="flex flex-col h-full">
       <div className="p-3 border-b border-border">
-        <Button onClick={() => create()} className="w-full justify-start gap-2" variant="outline" size="sm">
+        <Button
+          onClick={() => {
+            create();
+            onAction?.();
+          }}
+          className="w-full justify-start gap-2"
+          variant="outline"
+          size="sm"
+        >
           <Plus className="h-4 w-4" />
           {t("chat.newConversation")}
         </Button>
@@ -29,8 +41,17 @@ export function ConversationList() {
             <motion.div key={conv.id} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.2 }}>
               <div
                 role="button" tabIndex={0}
-                onClick={() => setActive(conv.id)}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setActive(conv.id); } }}
+                onClick={() => {
+                  setActive(conv.id);
+                  onAction?.();
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setActive(conv.id);
+                    onAction?.();
+                  }
+                }}
                 className={cn(
                   "group w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-colors text-left",
                   activeId === conv.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground",
