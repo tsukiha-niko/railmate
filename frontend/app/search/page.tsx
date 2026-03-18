@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { motion } from "framer-motion";
 import { AlertCircle, TrainFront } from "lucide-react";
 import { SearchForm } from "@/components/search/SearchForm";
@@ -11,12 +10,10 @@ import type { TrainSearchParams } from "@/types/trains";
 import { useI18n } from "@/lib/i18n/i18n";
 
 export default function SearchPage() {
-  const { results, loading, error, searched, search } = useTicketSearch();
-  const [searchDate, setSearchDate] = useState(getToday());
+  const { results, loading, error, searched, searchDate, search } = useTicketSearch();
   const { t } = useI18n();
 
   const handleSearch = (params: TrainSearchParams) => {
-    setSearchDate(params.travel_date);
     search(params);
   };
 

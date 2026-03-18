@@ -14,7 +14,7 @@ interface Props {
 }
 
 function uid(t: TrainSearchResult) {
-  return `${t.train_no}:${t.from_station}`;
+  return `${t.train_no}:${t.from_station}:${t.departure_time}`;
 }
 
 function annotateTrains(trains: TrainSearchResult[], tr: (key: string) => string) {
@@ -113,7 +113,7 @@ export function TrainCardList({ trains, date, loading, emptyMessage }: Props) {
     <div className="space-y-3">
       {annotated.map(({ train, tags }, i) => (
         <TrainCard
-          key={`${train.train_no}:${train.from_station}`}
+          key={`${train.train_no}:${train.from_station}:${train.departure_time}:${i}`}
           train={train}
           date={date}
           index={i}

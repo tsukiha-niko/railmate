@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useUserContextStore } from "@/store/userContextStore";
+import { useSearchStore } from "@/store/searchStore";
 import { getToday, getTomorrow, formatDateLocalized } from "@/utils/date";
 import type { TrainSearchParams } from "@/types/trains";
 import { useI18n } from "@/lib/i18n/i18n";
@@ -15,9 +16,13 @@ interface Props { onSearch: (params: TrainSearchParams) => void; loading?: boole
 
 export function SearchForm({ onSearch, loading }: Props) {
   const location = useUserContextStore((s) => s.location);
-  const [from, setFrom] = useState(location?.station || "");
-  const [to, setTo] = useState("");
-  const [date, setDate] = useState(getToday());
+  // 优先用上次搜索的站点回填表单（从 store 读取）
+  const prevFrom = useSearchStore((s) => s.fromStation);
+  const prevTo = useSearchStore((s) => s.toStation);
+  const prevDate = useSearchStore((s) => s.searchDate);
+  const [from, setFrom] = useState(prevFrom || location?.station || "");
+  const [to, setTo] = useState(prevTo || "");
+  const [date, setDate] = useState(prevDate || getToday());
   const [trainType, setTrainType] = useState("");
   const { t, locale } = useI18n();
 

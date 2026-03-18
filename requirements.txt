@@ -25,3 +25,6 @@ httpx==0.26.0
 
 # Utilities
 rich==13.7.0  # Beautiful terminal output for debug console
+
+# Browser automation (for 12306 device cookies; no-login)
+playwright==1.58.0

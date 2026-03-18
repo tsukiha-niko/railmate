@@ -84,12 +84,22 @@ class TrainSearchResult(BaseModel):
     train_type: str
     from_station: str
     to_station: str
+    # Live 模式用于按需补票价/时刻表的元数据（前端可忽略）
+    train_code: Optional[str] = None
+    from_station_code: Optional[str] = None
+    to_station_code: Optional[str] = None
+    from_station_no: Optional[str] = None
+    to_station_no: Optional[str] = None
     departure_time: str
     arrival_time: str
     duration_minutes: int
     price_second_seat: Optional[float] = None
     price_first_seat: Optional[float] = None
     price_business_seat: Optional[float] = None
+    price_soft_sleeper: Optional[float] = None
+    price_hard_sleeper: Optional[float] = None
+    price_hard_seat: Optional[float] = None
+    price_no_seat: Optional[float] = None
     remaining_tickets: Optional[int] = None
     
     class Config:

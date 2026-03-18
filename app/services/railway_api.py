@@ -11,6 +11,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import httpx
 
 from app.core.logger import logger
+from app.core.config import settings
+from app.services.railway_device import get_12306_device_cookies
 
 
 class Railway12306API:
@@ -27,11 +29,13 @@ class Railway12306API:
     
     HEADERS = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "*/*",
+        # 12306 对部分接口会根据请求头返回 HTML/JSON，尽量模拟浏览器 XHR
+        "Accept": "application/json, text/javascript, */*; q=0.01",
         "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
         "Accept-Encoding": "gzip, deflate, br",
         "Connection": "keep-alive",
         "Referer": "https://kyfw.12306.cn/otn/leftTicket/init",
+        "X-Requested-With": "XMLHttpRequest",
     }
 
     QUERY_URLS = [
@@ -46,6 +50,9 @@ class Railway12306API:
         self._station_cache: Dict[str, Dict[str, str]] = {}
         self._station_code_cache: Dict[str, str] = {}
         self._train_code_cache: Dict[str, List[Dict[str, str]]] = {}
+        # 全局 train_no 缓存：键为 "{train_no}_{travel_date}"，跨路线查询均可命中
+        self._train_by_no: Dict[str, Dict[str, Any]] = {}
+        self._price_cache: Dict[str, Dict[str, Optional[float]]] = {}
         self._last_working_query_url: Optional[str] = None
         self._session_inited = False
         self._client = httpx.Client(
@@ -54,9 +61,47 @@ class Railway12306API:
             headers=self.HEADERS,
             http2=False,
         )
+        # 注意：不在 client 级别注入 Cookie
+        # Auth/Device Cookie 仅在 query_ticket_price 按请求级别注入，避免污染票务查询
     
+    def reset_session(self) -> None:
+        """重置会话状态（登录/退出后由 railway_auth 调用，下次请求时重新初始化）。"""
+        self._session_inited = False
+
+    def _get_best_cookie_str(self) -> str:
+        """
+        返回当前最优 Cookie 字符串（不修改共享状态，纯读取）。
+        优先级：.env 手动配置 > 登录账户 > 设备 Cookie（后台缓存）。
+        专供 query_ticket_price 等需要鉴权的请求按请求级别使用。
+        """
+        # 1. .env 手动配置
+        if settings.railway_12306_cookie:
+            return settings.railway_12306_cookie
+
+        # 2. 已登录账户
+        try:
+            from app.services.railway_auth import get_auth_instance
+            auth = get_auth_instance()
+            if auth.is_logged_in:
+                cookies = auth.get_auth_cookies()
+                if cookies:
+                    return "; ".join(f"{k}={v}" for k, v in cookies.items())
+        except Exception:
+            pass
+
+        # 3. 后台刷新的设备 Cookie（非阻塞，可能为空）
+        device = get_12306_device_cookies()
+        if device:
+            return "; ".join(f"{k}={v}" for k, v in device.items() if v)
+
+        return ""
+
     def _ensure_session(self) -> None:
-        """确保12306会话已初始化（只做一次）"""
+        """
+        确保12306会话已初始化（每个单例只做一次）。
+        只建立基础 HTTP session（获取 JSESSIONID），不注入任何 Auth/Device Cookie。
+        票务查询无需登录即可工作；价格查询在各自的请求级别单独注入 Cookie。
+        """
         if self._session_inited:
             return
         try:
@@ -277,7 +322,7 @@ class Railway12306API:
         travel_date: date,
         tickets: List[Dict[str, Any]],
     ) -> None:
-        """缓存车次内部编码，供时刻表查询直接使用"""
+        """缓存车次内部编码，供时刻表查询直接使用。同时填充全局 train_no 缓存。"""
         key = f"{from_code}_{to_code}_{travel_date}"
         self._train_code_cache[key] = [
             {
@@ -285,12 +330,44 @@ class Railway12306API:
                 "train_code": t["train_code"],
                 "start_station_code": t["start_station_code"],
                 "end_station_code": t["end_station_code"],
+                "from_station_no": t.get("from_station_no", ""),
+                "to_station_no": t.get("to_station_no", ""),
             }
             for t in tickets
         ]
         if len(self._train_code_cache) > 200:
             oldest = next(iter(self._train_code_cache))
             del self._train_code_cache[oldest]
+
+        # 全局缓存：以 train_no + date 为键，无论哪条路线查到都可复用
+        for t in tickets:
+            no_key = f"{t['train_no'].upper()}_{travel_date}"
+            # 只存一份（先查到的优先），包含完整元数据
+            if no_key not in self._train_by_no:
+                self._train_by_no[no_key] = {
+                    "train_no": t["train_no"],
+                    "train_code": t["train_code"],
+                    "start_station_code": t["start_station_code"],
+                    "end_station_code": t["end_station_code"],
+                    "from_station_no": t.get("from_station_no", ""),
+                    "to_station_no": t.get("to_station_no", ""),
+                }
+        if len(self._train_by_no) > 2000:
+            # 超量时清除最旧的一半
+            keys = list(self._train_by_no.keys())
+            for k in keys[: len(keys) // 2]:
+                del self._train_by_no[k]
+
+    def find_train_by_no(
+        self,
+        train_no: str,
+        travel_date: date,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        在全局缓存中查找车次内部编码，不受出发/到达站限制。
+        只有该车次在本次服务器会话中被任意路线查询到过才会命中。
+        """
+        return self._train_by_no.get(f"{train_no.upper()}_{travel_date}")
     
     def find_cached_train_code(
         self,
@@ -397,6 +474,9 @@ class Railway12306API:
                 "train_type": train_type,         # 车型
                 "from_station_code": from_station_code,
                 "to_station_code": to_station_code,
+                # 站序号（queryTicketPrice 需要这个，不是电报码）
+                "from_station_no": safe_get(16),
+                "to_station_no": safe_get(17),
                 "from_station_name": from_station_name,
                 "to_station_name": to_station_name,
                 "start_station_code": parts[4],   # 始发站
@@ -426,8 +506,8 @@ class Railway12306API:
     def query_ticket_price(
         self,
         train_no: str,
-        from_station_code: str,
-        to_station_code: str,
+        from_station_no: str,
+        to_station_no: str,
         seat_types: str,
         travel_date: date,
     ) -> Dict[str, Optional[float]]:
@@ -436,19 +516,36 @@ class Railway12306API:
 
         需要先初始化会话获取 cookie，否则 12306 返回空内容。
         """
+        if not train_no or not from_station_no or not to_station_no:
+            return {}
+
+        cache_key = f"{train_no}_{from_station_no}_{to_station_no}_{travel_date}"
+        cached = self._price_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         params = {
             "train_no": train_no,
-            "from_station_no": from_station_code,
-            "to_station_no": to_station_code,
+            "from_station_no": from_station_no,
+            "to_station_no": to_station_no,
             "seat_types": seat_types,
             "train_date": travel_date.strftime("%Y-%m-%d"),
         }
-        
+
+        # 按请求级别注入最优 Cookie，不修改共享的 client headers
+        cookie_str = self._get_best_cookie_str()
+
         try:
-            response = self._request(self.PRICE_QUERY_URL, params, init_session=True)
-            
+            self._ensure_session()
+            extra_headers = {"Cookie": cookie_str} if cookie_str else {}
+            response = self._client.get(
+                self.PRICE_QUERY_URL,
+                params=params,
+                headers=extra_headers,
+            )
             content = response.text.strip()
             if not content or content.startswith("<!"):
+                logger.debug("12306 票价接口返回HTML，Cookie 不足（未登录或设备Cookie未就绪）")
                 return {}
             
             data = response.json()
@@ -467,11 +564,16 @@ class Railway12306API:
                 "hard_seat": self._parse_price(price_data.get("A1")),
                 "no_seat": self._parse_price(price_data.get("WZ")),
             }
-            
+            self._price_cache[cache_key] = prices
+            if len(self._price_cache) > 800:
+                oldest = next(iter(self._price_cache))
+                del self._price_cache[oldest]
+
             return prices
             
         except Exception as e:
             logger.debug(f"票价查询跳过: {train_no} ({e.__class__.__name__})")
+            self._price_cache[cache_key] = {}
             return {}
     
     def _parse_price(self, price_str: Optional[str]) -> Optional[float]:

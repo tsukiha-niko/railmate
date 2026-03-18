@@ -11,12 +11,15 @@ interface ChatState {
   activeConversationId: string | null;
   userId: string;
   _hydrated: boolean;
+  /** 正在等待 AI 回复的对话 ID（内存态，跨页面导航保留，刷新后清空） */
+  pendingConvId: string | null;
   getActiveConversation: () => Conversation | undefined;
   createConversation: () => string;
   setActiveConversation: (id: string) => void;
   deleteConversation: (id: string) => void;
   addMessage: (conversationId: string, message: ChatMessage) => void;
   updateConversationId: (oldId: string, newId: string) => void;
+  setPendingConvId: (id: string | null) => void;
 }
 
 function getUserId(): string {
@@ -39,6 +42,7 @@ export const useChatStore = create<ChatState>()(
       activeConversationId: null,
       userId: typeof window !== "undefined" ? getUserId() : "default",
       _hydrated: false,
+      pendingConvId: null,
 
       getActiveConversation() {
         const state = get();
@@ -76,7 +80,12 @@ export const useChatStore = create<ChatState>()(
         set((s) => ({
           conversations: s.conversations.map((c) => (c.id === oldId ? { ...c, id: newId } : c)),
           activeConversationId: s.activeConversationId === oldId ? newId : s.activeConversationId,
+          pendingConvId: s.pendingConvId === oldId ? newId : s.pendingConvId,
         }));
+      },
+
+      setPendingConvId(id) {
+        set({ pendingConvId: id });
       },
     }),
     {
@@ -92,6 +101,7 @@ export const useChatStore = create<ChatState>()(
         conversations: state.conversations,
         activeConversationId: state.activeConversationId,
         userId: state.userId,
+        // pendingConvId 不持久化：刷新后 loading 状态应自动清空
       }),
       onRehydrateStorage: () => () => {
         useChatStore.setState({ _hydrated: true });

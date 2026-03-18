@@ -68,8 +68,8 @@ function normalizeCompactTrain(
   return {
     train_no: no,
     train_type: (raw.y ?? raw.train_type ?? no.charAt(0)) as string,
-    from_station: (raw.from_station ?? fallbackFrom) as string,
-    to_station: (raw.to_station ?? fallbackTo) as string,
+    from_station: (raw.f ?? raw.from_station ?? fallbackFrom) as string,
+    to_station: (raw.o ?? raw.to_station ?? fallbackTo) as string,
     departure_time: (raw.d ?? raw.departure_time ?? "") as string,
     arrival_time: (raw.a ?? raw.arrival_time ?? "") as string,
     duration_minutes: Number(raw.m ?? raw.duration_minutes ?? 0),

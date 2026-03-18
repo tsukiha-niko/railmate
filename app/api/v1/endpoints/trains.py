@@ -4,7 +4,7 @@
 """
 
 from datetime import date
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -49,6 +49,51 @@ async def search_tickets(
         raise HTTPException(status_code=500, detail=f"查询失败: {str(e)}")
     finally:
         service.close()
+
+
+@router.get("/{train_no}/prices")
+async def get_train_prices(
+    train_no: str,
+    run_date: date = Query(..., description="运行日期", example="2026-03-18"),
+    from_station: str = Query(..., description="出发站名称"),
+    to_station: str = Query(..., description="到达站名称"),
+) -> Dict[str, Any]:
+    """
+    查询列车票价（全座位类型）。
+    需要后台设备 Cookie 已就绪或用户已登录 12306。
+    """
+    from app.services.railway_api import get_railway_api
+
+    api = get_railway_api()
+
+    # 优先查全局缓存（无需重新查票）
+    target = api.find_train_by_no(train_no, run_date)
+
+    # 缓存未命中：用用户传入的出发/到达站重新查一次
+    if not target:
+        target = api.find_cached_train_code(train_no, from_station, to_station, run_date)
+
+    if not target:
+        try:
+            tickets = api.query_tickets(from_station, to_station, run_date)
+            target = next(
+                (t for t in tickets if t.get("train_no", "").upper() == train_no.upper()),
+                None,
+            )
+        except Exception:
+            pass
+
+    if not target:
+        return {"train_no": train_no, "date": str(run_date), "prices": {}}
+
+    prices = api.query_ticket_price(
+        train_no=target.get("train_code", ""),
+        from_station_no=target.get("from_station_no", ""),
+        to_station_no=target.get("to_station_no", ""),
+        seat_types="O,M,A9,A4,A3,A1,WZ",
+        travel_date=run_date,
+    )
+    return {"train_no": train_no, "date": str(run_date), "prices": prices}
 
 
 @router.get("/{train_no}/schedule")

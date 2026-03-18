@@ -155,21 +155,26 @@ class TrainService:
         if not from_station or not to_station:
             raise TrainNotFoundError(f"未找到车次 {train_no}（{run_date}）的时刻表")
 
-        cached = api.find_cached_train_code(train_no, from_station, to_station, run_date)
-        if cached:
-            logger.info(f"✅ 命中车次编码缓存: {train_no} → {cached['train_code']}")
-            target = cached
+        # 1. 先查路线级缓存
+        target = api.find_cached_train_code(train_no, from_station, to_station, run_date)
+        if target:
+            logger.info(f"✅ 命中路线缓存: {train_no} → {target['train_code']}")
         else:
-            tickets = api.query_tickets(from_station, to_station, run_date)
-            target = None
-            for t in tickets:
-                if t["train_no"].upper() == train_no.upper():
-                    target = t
-                    break
-            if not target:
-                raise TrainNotFoundError(
-                    f"未找到车次 {train_no}（{from_station}→{to_station}, {run_date}）"
-                )
+            # 2. 查全局 train_no 缓存（任意路线查到过均可命中）
+            target = api.find_train_by_no(train_no, run_date)
+            if target:
+                logger.info(f"✅ 命中全局缓存: {train_no} → {target['train_code']}")
+            else:
+                # 3. 最后兜底：重新查票（用用户传入的 from/to）
+                tickets = api.query_tickets(from_station, to_station, run_date)
+                for t in tickets:
+                    if t["train_no"].upper() == train_no.upper():
+                        target = t
+                        break
+                if not target:
+                    raise TrainNotFoundError(
+                        f"未找到车次 {train_no}（{from_station}→{to_station}, {run_date}）"
+                    )
 
         raw_stops = api.query_train_stops(
             train_no=target["train_code"],
@@ -272,6 +277,11 @@ class TrainService:
                     train_type=ticket["train_type"],
                     from_station=ticket["from_station_name"],
                     to_station=ticket["to_station_name"],
+                    train_code=ticket.get("train_code"),
+                    from_station_code=ticket.get("from_station_code"),
+                    to_station_code=ticket.get("to_station_code"),
+                    from_station_no=ticket.get("from_station_no"),
+                    to_station_no=ticket.get("to_station_no"),
                     departure_time=ticket["departure_time"],
                     arrival_time=ticket["arrival_time"],
                     duration_minutes=ticket["duration_minutes"],
@@ -285,25 +295,33 @@ class TrainService:
             results.sort(key=lambda x: x.departure_time)
             logger.info(f"从 12306 查询到 {len(results)} 趟车次")
             
-            # 串行获取票价（覆盖更多车次，供中转汇总总价使用；共享会话 cookie）
-            # 注意：12306 票价接口偶发失败，不能 break，否则会导致后续全部车次都无票价
-            price_batch = list(zip(results, tickets))[:30]
+            # 并发获取票价（最多 15 趟，5 个并发；每次查价前自动注入最新 Cookie）
+            price_batch = list(zip(results, tickets))[:15]
+
+            def _fetch_price(r_raw):
+                r, raw = r_raw
+                try:
+                    prices = api.query_ticket_price(
+                        train_no=raw["train_code"],
+                        from_station_no=raw.get("from_station_no") or "",
+                        to_station_no=raw.get("to_station_no") or "",
+                        seat_types="O,M,A9,A4,A3,A1,WZ",
+                        travel_date=travel_date,
+                    )
+                    if prices:
+                        r.price_second_seat = prices.get("second_seat")
+                        r.price_first_seat = prices.get("first_seat")
+                        r.price_business_seat = prices.get("business_seat")
+                        r.price_soft_sleeper = prices.get("soft_sleeper")
+                        r.price_hard_sleeper = prices.get("hard_sleeper")
+                        r.price_hard_seat = prices.get("hard_seat")
+                        r.price_no_seat = prices.get("no_seat")
+                except Exception:
+                    pass
+
             if price_batch:
-                for r, raw in price_batch:
-                    try:
-                        prices = api.query_ticket_price(
-                            train_no=raw["train_code"],
-                            from_station_code=raw["from_station_code"],
-                            to_station_code=raw["to_station_code"],
-                            seat_types="O,M,A9",
-                            travel_date=travel_date,
-                        )
-                        if prices:
-                            r.price_second_seat = prices.get("second_seat")
-                            r.price_first_seat = prices.get("first_seat")
-                            r.price_business_seat = prices.get("business_seat")
-                    except Exception:
-                        continue
+                with ThreadPoolExecutor(max_workers=5) as price_ex:
+                    list(price_ex.map(_fetch_price, price_batch))
             
             return results
             
@@ -482,13 +500,15 @@ class TrainService:
                 trains = []
                 for r in results:
                     trains.append({
-                        "t": r.train_no,  # train
-                        "y": r.train_type,  # type
-                        "d": r.departure_time,  # depart
-                        "a": r.arrival_time,  # arrive
-                        "m": r.duration_minutes,  # minutes
-                        "p": r.price_second_seat,  # price
-                        "r": r.remaining_tickets,  # remaining
+                        "t": r.train_no,       # train_no
+                        "y": r.train_type,     # type
+                        "f": r.from_station,   # actual from station (may differ from query param)
+                        "o": r.to_station,     # actual to station
+                        "d": r.departure_time, # depart
+                        "a": r.arrival_time,   # arrive
+                        "m": r.duration_minutes,
+                        "p": r.price_second_seat,
+                        "r": r.remaining_tickets,
                     })
                 
                 return json.dumps({
@@ -723,6 +743,38 @@ class TrainService:
                             break
                         
                         total_min = t1.duration_minutes + wait + t2.duration_minutes
+                        # 按需补票价：中转总价依赖每段二等座票价，缺失时只对候选车次补价（避免全量查）
+                        if t1.price_second_seat is None and getattr(t1, "train_code", None) and getattr(t1, "from_station_no", None) and getattr(t1, "to_station_no", None):
+                            try:
+                                from app.services.railway_api import get_railway_api
+                                api = get_railway_api()
+                                prices = api.query_ticket_price(
+                                    train_no=t1.train_code,
+                                    from_station_no=t1.from_station_no,
+                                    to_station_no=t1.to_station_no,
+                                    seat_types="O",
+                                    travel_date=travel_date,
+                                )
+                                if prices:
+                                    t1.price_second_seat = prices.get("second_seat")
+                            except Exception:
+                                pass
+                        if t2.price_second_seat is None and getattr(t2, "train_code", None) and getattr(t2, "from_station_no", None) and getattr(t2, "to_station_no", None):
+                            try:
+                                from app.services.railway_api import get_railway_api
+                                api = get_railway_api()
+                                prices = api.query_ticket_price(
+                                    train_no=t2.train_code,
+                                    from_station_no=t2.from_station_no,
+                                    to_station_no=t2.to_station_no,
+                                    seat_types="O",
+                                    travel_date=travel_date,
+                                )
+                                if prices:
+                                    t2.price_second_seat = prices.get("second_seat")
+                            except Exception:
+                                pass
+
                         p1 = t1.price_second_seat or 0
                         p2 = t2.price_second_seat or 0
                         

@@ -23,6 +23,29 @@ export async function getTrainSchedule(
   });
 }
 
+export interface TrainPrices {
+  business_seat?: number | null;
+  first_seat?: number | null;
+  second_seat?: number | null;
+  soft_sleeper?: number | null;
+  hard_sleeper?: number | null;
+  hard_seat?: number | null;
+  no_seat?: number | null;
+}
+
+export async function getTrainPrices(
+  trainNo: string,
+  runDate: string,
+  fromStation: string,
+  toStation: string,
+): Promise<{ train_no: string; date: string; prices: TrainPrices }> {
+  return get(`/api/v1/trains/${trainNo}/prices`, {
+    run_date: runDate,
+    from_station: fromStation,
+    to_station: toStation,
+  });
+}
+
 export async function listStations(city?: string): Promise<Station[]> {
   return get<Station[]>("/api/v1/trains/stations", city ? { city } : {});
 }

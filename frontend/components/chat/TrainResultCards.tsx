@@ -172,7 +172,7 @@ function TransferPlanCard({ plan, index }: { plan: TransferPlanData; index: numb
           <div className="text-right shrink-0">
             <div className="text-[10px] text-muted-foreground">{locale === "en" ? "Total" : "总价"}</div>
             <div className={cn(
-              "text-base md:text-lg font-extrabold tabular-nums",
+              "text-2xl md:text-3xl font-extrabold tabular-nums leading-none",
               plan.total_price != null ? "text-primary" : "text-muted-foreground",
             )}>
               {plan.total_price != null ? formatPrice(plan.total_price) : "--"}

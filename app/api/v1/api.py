@@ -4,7 +4,7 @@ API V1 路由聚合
 
 from fastapi import APIRouter
 
-from .endpoints import admin, chat, trains
+from .endpoints import admin, auth, chat, trains
 
 # 创建 V1 总路由
 api_router = APIRouter()
@@ -26,4 +26,10 @@ api_router.include_router(
     admin.router,
     prefix="/admin",
     tags=["admin"],
+)
+
+api_router.include_router(
+    auth.router,
+    prefix="/auth",
+    tags=["auth"],
 )

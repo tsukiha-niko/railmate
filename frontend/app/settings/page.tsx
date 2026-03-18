@@ -1,8 +1,12 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { MapPin, Navigation, Satellite, Edit3, TrendingUp, Check, Settings, Bot, Eye, EyeOff, Loader2 } from "lucide-react";
+import {
+  MapPin, Navigation, Satellite, Edit3, TrendingUp, Check,
+  Settings, Bot, Eye, EyeOff, Loader2, LogIn, LogOut,
+  RefreshCw, ShieldCheck, ShieldOff, Ticket,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +16,10 @@ import { useUserContextStore } from "@/store/userContextStore";
 import { useGeoLocation } from "@/hooks/useGeoLocation";
 import { setUserLocation } from "@/services/chat";
 import { getConfig, updateAIConfig } from "@/services/admin";
+import {
+  get12306Status, create12306QRCode, poll12306QRCode, logout12306,
+  type Auth12306Status,
+} from "@/services/auth";
 import { useChatStore } from "@/store/chatStore";
 import { useTheme } from "@/lib/theme/theme";
 import { useI18n } from "@/lib/i18n/i18n";
@@ -30,7 +38,99 @@ export default function SettingsPage() {
   const [manualStation, setManualStation] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // AI config
+  // ── 12306 登录 ──────────────────────────────────────────────────────────────
+  const [rail12306, setRail12306] = useState<Auth12306Status | null>(null);
+  const [qrUuid, setQrUuid] = useState<string | null>(null);
+  const [qrImage, setQrImage] = useState<string | null>(null);
+  const [qrStatus, setQrStatus] = useState<"idle" | "loading" | "waiting" | "scanned" | "confirmed" | "expired" | "error">("idle");
+  const [qrMsg, setQrMsg] = useState("");
+  const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [railLoading, setRailLoading] = useState(false);
+
+  const clearQrPoll = useCallback(() => {
+    if (pollTimer.current) { clearInterval(pollTimer.current); pollTimer.current = null; }
+  }, []);
+
+  const loadRailStatus = useCallback(async () => {
+    try {
+      const s = await get12306Status();
+      setRail12306(s);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => { loadRailStatus(); }, [loadRailStatus]);
+
+  const handleStartQR = useCallback(async () => {
+    clearQrPoll();
+    setQrStatus("loading");
+    setQrMsg("");
+    try {
+      const res = await create12306QRCode();
+      if (!res.success || !res.uuid || !res.image) {
+        setQrStatus("error");
+        setQrMsg(res.message || "获取二维码失败");
+        return;
+      }
+      setQrUuid(res.uuid);
+      setQrImage(res.image);
+      setQrStatus("waiting");
+
+      // 每 2s 轮询一次
+      pollTimer.current = setInterval(async () => {
+        try {
+          const poll = await poll12306QRCode(res.uuid!);
+          if (poll.status === "scanned") {
+            setQrStatus("scanned");
+          } else if (poll.status === "confirmed") {
+            clearQrPoll();
+            setQrStatus("confirmed");
+            setQrMsg(poll.username ? `欢迎，${poll.username}` : "登录成功");
+            setQrImage(null);
+            await loadRailStatus();
+          } else if (poll.status === "expired") {
+            clearQrPoll();
+            setQrStatus("expired");
+            setQrMsg("二维码已过期，请重新获取");
+          } else if (poll.status === "error") {
+            clearQrPoll();
+            setQrStatus("error");
+            setQrMsg(poll.message || "轮询出错");
+          }
+        } catch { /* network error, keep polling */ }
+      }, 2000);
+    } catch (e) {
+      setQrStatus("error");
+      setQrMsg(e instanceof Error ? e.message : "网络错误");
+    }
+  }, [clearQrPoll, loadRailStatus]);
+
+  // QR 展示超时自动取消（3分钟）
+  useEffect(() => {
+    if (qrStatus === "waiting") {
+      const t = setTimeout(() => {
+        clearQrPoll();
+        setQrStatus("expired");
+        setQrMsg("二维码已过期，请重新获取");
+      }, 3 * 60 * 1000);
+      return () => clearTimeout(t);
+    }
+  }, [qrStatus, clearQrPoll]);
+
+  useEffect(() => () => clearQrPoll(), [clearQrPoll]);
+
+  const handleLogout12306 = useCallback(async () => {
+    setRailLoading(true);
+    try {
+      await logout12306();
+      setRail12306(null);
+      setQrStatus("idle");
+      setQrImage(null);
+      setQrUuid(null);
+      setQrMsg("");
+    } finally { setRailLoading(false); }
+  }, []);
+
+  // ── AI config ────────────────────────────────────────────────────────────────
   const [aiKey, setAiKey] = useState("");
   const [aiBaseUrl, setAiBaseUrl] = useState("");
   const [aiModel, setAiModel] = useState("");
@@ -181,6 +281,128 @@ export default function SettingsPage() {
                 </button>
               ))}
             </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      <Separator />
+
+      {/* ── 12306 登录 ── */}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.165 }}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Ticket className="h-4 w-4 text-primary" />
+              {locale === "en" ? "12306 Account" : "12306 账户登录"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* 说明 */}
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {locale === "en"
+                ? "Log in with your 12306 account to enable real-time ticket prices (no extra configuration needed)."
+                : "登录 12306 账户后，票价查询将自动生效，无需任何额外配置。"}
+            </p>
+
+            {/* 状态 */}
+            {rail12306?.logged_in ? (
+              <div className="flex items-center justify-between gap-3 rounded-lg bg-secondary/50 px-4 py-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <ShieldCheck className="h-5 w-5 text-emerald-500 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{rail12306.username || locale === "en" ? "Logged in" : "已登录"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {locale === "en"
+                        ? `Cookie valid for ${rail12306.remaining_days} day(s)`
+                        : `Cookie 剩余有效期 ${rail12306.remaining_days} 天`}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline" size="sm"
+                  onClick={handleLogout12306}
+                  disabled={railLoading}
+                  className="gap-1.5 shrink-0"
+                >
+                  {railLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}
+                  {locale === "en" ? "Log out" : "退出"}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                <ShieldOff className="h-4 w-4 shrink-0" />
+                {locale === "en" ? "Not logged in — ticket prices may be unavailable." : "未登录 — 票价查询可能无法正常显示。"}
+              </div>
+            )}
+
+            {/* 扫码区域 */}
+            {!rail12306?.logged_in && (
+              <div className="space-y-3">
+                {/* 二维码展示 */}
+                {(qrStatus === "waiting" || qrStatus === "scanned") && qrImage && (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className={`relative rounded-xl overflow-hidden border-2 transition-colors ${qrStatus === "scanned" ? "border-amber-400" : "border-border"}`}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`data:image/png;base64,${qrImage}`}
+                        alt="12306 登录二维码"
+                        className="w-48 h-48 object-contain block"
+                      />
+                      {qrStatus === "scanned" && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm">
+                          <Loader2 className="h-8 w-8 animate-spin text-white mb-1" />
+                          <span className="text-white text-xs font-medium">{locale === "en" ? "Confirming…" : "请在手机上确认登录"}</span>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-center text-muted-foreground">
+                      {qrStatus === "scanned"
+                        ? (locale === "en" ? "Scanned — confirm on your phone" : "已扫描，请在 12306 App 确认")
+                        : (locale === "en" ? "Open 12306 App → scan QR to log in" : "打开 12306 App → 扫一扫 登录")}
+                    </p>
+                  </div>
+                )}
+
+                {/* 成功/过期/错误提示 */}
+                {qrStatus === "confirmed" && (
+                  <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400">
+                    <Check className="h-4 w-4 shrink-0" />
+                    {qrMsg || (locale === "en" ? "Login successful!" : "登录成功！")}
+                  </div>
+                )}
+                {(qrStatus === "expired" || qrStatus === "error") && (
+                  <p className="text-xs text-destructive text-center">{qrMsg}</p>
+                )}
+
+                {/* 操作按钮 */}
+                <div className="flex gap-2">
+                  {(qrStatus === "idle" || qrStatus === "expired" || qrStatus === "error" || qrStatus === "confirmed") && (
+                    <Button
+                      size="sm"
+                      onClick={handleStartQR}
+                      className="gap-1.5"
+                    >
+                      <LogIn className="h-3.5 w-3.5" />
+                      {locale === "en" ? "Scan QR to log in" : "扫码登录"}
+                    </Button>
+                  )}
+                  {(qrStatus === "waiting" || qrStatus === "scanned" || qrStatus === "loading") && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleStartQR}
+                      disabled={qrStatus === "loading"}
+                      className="gap-1.5"
+                    >
+                      {qrStatus === "loading"
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <RefreshCw className="h-3.5 w-3.5" />}
+                      {locale === "en" ? "Refresh QR" : "刷新二维码"}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>

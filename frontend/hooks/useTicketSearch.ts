@@ -1,22 +1,29 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { searchTickets } from "@/services/trains";
-import type { TrainSearchResult, TrainSearchParams } from "@/types/trains";
+import type { TrainSearchParams } from "@/types/trains";
+import { useSearchStore } from "@/store/searchStore";
 import { useI18n } from "@/lib/i18n/i18n";
 
 export function useTicketSearch() {
-  const [results, setResults] = useState<TrainSearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [searched, setSearched] = useState(false);
   const { t } = useI18n();
+  const results = useSearchStore((s) => s.results);
+  const loading = useSearchStore((s) => s.loading);
+  const error = useSearchStore((s) => s.error);
+  const searched = useSearchStore((s) => s.searched);
+  const searchDate = useSearchStore((s) => s.searchDate);
+  const { setResults, setLoading, setError, setSearched, setSearchDate, setFromStation, setToStation, clear } =
+    useSearchStore();
 
   const search = useCallback(
     async (params: TrainSearchParams) => {
       setLoading(true);
       setError(null);
       setSearched(true);
+      setSearchDate(params.travel_date);
+      setFromStation(params.from_station);
+      setToStation(params.to_station);
       try {
         const data = await searchTickets(params);
         setResults(data);
@@ -27,14 +34,8 @@ export function useTicketSearch() {
         setLoading(false);
       }
     },
-    [t],
+    [t, setLoading, setError, setSearched, setSearchDate, setFromStation, setToStation, setResults],
   );
 
-  const clear = useCallback(() => {
-    setResults([]);
-    setSearched(false);
-    setError(null);
-  }, []);
-
-  return { results, loading, error, searched, search, clear };
+  return { results, loading, error, searched, searchDate, search, clear };
 }

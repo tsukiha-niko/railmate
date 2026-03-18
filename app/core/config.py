@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     
     # 数据同步模式
     data_sync_mode: Literal["mock", "live"] = "mock"
+
+    # 12306 Cookie（可选）：用于打通票价等更严格的接口（可能需要包含 RAIL_DEVICEID/RAIL_EXPIRATION）
+    railway_12306_cookie: Optional[str] = None
     
     # 日志
     log_level: str = "INFO"

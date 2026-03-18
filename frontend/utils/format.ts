@@ -6,7 +6,16 @@ export function getTrainTypeLabel(type: string, locale: FormatLocale = "zh-CN"):
   return (locale === "en" ? en : zh)[type] || type;
 }
 
-const TRAIN_TYPE_COLORS: Record<string, string> = { G: "bg-blue-500", D: "bg-emerald-500", C: "bg-cyan-500", Z: "bg-purple-500", T: "bg-orange-500", K: "bg-amber-600" };
+// Coherent, stable palette (avoid confusing random hues across types)
+// High-speed: cool (blue/cyan), Conventional: warm/neutral
+const TRAIN_TYPE_COLORS: Record<string, string> = {
+  G: "bg-blue-500",
+  D: "bg-cyan-500",
+  C: "bg-teal-500",
+  Z: "bg-rose-500",
+  T: "bg-orange-500",
+  K: "bg-slate-500",
+};
 
 export function getTrainTypeColor(type: string): string { return TRAIN_TYPE_COLORS[type] || "bg-gray-500"; }
 
