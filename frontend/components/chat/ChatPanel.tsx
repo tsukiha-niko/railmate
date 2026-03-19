@@ -70,12 +70,12 @@ export function ChatPanel() {
         }}
       >
         {messages.length === 0 ? (
-          <div className="flex h-full w-full flex-col items-center justify-center px-4 sm:px-6 lg:px-8 2xl:mx-auto 2xl:max-w-6xl">
+          <div className="flex h-full w-full flex-col items-center justify-center px-4 py-6 sm:px-6 lg:px-8">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.4 }}
-              className="flex flex-col items-center gap-4 max-w-md text-center"
+              className="flex w-full max-w-2xl flex-col items-center gap-4 rounded-2xl border border-border/70 bg-card/70 p-5 text-center shadow-[0_18px_40px_-34px_rgba(15,23,42,0.65)] sm:p-8"
             >
               <RobotAnimation className="w-36 h-36 md:w-44 md:h-44" />
               <h2 className="text-xl font-semibold text-foreground">
@@ -90,7 +90,7 @@ export function ChatPanel() {
             </motion.div>
           </div>
         ) : (
-          <div className="w-full space-y-4 px-4 py-4 sm:px-6 lg:px-8 2xl:mx-auto 2xl:max-w-6xl">
+          <div className="mx-auto w-full max-w-5xl space-y-4 px-4 py-4 sm:px-6 lg:px-8">
             {messages.map((msg, i) => (
               <MessageBubble
                 key={msg.id}
@@ -103,8 +103,8 @@ export function ChatPanel() {
           </div>
         )}
       </div>
-      <div className="border-t border-border bg-background/85 px-4 py-4 backdrop-blur-sm sm:px-6 lg:px-8">
-        <div className="w-full 2xl:mx-auto 2xl:max-w-6xl">
+      <div className="border-t border-border/70 bg-gradient-to-b from-background/35 via-background/70 to-background/88 px-3 py-3 backdrop-blur-xl sm:px-5 sm:py-3.5 lg:px-6">
+        <div className="mx-auto w-full max-w-5xl">
           <ChatInput onSend={sendMessage} loading={loading} conversationId={activeConv?.id} />
         </div>
       </div>

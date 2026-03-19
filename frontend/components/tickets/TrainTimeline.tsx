@@ -26,7 +26,7 @@ export function TrainTimeline({ stops, highlightFrom, highlightTo }: Props) {
   const hasHighlight = fromIdx >= 0 && toIdx >= 0 && toIdx > fromIdx;
 
   return (
-    <div className="relative pl-10">
+    <div className="relative pl-9 sm:pl-10">
       {/* Track line */}
       <div className="absolute left-[18px] top-2 bottom-2 w-0.5 bg-border" />
       {/* Highlighted segment overlay */}
@@ -78,11 +78,11 @@ export function TrainTimeline({ stops, highlightFrom, highlightTo }: Props) {
 
             {/* Content */}
             <div className={cn(
-              "flex items-baseline gap-4",
+              "flex items-baseline gap-2.5 sm:gap-4",
               isUserEndpoint ? "font-semibold" : isTerminal ? "font-medium" : "text-sm",
               !isInSegment && hasHighlight && "opacity-50",
             )}>
-              <div className="flex items-center gap-1.5 min-w-[90px]">
+              <div className="flex min-w-[82px] items-center gap-1.5 sm:min-w-[90px]">
                 <span className={cn(
                   "text-foreground",
                   isUserEndpoint && "text-primary",

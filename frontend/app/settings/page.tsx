@@ -69,7 +69,7 @@ export default function SettingsPage() {
       const res = await create12306QRCode();
       if (!res.success || !res.uuid || !res.image) {
         setQrStatus("error");
-        setQrMsg(res.message || "获取二维码失败");
+        setQrMsg(res.message || (locale === "en" ? "Failed to fetch QR code" : "获取二维码失败"));
         return;
       }
       setQrImage(res.image);
@@ -84,25 +84,25 @@ export default function SettingsPage() {
           } else if (poll.status === "confirmed") {
             clearQrPoll();
             setQrStatus("confirmed");
-            setQrMsg(poll.username ? `欢迎，${poll.username}` : "登录成功");
+            setQrMsg(poll.username ? (locale === "en" ? `Welcome, ${poll.username}` : `欢迎，${poll.username}`) : (locale === "en" ? "Login successful" : "登录成功"));
             setQrImage(null);
             await loadRailStatus();
           } else if (poll.status === "expired") {
             clearQrPoll();
             setQrStatus("expired");
-            setQrMsg("二维码已过期，请重新获取");
+            setQrMsg(locale === "en" ? "QR code expired, please refresh" : "二维码已过期，请重新获取");
           } else if (poll.status === "error") {
             clearQrPoll();
             setQrStatus("error");
-            setQrMsg(poll.message || "轮询出错");
+            setQrMsg(poll.message || (locale === "en" ? "Polling failed" : "轮询出错"));
           }
         } catch { /* network error, keep polling */ }
       }, 2000);
     } catch (e) {
       setQrStatus("error");
-      setQrMsg(e instanceof Error ? e.message : "网络错误");
+      setQrMsg(e instanceof Error ? e.message : (locale === "en" ? "Network error" : "网络错误"));
     }
-  }, [clearQrPoll, loadRailStatus]);
+  }, [clearQrPoll, loadRailStatus, locale]);
 
   // QR 展示超时自动取消（3分钟）
   useEffect(() => {
@@ -110,11 +110,11 @@ export default function SettingsPage() {
       const t = setTimeout(() => {
         clearQrPoll();
         setQrStatus("expired");
-        setQrMsg("二维码已过期，请重新获取");
+        setQrMsg(locale === "en" ? "QR code expired, please refresh" : "二维码已过期，请重新获取");
       }, 3 * 60 * 1000);
       return () => clearTimeout(t);
     }
-  }, [qrStatus, clearQrPoll]);
+  }, [qrStatus, clearQrPoll, locale]);
 
   useEffect(() => () => clearQrPoll(), [clearQrPoll]);
 
@@ -177,7 +177,7 @@ export default function SettingsPage() {
         setTimeout(() => setAiMsg(""), 3000);
       }
     } catch (err) {
-      setAiMsg(err instanceof Error ? err.message : "Failed");
+      setAiMsg(err instanceof Error ? err.message : (locale === "en" ? "Failed" : "保存失败"));
     } finally { setAiSaving(false); }
   }, [aiKey, aiBaseUrl, aiModel, locale]);
 
@@ -193,13 +193,14 @@ export default function SettingsPage() {
   ] as const;
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col overflow-y-auto px-4 py-4 sm:px-6 lg:px-8">
-      <div className="space-y-5">
+    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col overflow-y-auto px-4 py-4 sm:px-6 lg:px-8">
+      <div className="space-y-5 pb-2">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-xl font-bold mb-1">{t("settings.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("settings.subtitle")}</p>
       </motion.div>
 
+      <div className="grid gap-5 lg:grid-cols-2">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
         <Card>
           <CardHeader><CardTitle className="text-base flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" />{t("settings.currentLocation")}</CardTitle></CardHeader>
@@ -245,9 +246,11 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </motion.div>
+      </div>
 
       <Separator />
 
+      <div className="grid gap-5 xl:grid-cols-2">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.125 }}>
         <Card>
           <CardHeader><CardTitle className="text-base flex items-center gap-2"><Settings className="h-4 w-4 text-primary" />{t("settings.appearance")}</CardTitle></CardHeader>
@@ -289,6 +292,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </motion.div>
+      </div>
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}>
         <Card>
@@ -317,6 +321,7 @@ export default function SettingsPage() {
 
       <Separator />
 
+      <div className="grid gap-5 2xl:grid-cols-2">
       {/* ── 12306 登录 ── */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.165 }}>
         <Card>
@@ -437,8 +442,6 @@ export default function SettingsPage() {
         </Card>
       </motion.div>
 
-      <Separator />
-
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.175 }}>
         <Card>
           <CardHeader>
@@ -499,6 +502,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </motion.div>
+      </div>
       </div>
     </div>
   );

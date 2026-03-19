@@ -5,12 +5,12 @@ import { Search, ArrowLeftRight, MapPin, CalendarDays } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { useUserContextStore } from "@/store/userContextStore";
 import { useSearchStore } from "@/store/searchStore";
 import { getToday, getTomorrow, formatDateLocalized } from "@/utils/date";
 import type { TrainSearchParams } from "@/types/trains";
 import { useI18n } from "@/lib/i18n/i18n";
+import { cn } from "@/utils/cn";
 
 interface Props { onSearch: (params: TrainSearchParams) => void; loading?: boolean; }
 
@@ -54,8 +54,15 @@ export function SearchForm({ onSearch, loading }: Props) {
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl border border-border bg-card p-5 shadow-sm"
+      className="rounded-2xl border border-border/75 bg-card/80 p-4 shadow-[0_18px_38px_-32px_rgba(15,23,42,0.65)] backdrop-blur-sm sm:p-5"
     >
+      <div className="mb-4 flex items-center justify-between rounded-xl border border-border/70 bg-secondary/35 px-3 py-2.5">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">{from || t("search.from")} → {to || t("search.to")}</p>
+          <p className="text-[11px] text-muted-foreground">{formatDateLocalized(date, locale === "en" ? "en" : "zh-CN")}</p>
+        </div>
+      </div>
+
       {/* Station inputs */}
       <div className="mb-4 grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-end">
         <div className="flex-1 space-y-1.5">
@@ -83,7 +90,7 @@ export function SearchForm({ onSearch, loading }: Props) {
           variant="ghost"
           size="icon"
           onClick={handleSwap}
-          className="shrink-0 justify-self-center md:mb-0.5 hover:bg-primary/10"
+          className="shrink-0 justify-self-center border border-border/70 bg-card/65 text-muted-foreground hover:bg-primary/10 hover:text-primary md:mb-0.5"
         >
           <ArrowLeftRight className="h-4 w-4" />
         </Button>
@@ -128,14 +135,19 @@ export function SearchForm({ onSearch, loading }: Props) {
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="text-xs text-muted-foreground">{t("search.trainType")}</span>
         {TRAIN_TYPES.map((tt) => (
-          <Badge
+          <button
             key={tt.value}
-            variant={trainType === tt.value ? "default" : "outline"}
-            className="cursor-pointer transition-colors hover:bg-primary/10"
+            type="button"
+            className={cn(
+              "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold transition-all",
+              trainType === tt.value
+                ? "border-primary/35 bg-primary/12 text-primary"
+                : "border-border/80 text-muted-foreground hover:border-primary/20 hover:bg-primary/10 hover:text-foreground",
+            )}
             onClick={() => setTrainType(tt.value)}
           >
             {tt.label}
-          </Badge>
+          </button>
         ))}
       </div>
 

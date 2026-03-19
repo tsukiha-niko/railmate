@@ -1,10 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Clock, ArrowRight, TrainFront, Zap, Ticket, ArrowRightLeft, ChevronDown } from "lucide-react";
+import { motion } from "framer-motion";
+import { Clock, ArrowRight, TrainFront, Zap, ArrowRightLeft, ChevronDown } from "lucide-react";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/utils/cn";
 import { formatDuration } from "@/utils/date";
 import { formatPrice, formatRemaining, getLowestFare, getTrainTypeColor } from "@/utils/format";
@@ -129,9 +128,6 @@ function MiniTrainCard({ train, index }: { train: TrainCardData; index: number }
 function TransferPlanCard({ plan, index }: { plan: TransferPlanData; index: number }) {
   const { locale } = useI18n();
   const fmtLocale = locale === "en" ? "en" : "zh-CN";
-  const route = plan.legs.length > 0
-    ? [plan.legs[0].from_station, ...plan.via, plan.legs[plan.legs.length - 1].to_station].join(" → ")
-    : plan.via.join(" → ");
 
   const transfers = Math.max(0, plan.legs.length - 1);
   const maxWait = plan.waits?.length ? Math.max(...plan.waits.filter((x) => typeof x === "number")) : 0;
@@ -308,7 +304,6 @@ function TransferPlanCard({ plan, index }: { plan: TransferPlanData; index: numb
                         <div className="flex items-center gap-1.5">
                           {Array.from({ length: 8 }).map((_, bi) => (
                             <span
-                              // eslint-disable-next-line react/no-array-index-key
                               key={bi}
                               className={cn(
                                 "h-2.5 w-2.5 rounded-[3px]",
@@ -363,7 +358,7 @@ export function TrainResultCards({ cards, onQueryTransfer, messageId }: TrainRes
   );
 
   return (
-    <div className="space-y-2.5 mt-2 w-full">
+    <div className="mt-2 w-full space-y-2.5">
       {cards.map((card, ci) => {
         const isExpanded = expandedCards[ci] ?? false;
         const trainList = card.type !== "transfer" ? card.trains : [];
@@ -376,10 +371,10 @@ export function TrainResultCards({ cards, onQueryTransfer, messageId }: TrainRes
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, delay: ci * 0.08 }}
-            className="rounded-xl border border-primary/15 bg-gradient-to-br from-primary/[0.03] to-accent/20 p-3"
+            className="rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/[0.035] to-accent/20 p-3"
           >
             {/* Header */}
-            <div className="flex items-center gap-2 mb-2 px-0.5">
+            <div className="mb-2 flex items-center gap-2 px-0.5">
               {card.type === "fastest_train" ? (
                 <Zap className="h-3.5 w-3.5 text-amber-500" />
               ) : card.type === "transfer" ? (

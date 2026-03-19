@@ -3,46 +3,46 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #FAFBFC;
+  --background: #F6F8FC;
   --foreground: #0F172A;
   --card: #FFFFFF;
   --card-foreground: #0F172A;
-  --primary: #2563EB;
+  --primary: #3B82F6;
   --primary-foreground: #FFFFFF;
-  --secondary: #F1F5F9;
+  --secondary: #EEF2FF;
   --secondary-foreground: #334155;
-  --muted: #F1F5F9;
+  --muted: #EEF2F8;
   --muted-foreground: #64748B;
-  --accent: #DBEAFE;
+  --accent: #E7EEFF;
   --accent-foreground: #1E40AF;
   --destructive: #EF4444;
   --destructive-foreground: #FFFFFF;
-  --border: #E2E8F0;
-  --input: #E2E8F0;
-  --ring: #2563EB;
+  --border: #DEE6F2;
+  --input: #D8E1EE;
+  --ring: #3B82F6;
   --radius: 0.625rem;
   --success: #10B981;
   --warning: #F59E0B;
 }
 
 .dark {
-  --background: #0B1220;
+  --background: #060D1D;
   --foreground: #E5E7EB;
-  --card: #0F172A;
+  --card: #0B152E;
   --card-foreground: #E5E7EB;
-  --primary: #60A5FA;
+  --primary: #6EA8FF;
   --primary-foreground: #0B1220;
-  --secondary: #111827;
+  --secondary: #111F3D;
   --secondary-foreground: #D1D5DB;
-  --muted: #111827;
+  --muted: #12213F;
   --muted-foreground: #9CA3AF;
-  --accent: #0B2A4A;
+  --accent: #112A55;
   --accent-foreground: #BFDBFE;
   --destructive: #F87171;
   --destructive-foreground: #0B1220;
-  --border: #1F2937;
-  --input: #1F2937;
-  --ring: #60A5FA;
+  --border: #203153;
+  --input: #24345A;
+  --ring: #7BB1FF;
   --success: #34D399;
   --warning: #FBBF24;
 }
@@ -79,24 +79,31 @@
 }
 
 body {
+  min-height: 100dvh;
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-image:
+    radial-gradient(950px 500px at -12% -18%, color-mix(in oklab, var(--primary) 10%, transparent), transparent 70%),
+    radial-gradient(800px 450px at 110% -14%, color-mix(in oklab, var(--accent) 14%, transparent), transparent 66%);
+  background-attachment: fixed;
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 3px;
+  background: color-mix(in oklab, var(--border) 78%, var(--foreground) 8%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--muted-foreground);
+  background: color-mix(in oklab, var(--muted-foreground) 68%, var(--primary) 20%);
 }

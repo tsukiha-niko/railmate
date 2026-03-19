@@ -54,22 +54,22 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, delay: Math.min(index * 0.05, 0.3) }}
-      className={cn("flex gap-3 max-w-full", isUser ? "flex-row-reverse" : "flex-row")}
+      className={cn("flex max-w-full gap-2.5 sm:gap-3", isUser ? "flex-row-reverse" : "flex-row")}
     >
       <div
         className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white",
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white shadow-sm",
           isUser ? "bg-primary" : "bg-gradient-to-br from-blue-500 to-cyan-500",
         )}
       >
         {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
       </div>
 
-      <div className={cn("flex flex-col gap-1.5 max-w-[80%]", isUser ? "items-end" : "items-start")}>
+      <div className={cn("flex max-w-[90%] flex-col gap-1.5 sm:max-w-[86%] lg:max-w-[80%]", isUser ? "items-end" : "items-start")}>
         {!isUser && message.tool_calls && message.tool_calls.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-1">
+          <div className="mb-1 flex flex-wrap gap-1.5">
             {message.tool_calls.map((tc, i) => (
-              <Badge key={i} variant="secondary" className="gap-1 text-[11px]">
+              <Badge key={i} variant="secondary" className="gap-1 bg-card/70 text-[11px]">
                 <Wrench className="h-2.5 w-2.5" />
                 {tc.tool_name}
               </Badge>
@@ -79,20 +79,20 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
 
         <div
           className={cn(
-            "rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+            "rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed sm:px-4",
             isUser
-              ? "bg-primary text-primary-foreground rounded-br-md whitespace-pre-wrap"
-              : "bg-secondary text-secondary-foreground rounded-bl-md",
+              ? "rounded-br-md bg-gradient-to-br from-primary to-primary/85 text-primary-foreground whitespace-pre-wrap shadow-[0_8px_22px_-18px_color-mix(in_oklab,var(--primary)_80%,transparent)]"
+              : "rounded-bl-md border border-border/70 bg-card/75 text-secondary-foreground",
           )}
         >
           {isUser ? (
             message.content
           ) : message.status === "pending" && !message.content ? (
-            <div className="min-w-[290px] max-w-[420px]">
+            <div className="w-[min(78vw,420px)] min-w-[250px]">
               <button
                 type="button"
                 onClick={() => setProgressExpanded(message.id, !progressExpanded)}
-                className="w-full rounded-2xl border border-white/5 bg-gradient-to-b from-background/70 to-background/40 p-3 text-left transition-colors hover:border-primary/20"
+                className="w-full rounded-2xl border border-border/60 bg-gradient-to-b from-background/85 to-background/55 p-3 text-left transition-colors hover:border-primary/25"
               >
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -120,7 +120,7 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
                         />
                       </div>
                     </div>
-                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-background/80">
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-background/90">
                       <div
                         className="h-full rounded-full bg-primary transition-all duration-500"
                         style={{ width: `${message.progress?.percent ?? 0}%` }}
@@ -138,7 +138,7 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
                               "flex items-center justify-center rounded-xl border px-1.5 py-1.5 text-[10px] font-medium",
                               state === "done" && "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
                               state === "active" && "border-primary/30 bg-primary/10 text-primary",
-                              state === "idle" && "border-white/5 bg-background/50 text-muted-foreground",
+                              state === "idle" && "border-border/60 bg-background/70 text-muted-foreground",
                             )}
                           >
                             {state === "done" ? <Check className="mr-1 h-3 w-3" /> : null}
@@ -168,7 +168,7 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
                       {recentEvents.map((event: ProgressEvent, eventIndex) => (
                         <div
                           key={`${event.timestamp || eventIndex}-${eventIndex}`}
-                          className="flex gap-2 rounded-xl bg-background/60 px-3 py-2.5"
+                          className="flex gap-2 rounded-xl bg-background/70 px-3 py-2.5"
                         >
                           <div className={cn(
                             "mt-1 h-2 w-2 shrink-0 rounded-full",
@@ -188,7 +188,7 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
               </AnimatePresence>
             </div>
           ) : (
-            <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-foreground prose-code:text-xs prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-muted prose-pre:p-2 prose-pre:rounded-lg">
+            <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-p:leading-7 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-foreground prose-code:text-xs prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-muted prose-pre:p-2 prose-pre:rounded-lg">
               <ReactMarkdown>{message.content}</ReactMarkdown>
             </div>
           )}

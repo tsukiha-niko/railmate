@@ -2,11 +2,11 @@ import type { HTMLAttributes } from "react";
 import { cn } from "@/utils/cn";
 
 const variants: Record<string, string> = {
-  default: "bg-primary/10 text-primary border-primary/20",
-  secondary: "bg-secondary text-secondary-foreground border-secondary",
-  success: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  warning: "bg-amber-50 text-amber-700 border-amber-200",
-  destructive: "bg-red-50 text-red-700 border-red-200",
+  default: "border-primary/25 bg-primary/12 text-primary",
+  secondary: "border-secondary bg-secondary/70 text-secondary-foreground",
+  success: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/12 dark:text-emerald-300",
+  warning: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/12 dark:text-amber-300",
+  destructive: "border-red-200 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-500/12 dark:text-red-300",
   outline: "text-foreground border-border",
 };
 

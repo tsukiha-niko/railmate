@@ -45,11 +45,11 @@ function annotateTrains(trains: TrainSearchResult[], tr: (key: string) => string
 
 function LoadingSkeleton({ locale }: { locale: string }) {
   return (
-    <div className="space-y-4">
+    <div className="rounded-2xl border border-border/60 bg-card/55 p-4 sm:p-5">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="flex flex-col items-center justify-center py-10 gap-4"
+        className="flex flex-col items-center justify-center gap-4 py-6"
       >
         <div className="relative">
           <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">

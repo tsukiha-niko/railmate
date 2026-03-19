@@ -50,7 +50,7 @@ export default function HomePage() {
   useEffect(() => () => setMobileSidebarOpen(false), [setMobileSidebarOpen]);
 
   return (
-    <div className="relative flex flex-1 min-h-0 overflow-hidden bg-background">
+    <div className="relative flex min-h-0 flex-1 overflow-hidden bg-transparent">
       <AnimatePresence>
         {mobileSidebarOpen ? (
           <>
@@ -69,7 +69,7 @@ export default function HomePage() {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed inset-y-14 left-0 z-50 flex w-[min(22rem,calc(100vw-2.5rem))] flex-col border-r border-border bg-card shadow-2xl lg:hidden"
+              className="fixed inset-y-14 left-0 z-50 flex w-[min(22rem,calc(100vw-2.5rem))] flex-col border-r border-border/70 bg-card/95 shadow-2xl backdrop-blur-xl lg:hidden"
             >
               <div className="flex items-center justify-between border-b border-border px-4 py-3">
                 <div>
@@ -93,20 +93,22 @@ export default function HomePage() {
 
       <aside
         className={cn(
-          "hidden lg:flex flex-col border-r border-border bg-card w-72 shrink-0 transition-all duration-300",
+          "hidden w-[19.5rem] shrink-0 border-r border-border/75 bg-card/55 backdrop-blur-lg transition-all duration-300 lg:flex",
           !sidebarOpen && "lg:hidden",
         )}
       >
         <ConversationList />
       </aside>
 
-      <section className="flex min-w-0 flex-1 flex-col min-h-0 bg-gradient-to-b from-background via-background to-background/90">
-        <ChatPanel />
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col px-0 pb-0 lg:px-3 lg:pb-3 xl:px-4">
+        <div className="flex min-h-0 flex-1 flex-col border-x border-border/60 bg-gradient-to-b from-card/30 via-card/10 to-card/30 lg:rounded-2xl lg:border">
+          <ChatPanel />
+        </div>
       </section>
 
       <aside
         className={cn(
-          "hidden xl:flex flex-col border-l border-border bg-card w-72 shrink-0 transition-all duration-300",
+          "hidden w-[19.5rem] shrink-0 border-l border-border/75 bg-card/55 backdrop-blur-lg transition-all duration-300 xl:flex",
           !contextOpen && "xl:hidden",
         )}
       >

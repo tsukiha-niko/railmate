@@ -29,10 +29,10 @@ export function ContextSidebar() {
   };
 
   return (
-    <div className="flex flex-col gap-4 p-4 h-full overflow-y-auto">
+    <div className="flex h-full flex-col gap-3.5 overflow-y-auto p-3.5">
       <Card>
         <CardHeader className="p-4 pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-sm">
             <MapPin className="h-4 w-4 text-primary" />
             {t("context.location")}
           </CardTitle>
@@ -40,7 +40,7 @@ export function ContextSidebar() {
         <CardContent className="p-4 pt-0">
           {location ? (
             <div className="space-y-1.5">
-              <p className="font-medium text-sm">{location.city}</p>
+              <p className="text-sm font-semibold">{location.city}</p>
               {location.station && (
                 <p className="text-xs text-muted-foreground">{t("context.location.recommendStation", { station: location.station })}</p>
               )}
@@ -61,24 +61,24 @@ export function ContextSidebar() {
       </Card>
       <Card>
         <CardHeader className="p-4 pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-sm">
             <TrendingUp className="h-4 w-4 text-primary" />
             {t("context.preference")}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4 pt-0">
-          <Badge variant="default">{prefLabels[preference]}</Badge>
+          <Badge variant="default" className="px-3 py-1 text-xs">{prefLabels[preference]}</Badge>
         </CardContent>
       </Card>
       <Card>
         <CardHeader className="p-4 pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-sm">
             <TrendingUp className="h-4 w-4 text-primary" />
             {t("context.mode")}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4 pt-0">
-          <Badge variant="secondary">{modeLabels[planningMode]}</Badge>
+          <Badge variant="secondary" className="px-3 py-1 text-xs">{modeLabels[planningMode]}</Badge>
         </CardContent>
       </Card>
       {favorites.length > 0 && (

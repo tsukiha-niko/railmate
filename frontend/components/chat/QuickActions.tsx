@@ -18,14 +18,14 @@ export function QuickActions({ onSelect }: Props) {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-2 p-4">
+    <div className="grid w-full grid-cols-1 gap-2.5 pt-1 sm:grid-cols-2">
       {ACTIONS.map((action, i) => (
         <motion.button
           key={action.label}
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25, delay: i * 0.05 }}
           onClick={() => onSelect(action.text)}
-          className="flex items-center gap-2.5 rounded-xl border border-border bg-card p-3 text-sm text-left hover:bg-secondary hover:border-primary/20 transition-all group"
+          className="group flex items-center gap-2.5 rounded-xl border border-border/80 bg-card/55 p-3 text-left text-sm transition-all hover:border-primary/25 hover:bg-secondary/65"
         >
           <action.icon className={`h-4 w-4 ${action.color} group-hover:scale-110 transition-transform`} />
           <span className="text-foreground">{action.label}</span>

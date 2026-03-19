@@ -90,10 +90,10 @@ export default function TrainDetailPage() {
   const totalStops = stops.length;
 
   return (
-    <div className="mx-auto w-full max-w-5xl overflow-y-auto px-4 py-4 space-y-4 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-6xl space-y-4 overflow-y-auto px-4 py-4 sm:px-6 lg:px-8">
       <button
         onClick={() => router.back()}
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card/45 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />{t("train.backToSearch")}
       </button>
@@ -102,7 +102,7 @@ export default function TrainDetailPage() {
         <Card>
           <CardContent className="pt-5 pb-4">
             <div className="mb-4 flex flex-wrap items-center gap-3">
-              <span className={cn("inline-flex items-center rounded-lg px-3 py-1.5 text-base font-bold text-white", getTrainTypeColor(trainType))}>{trainNo}</span>
+              <span className={cn("inline-flex items-center rounded-lg px-3 py-1.5 text-base font-bold text-white shadow-sm", getTrainTypeColor(trainType))}>{trainNo}</span>
               <Badge variant="secondary">{getTrainTypeLabel(trainType, locale === "en" ? "en" : "zh-CN")}</Badge>
               <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Calendar className="h-3.5 w-3.5" />{formatDateLocalized(date, dateLocale)}
@@ -110,7 +110,7 @@ export default function TrainDetailPage() {
             </div>
 
             {(fromStation && toStation) || (originStop && terminalStop) ? (
-              <div className="grid gap-4 rounded-lg bg-muted/50 px-4 py-4 md:grid-cols-[minmax(0,1fr)_minmax(180px,240px)_minmax(0,1fr)] md:items-center">
+              <div className="grid gap-4 rounded-xl border border-border/70 bg-muted/35 px-4 py-4 md:grid-cols-[minmax(0,1fr)_minmax(180px,240px)_minmax(0,1fr)] md:items-center">
                 <div className="text-center">
                   <p className="text-lg font-semibold md:text-2xl">{fromStation || originStop?.station_name}</p>
                   {originStop && (

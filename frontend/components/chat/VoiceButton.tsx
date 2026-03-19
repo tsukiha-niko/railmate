@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
-import { Mic, MicOff, Loader2 } from "lucide-react";
+import { useState, useRef, useCallback } from "react";
+import { Mic, MicOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
@@ -43,15 +43,12 @@ interface Props {
 
 export function VoiceButton({ onTranscript, disabled }: Props) {
   const [listening, setListening] = useState(false);
-  const [supported, setSupported] = useState(false);
+  const [supported] = useState(
+    () => typeof window !== "undefined" && !!(window.SpeechRecognition || window.webkitSpeechRecognition),
+  );
   const [interim, setInterim] = useState("");
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const { locale } = useI18n();
-
-  useEffect(() => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    setSupported(!!SR);
-  }, []);
 
   const toggle = useCallback(() => {
     if (listening) {
@@ -115,7 +112,7 @@ export function VoiceButton({ onTranscript, disabled }: Props) {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.8, opacity: 0 }}
-            className="absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-card border border-border px-2.5 py-1 text-xs text-muted-foreground shadow-md"
+            className="absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground shadow-md"
           >
             {interim || (locale === "en" ? "Listening..." : "正在听...")}
           </motion.div>
@@ -128,7 +125,7 @@ export function VoiceButton({ onTranscript, disabled }: Props) {
         size="icon"
         disabled={disabled}
         onClick={toggle}
-        className={cn("shrink-0 h-10 w-10 rounded-xl relative", listening && "animate-pulse")}
+        className={cn("relative h-10 w-10 shrink-0 rounded-xl", listening && "animate-pulse")}
       >
         {listening ? (
           <>

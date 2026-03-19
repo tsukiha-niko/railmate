@@ -21,7 +21,11 @@ export function ConversationList({ onAction }: Props) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-3 border-b border-border">
+      <div className="border-b border-border/70 px-3 py-3.5">
+        <div className="mb-2.5 flex items-center justify-between px-1">
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground/90">{t("chat.sidebar.subtitle")}</p>
+          <span className="rounded-full border border-border/80 px-2 py-0.5 text-[10px] text-muted-foreground">{conversations.length}</span>
+        </div>
         <Button
           onClick={() => {
             create();
@@ -35,7 +39,7 @@ export function ConversationList({ onAction }: Props) {
           {t("chat.newConversation")}
         </Button>
       </div>
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+      <div className="flex-1 space-y-1 overflow-y-auto p-2.5">
         <AnimatePresence initial={false}>
           {conversations.map((conv) => (
             <motion.div key={conv.id} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.2 }}>
@@ -53,8 +57,10 @@ export function ConversationList({ onAction }: Props) {
                   }
                 }}
                 className={cn(
-                  "group w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-colors text-left",
-                  activeId === conv.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                  "group flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-all",
+                  activeId === conv.id
+                    ? "bg-primary/12 text-primary shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--primary)_30%,transparent)]"
+                    : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground",
                 )}
               >
                 <MessageSquare className="h-4 w-4 shrink-0" />
@@ -63,7 +69,7 @@ export function ConversationList({ onAction }: Props) {
                   type="button"
                   onClick={(e) => { e.stopPropagation(); remove(conv.id); }}
                   aria-label={t("chat.deleteConversation")}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:text-destructive"
+                  className="rounded-md p-1 text-muted-foreground/60 opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>

@@ -28,8 +28,8 @@ export function TrainCard({ train, date, index = 0, tags = [] }: Props) {
         href={`/trains/${train.train_no}?date=${date}&from=${encodeURIComponent(train.from_station)}&to=${encodeURIComponent(train.to_station)}`}
         className="block group"
       >
-        <div className="rounded-xl border border-border bg-card p-4 hover:border-primary/30 hover:shadow-md transition-all duration-200 group-hover:scale-[1.003]">
-          <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div className="rounded-2xl border border-border/75 bg-card/82 p-3.5 transition-all duration-200 hover:border-primary/30 hover:shadow-[0_16px_34px_-24px_rgba(15,23,42,0.65)] sm:p-4">
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-2.5 sm:gap-3">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <span className={cn(
                 "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold text-white",
@@ -45,15 +45,15 @@ export function TrainCard({ train, date, index = 0, tags = [] }: Props) {
               ))}
             </div>
 
-            <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
+            <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1.5 sm:gap-2">
               {lowestFare && (
-                <div className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/8 px-2.5 py-1">
+                <div className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/8 px-2 py-1 sm:px-2.5">
                   <span className="text-[11px] text-muted-foreground">{t("tickets.fare.from")}</span>
                   <span className="text-sm font-semibold text-primary">{formatPrice(lowestFare.price)}</span>
                 </div>
               )}
               {additionalFares.map((fare) => (
-                <div key={fare.key} className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1">
+                <div key={fare.key} className="inline-flex items-center gap-1 rounded-full border border-border/75 bg-background/70 px-2 py-1 sm:px-2.5">
                   <span className="text-[11px] text-muted-foreground">{getFareLabel(fare.key, fmtLocale)}</span>
                   <span className="text-sm font-medium text-foreground/80">{formatPrice(fare.price)}</span>
                 </div>
@@ -68,9 +68,9 @@ export function TrainCard({ train, date, index = 0, tags = [] }: Props) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
             <div className="flex-1">
-              <p className="text-2xl font-bold tabular-nums">{train.departure_time}</p>
+              <p className="text-xl font-bold tabular-nums sm:text-2xl">{train.departure_time}</p>
               <p className="text-sm text-muted-foreground mt-0.5">{train.from_station}</p>
             </div>
             <div className="flex flex-col items-center gap-0.5 px-2">
@@ -79,12 +79,12 @@ export function TrainCard({ train, date, index = 0, tags = [] }: Props) {
                 {formatDuration(train.duration_minutes, fmtLocale)}
               </div>
               <div className="flex items-center">
-                <div className="w-14 h-px bg-gradient-to-r from-border to-primary/30" />
+                <div className="h-px w-10 bg-gradient-to-r from-border to-primary/30 sm:w-14" />
                 <ArrowRight className="h-3.5 w-3.5 text-primary/50" />
               </div>
             </div>
             <div className="flex-1 text-right">
-              <p className="text-2xl font-bold tabular-nums">{train.arrival_time}</p>
+              <p className="text-xl font-bold tabular-nums sm:text-2xl">{train.arrival_time}</p>
               <p className="text-sm text-muted-foreground mt-0.5">{train.to_station}</p>
             </div>
           </div>
