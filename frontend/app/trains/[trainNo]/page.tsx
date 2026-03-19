@@ -25,6 +25,7 @@ export default function TrainDetailPage() {
   const date = searchParams.get("date") || getToday();
   const fromStation = searchParams.get("from");
   const toStation = searchParams.get("to");
+  const returnTo = searchParams.get("returnTo");
   const { t, locale } = useI18n();
   const dateLocale = locale === "en" ? "en" : "zh-CN";
 
@@ -88,11 +89,22 @@ export default function TrainDetailPage() {
   const originStop = stops.length > 0 ? stops[0] : null;
   const terminalStop = stops.length > 1 ? stops[stops.length - 1] : null;
   const totalStops = stops.length;
+  const handleBack = () => {
+    if (returnTo && returnTo.startsWith("/")) {
+      router.push(returnTo);
+      return;
+    }
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.push("/");
+  };
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-4 overflow-y-auto px-4 py-4 sm:px-6 lg:px-8">
       <button
-        onClick={() => router.back()}
+        onClick={handleBack}
         className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card/45 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />{t("train.backToSearch")}

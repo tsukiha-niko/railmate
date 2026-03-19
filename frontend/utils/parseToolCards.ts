@@ -28,6 +28,7 @@ export interface TransferLegData {
   departure_time: string;
   arrival_time: string;
   duration_minutes: number;
+  date?: string;
   price_second_seat?: number | null;
   price_first_seat?: number | null;
   price_business_seat?: number | null;
@@ -115,6 +116,7 @@ function normalizeTransferLeg(raw: Record<string, unknown>): TransferLegData {
     departure_time: (raw.d ?? raw.departure_time ?? "") as string,
     arrival_time: (raw.a ?? raw.arrival_time ?? "") as string,
     duration_minutes: Number(raw.m ?? raw.duration_minutes ?? 0),
+    date: (raw.dt ?? raw.date ?? undefined) as string | undefined,
     price_second_seat: toOptionalNumber(raw.p ?? raw.price_second_seat),
     price_first_seat: toOptionalNumber(raw.price_first_seat),
     price_business_seat: toOptionalNumber(raw.price_business_seat),
@@ -206,7 +208,10 @@ export function extractCards(toolCalls?: ToolCall[]): ChatCard[] {
       }
     }
 
-    if (tc.tool_name === "search_transfer_tickets" && Array.isArray(parsed.plans)) {
+    if (
+      (tc.tool_name === "search_transfer_tickets" || tc.tool_name === "search_stopover_itineraries")
+      && Array.isArray(parsed.plans)
+    ) {
       const plans: TransferPlanData[] = (parsed.plans as Record<string, unknown>[]).map((p) => {
         const legs = Array.isArray(p.legs)
           ? (p.legs as Record<string, unknown>[]).map(normalizeTransferLeg)

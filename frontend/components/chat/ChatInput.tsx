@@ -2,11 +2,19 @@
 
 import { useState, useRef, useCallback, useEffect, type KeyboardEvent } from "react";
 import { Send, Loader2 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 import { useI18n } from "@/lib/i18n/i18n";
-import { VoiceButton } from "./VoiceButton";
 import { useChatViewStore } from "@/store/chatViewStore";
+
+const VoiceButton = dynamic(
+  () => import("./VoiceButton").then((mod) => mod.VoiceButton),
+  {
+    ssr: false,
+    loading: () => <span className="h-10 w-10 shrink-0" aria-hidden />,
+  },
+);
 
 interface Props {
   onSend: (text: string) => void;
@@ -16,6 +24,7 @@ interface Props {
 
 export function ChatInput({ onSend, loading, conversationId }: Props) {
   const [text, setText] = useState("");
+  const textRef = useRef("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { t } = useI18n();
   const draft = useChatViewStore((s) => (conversationId ? s.drafts[conversationId] : ""));
@@ -25,6 +34,7 @@ export function ChatInput({ onSend, loading, conversationId }: Props) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setText(draft || "");
+    textRef.current = draft || "";
     requestAnimationFrame(() => {
       const el = textareaRef.current;
       if (el) {
@@ -39,6 +49,7 @@ export function ChatInput({ onSend, loading, conversationId }: Props) {
     if (!trimmed || loading) return;
     onSend(trimmed);
     setText("");
+    textRef.current = "";
     if (conversationId) clearDraft(conversationId);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
   }, [text, loading, onSend, clearDraft, conversationId]);
@@ -53,12 +64,22 @@ export function ChatInput({ onSend, loading, conversationId }: Props) {
   };
 
   const handleVoiceTranscript = useCallback((transcript: string) => {
-    setText((prev) => {
-      const next = prev + transcript;
-      if (conversationId) setDraft(conversationId, next);
-      return next;
-    });
+    const normalized = transcript.replace(/\s+/g, " ").trim();
+    if (!normalized) return;
+    const current = textRef.current;
+    const needsSpace = current.length > 0 && !/[\s，。！？,.!?、]$/.test(current);
+    const next = `${current}${needsSpace ? " " : ""}${normalized}`;
+    textRef.current = next;
+    setText(next);
+    if (conversationId) setDraft(conversationId, next);
     textareaRef.current?.focus();
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (el) {
+        el.style.height = "auto";
+        el.style.height = Math.min(el.scrollHeight, 160) + "px";
+      }
+    });
   }, [conversationId, setDraft]);
 
   return (
@@ -68,13 +89,14 @@ export function ChatInput({ onSend, loading, conversationId }: Props) {
           ref={textareaRef} value={text}
           onChange={(e) => {
             const next = e.target.value;
+            textRef.current = next;
             setText(next);
             if (conversationId) setDraft(conversationId, next);
           }}
           onKeyDown={handleKeyDown} onInput={handleInput}
           placeholder={t("chat.inputPlaceholder")} rows={1}
           className={cn(
-            "flex-1 resize-none rounded-xl border border-transparent bg-background/70 px-4 py-2.5 text-sm",
+            "chat-input-textarea flex-1 resize-none overflow-y-hidden rounded-xl border border-transparent bg-background/70 px-4 py-2.5 text-sm",
             "placeholder:text-muted-foreground focus-visible:border-input/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/65",
             "max-h-40",
           )}

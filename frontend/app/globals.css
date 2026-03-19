@@ -107,3 +107,133 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: color-mix(in oklab, var(--muted-foreground) 68%, var(--primary) 20%);
 }
+
+.transfer-plan-shell {
+  padding: 0.72rem;
+}
+
+.transfer-plan-total-time {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.transfer-plan-total-price {
+  font-size: 1.32rem;
+  line-height: 1;
+}
+
+.transfer-leg-row {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 0.25rem 0.5rem;
+  align-items: center;
+}
+
+.transfer-wait-row {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 0.25rem 0.5rem;
+  align-items: center;
+}
+
+.transfer-leg-left {
+  width: 74px;
+}
+
+.transfer-leg-no {
+  width: 58px;
+}
+
+.transfer-leg-time {
+  font-size: 1.14rem;
+}
+
+.transfer-leg-station {
+  font-size: 12px;
+}
+
+.transfer-leg-right-duration {
+  display: none !important;
+}
+
+.transfer-leg-inline-duration {
+  display: inline-flex !important;
+}
+
+.transfer-wait-right {
+  display: none !important;
+}
+
+.transfer-wait-inline {
+  display: inline-flex !important;
+}
+
+.chat-input-textarea {
+  scrollbar-width: none;
+}
+
+.chat-input-textarea::-webkit-scrollbar {
+  display: none;
+}
+
+@media (orientation: landscape), (min-aspect-ratio: 1/1) {
+  .transfer-plan-shell {
+    padding: 0.84rem;
+  }
+
+  .transfer-plan-total-time {
+    font-size: 1.65rem;
+  }
+
+  .transfer-plan-total-price {
+    font-size: 1.52rem;
+  }
+
+  .transfer-leg-row {
+    grid-template-columns: 92px minmax(0, 1fr) 132px;
+    gap: 0.25rem 0.75rem;
+  }
+
+  .transfer-wait-row {
+    grid-template-columns: 92px minmax(0, 1fr) 132px;
+    gap: 0.25rem 0.75rem;
+  }
+
+  .transfer-leg-left {
+    width: 92px;
+  }
+
+  .transfer-leg-no {
+    width: 64px;
+  }
+
+  .transfer-leg-time {
+    font-size: 1.22rem;
+  }
+
+  .transfer-leg-station {
+    font-size: 13px;
+  }
+
+  .transfer-leg-right-duration {
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .transfer-leg-inline-duration {
+    display: none !important;
+  }
+
+  .transfer-wait-right {
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .transfer-wait-inline {
+    display: none !important;
+  }
+}

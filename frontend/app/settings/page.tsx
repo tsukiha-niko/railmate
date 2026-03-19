@@ -206,8 +206,8 @@ export default function SettingsPage() {
     <div className="mx-auto flex w-full max-w-[1320px] flex-1 flex-col overflow-y-auto px-2 pb-24 pt-2 sm:px-4 sm:pb-6 sm:pt-4 lg:px-6">
       <div className="space-y-3 sm:space-y-4">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="grid gap-3 xl:grid-cols-12 xl:items-stretch xl:gap-4">
-            <Card className="border-border/70 bg-gradient-to-br from-primary/[0.1] via-card/90 to-card/75 xl:col-span-7 xl:h-full">
+          <div className="grid gap-3 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,1fr)] xl:items-stretch xl:gap-4">
+            <Card className="h-full border-border/70 bg-gradient-to-br from-primary/[0.1] via-card/90 to-card/75">
               <CardContent className="flex h-full flex-col justify-center p-4 sm:p-5">
                 <h1 className="text-xl font-bold sm:text-2xl">{t("settings.title")}</h1>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">{t("settings.subtitle")}</p>
@@ -219,16 +219,16 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
 
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:col-span-5 xl:h-full xl:grid-cols-1 xl:gap-3">
-              <div className="rounded-xl border border-border/65 bg-card/70 px-3 py-2.5 xl:h-full xl:px-4 xl:py-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-1 xl:grid-rows-3 xl:gap-3">
+              <div className="rounded-xl border border-border/65 bg-card/70 px-3 py-2.5 sm:min-h-[64px] xl:flex xl:min-h-0 xl:flex-col xl:justify-center xl:px-4 xl:py-3">
                 <p className="text-[11px] text-muted-foreground">{t("settings.currentLocation")}</p>
                 <p className="truncate text-sm font-semibold">{location ? location.city : t("settings.location.unset")}</p>
               </div>
-              <div className="rounded-xl border border-border/65 bg-card/70 px-3 py-2.5 xl:h-full xl:px-4 xl:py-3">
+              <div className="rounded-xl border border-border/65 bg-card/70 px-3 py-2.5 sm:min-h-[64px] xl:flex xl:min-h-0 xl:flex-col xl:justify-center xl:px-4 xl:py-3">
                 <p className="text-[11px] text-muted-foreground">{t("settings.preference")}</p>
                 <p className="truncate text-sm font-semibold">{currentPreferenceLabel}</p>
               </div>
-              <div className="col-span-2 rounded-xl border border-border/65 bg-card/70 px-3 py-2.5 sm:col-span-1 xl:h-full xl:px-4 xl:py-3">
+              <div className="col-span-2 rounded-xl border border-border/65 bg-card/70 px-3 py-2.5 sm:col-span-1 sm:min-h-[64px] xl:col-span-1 xl:flex xl:min-h-0 xl:flex-col xl:justify-center xl:px-4 xl:py-3">
                 <p className="text-[11px] text-muted-foreground">{t("settings.tripMode")}</p>
                 <p className="truncate text-sm font-semibold">{currentModeLabel}</p>
               </div>

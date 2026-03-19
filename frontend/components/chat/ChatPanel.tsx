@@ -103,8 +103,8 @@ export function ChatPanel() {
           </div>
         )}
       </div>
-      <div className="border-t border-border/60 bg-background/85 px-3 py-2.5 backdrop-blur-sm sm:px-5 sm:py-3 lg:px-6">
-        <div className="mx-auto w-full max-w-6xl">
+      <div className="border-t border-border/60 bg-background/85 px-4 py-2.5 backdrop-blur-sm sm:px-5 sm:py-3 lg:px-7">
+        <div className="mx-auto w-full max-w-6xl sm:pl-10 lg:pl-11">
           <ChatInput onSend={sendMessage} loading={loading} conversationId={activeConv?.id} />
         </div>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Mic, MicOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -43,16 +43,38 @@ interface Props {
 
 export function VoiceButton({ onTranscript, disabled }: Props) {
   const [listening, setListening] = useState(false);
-  const [supported] = useState(
-    () => typeof window !== "undefined" && !!(window.SpeechRecognition || window.webkitSpeechRecognition),
-  );
   const [interim, setInterim] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const { locale } = useI18n();
+  const supported = typeof window !== "undefined" && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.abort();
+      recognitionRef.current = null;
+    };
+  }, []);
+
+  const stopRecognition = useCallback(() => {
+    recognitionRef.current?.stop();
+  }, []);
+
+  const normalizeTranscript = useCallback((raw: string) => {
+    return raw.replace(/\s+/g, " ").trim();
+  }, []);
+
+  const appendTranscript = useCallback((chunk: string) => {
+    const normalized = normalizeTranscript(chunk);
+    if (!normalized) return;
+    onTranscript(normalized);
+  }, [normalizeTranscript, onTranscript]);
 
   const toggle = useCallback(() => {
+    if (disabled) return;
+
     if (listening) {
-      recognitionRef.current?.stop();
+      stopRecognition();
       return;
     }
 
@@ -66,6 +88,8 @@ export function VoiceButton({ onTranscript, disabled }: Props) {
     recognitionRef.current = recognition;
 
     let finalText = "";
+    setErrorMsg("");
+    setInterim("");
 
     recognition.onstart = () => setListening(true);
 
@@ -81,26 +105,34 @@ export function VoiceButton({ onTranscript, disabled }: Props) {
       }
       setInterim(interimText);
       if (finalText) {
-        onTranscript(finalText);
+        appendTranscript(finalText);
         finalText = "";
       }
     };
 
-    recognition.onerror = () => {
+    recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
       setListening(false);
       setInterim("");
+      setErrorMsg(
+        locale === "en"
+          ? `Voice input failed: ${e.error}`
+          : `语音识别失败：${e.error}`,
+      );
+      recognitionRef.current = null;
     };
 
     recognition.onend = () => {
       setListening(false);
       setInterim("");
       if (finalText) {
-        onTranscript(finalText);
+        appendTranscript(finalText);
+        finalText = "";
       }
+      recognitionRef.current = null;
     };
 
     recognition.start();
-  }, [listening, locale, onTranscript]);
+  }, [appendTranscript, disabled, listening, locale, stopRecognition]);
 
   if (!supported) return null;
 
@@ -115,6 +147,18 @@ export function VoiceButton({ onTranscript, disabled }: Props) {
             className="absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border/70 bg-card px-2.5 py-1 text-xs text-muted-foreground shadow-md"
           >
             {interim || (locale === "en" ? "Listening..." : "正在听...")}
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {!listening && errorMsg && (
+          <motion.div
+            initial={{ opacity: 0, y: -3 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -3 }}
+            className="absolute -top-10 left-1/2 max-w-[220px] -translate-x-1/2 truncate rounded-lg border border-destructive/40 bg-card px-2.5 py-1 text-xs text-destructive shadow-md"
+          >
+            {errorMsg}
           </motion.div>
         )}
       </AnimatePresence>

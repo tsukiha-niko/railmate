@@ -10,6 +10,7 @@ AI Agent 核心模块
 """
 
 import json
+import re
 import uuid
 from time import perf_counter
 from datetime import date, datetime, time, timedelta
@@ -30,7 +31,7 @@ from app.services.user_context import UserContext, get_user_context
 SYSTEM_PROMPT = """你是RailMate智轨伴行，中国铁路出行AI助手。
 
 ## 核心规则
-1. 收到查票请求立即调用 search_tickets，不问确认问题
+1. 收到查票请求立即行动：普通查票直接调用 search_tickets；若是“沿途游玩/顺路停留”且停留时长不明确，先追问停留时长与继续出发时间
 2. 用户没说出发地时，用其位置作为出发地
 3. 城市名自动转主要高铁站（广州→广州南，北京→北京西，长沙→长沙南，武汉→武汉站，南昌→南昌西，郑州→郑州东，杭州→杭州东，南京→南京南，西安→西安北，成都→成都东，合肥→合肥南）
 4. 日期推断：今天={today}，明天={tomorrow}，后天={day_after_tomorrow}
@@ -53,6 +54,12 @@ SYSTEM_PROMPT = """你是RailMate智轨伴行，中国铁路出行AI助手。
   1. 用户明确说了"中转""转车""换乘"
   2. 用户问"怎么去XX"且 search_tickets 返回 0 趟直达车次
 - **绝对不要在有直达车次时主动推荐中转方案**
+
+## 沿途游玩执行链（重点）
+- 当用户表达“顺路玩/中途玩/先去A再去B/在A停留”时，优先按分段行程思维，不要按赶车思维直接压缩成最短换乘
+- 若用户未说明停留时长：必须先追问“想在中途城市玩多久（几小时/几天）？大约何时继续出发？”
+- 若用户说明了停留时长：调用 **search_stopover_itineraries** 生成分段行程
+- 推荐时优先用“中转卡片式结构”表达：第一段铁路、停留时长、第二段铁路；并明确标记每段车票日期（跨天必须标注）
 
 ## 当前规划模式
 {planning_mode_rules}
@@ -101,7 +108,8 @@ def get_system_prompt(
         ),
         "stopover_explore": (
             "当前为【沿途游玩】模式：用户接受在中转城市停留、分段旅行。"
-            "可主动考虑1到2次中转，并在回复中把『铁路行程段』与『沿途城市停留建议』分开说清楚。若用户提到想顺路去某城市，优先围绕该城市规划。"
+            "可主动考虑1到2次中转，并在回复中把『铁路行程段』与『沿途城市停留建议』分开说清楚。"
+            "若用户提到顺路城市，优先调用 search_stopover_itineraries；停留时长不明确时先追问。"
         ),
     }
     
@@ -239,6 +247,43 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_stopover_itineraries",
+            "description": "查询“沿途游玩/顺路停留”的分段行程（A→中途城市→B），支持按停留小时/天数生成跨天车票组合。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "from_station": {"type": "string", "description": "出发站"},
+                    "via_station": {"type": "string", "description": "中途停留站/城市"},
+                    "to_station": {"type": "string", "description": "最终到达站"},
+                    "depart_date": {"type": "string", "description": "第一段出发日期 YYYY-MM-DD"},
+                    "stay_hours": {
+                        "type": "integer",
+                        "description": "在中途城市停留小时数（与stay_days二选一或同时给）",
+                        "minimum": 0,
+                    },
+                    "stay_days": {
+                        "type": "integer",
+                        "description": "在中途城市停留天数",
+                        "minimum": 0,
+                    },
+                    "prefer_overnight": {
+                        "type": "boolean",
+                        "description": "是否偏好夕发朝至列车",
+                        "default": True,
+                    },
+                    "max_plans": {
+                        "type": "integer",
+                        "description": "最多返回方案数",
+                        "default": 4,
+                    },
+                },
+                "required": ["from_station", "via_station", "to_station", "depart_date"],
+            },
+        },
+    },
 ]
 
 
@@ -322,6 +367,7 @@ class RailMateAgent:
             "find_fastest_train": self._tool_find_fastest_train,
             "set_user_location": self._tool_set_user_location,
             "search_transfer_tickets": self._tool_search_transfer_tickets,
+            "search_stopover_itineraries": self._tool_search_stopover_itineraries,
         }
         
         logger.info(f"🤖 RailMate Agent 初始化完成 (模型: {self.model}, 用户: {user_id})")
@@ -611,6 +657,353 @@ class RailMateAgent:
             pass
         
         return result_str
+
+    @staticmethod
+    def _safe_hhmm(raw: str) -> Optional[time]:
+        try:
+            return datetime.strptime(raw, "%H:%M").time()
+        except Exception:
+            return None
+
+    @classmethod
+    def _segment_datetimes(
+        cls,
+        segment_date: date,
+        departure_time: str,
+        arrival_time: str,
+    ) -> Optional[tuple[datetime, datetime]]:
+        dep_clock = cls._safe_hhmm(departure_time)
+        arr_clock = cls._safe_hhmm(arrival_time)
+        if not dep_clock or not arr_clock:
+            return None
+
+        dep_dt = datetime.combine(segment_date, dep_clock)
+        arr_dt = datetime.combine(segment_date, arr_clock)
+        if arr_dt < dep_dt:
+            arr_dt += timedelta(days=1)
+        return dep_dt, arr_dt
+
+    @staticmethod
+    def _is_overnight(dep_dt: datetime, arr_dt: datetime) -> bool:
+        return dep_dt.date() != arr_dt.date() and dep_dt.hour >= 18 and arr_dt.hour <= 12
+
+    @staticmethod
+    def _resolve_stay_minutes(
+        stay_hours: Optional[int],
+        stay_days: Optional[int],
+    ) -> int:
+        hours = max(0, int(stay_hours or 0))
+        days = max(0, int(stay_days or 0))
+        minutes = days * 24 * 60 + hours * 60
+        return minutes if minutes > 0 else 24 * 60
+
+    def _tool_search_stopover_itineraries(
+        self,
+        from_station: str,
+        via_station: str,
+        to_station: str,
+        depart_date: str,
+        stay_hours: Optional[int] = None,
+        stay_days: Optional[int] = None,
+        prefer_overnight: bool = True,
+        max_plans: int = 4,
+    ) -> str:
+        """工具：查询沿途游玩的分段行程（from -> via -> to）"""
+        logger.info(
+            "🔧 调用工具 search_stopover_itineraries: "
+            f"{from_station} → {via_station} → {to_station}, depart={depart_date}, "
+            f"stay_hours={stay_hours}, stay_days={stay_days}, prefer_overnight={prefer_overnight}"
+        )
+
+        err = self._validate_stations(
+            from_station=from_station,
+            via_station=via_station,
+            to_station=to_station,
+        )
+        if err:
+            return err
+
+        if via_station in {from_station, to_station}:
+            return json.dumps(
+                {
+                    "ok": False,
+                    "msg": "中途停留站不能和出发站或终点站相同",
+                    "hint": "请提供一个与起终点不同的顺路城市/车站",
+                },
+                ensure_ascii=False,
+            )
+
+        try:
+            first_leg_date = datetime.strptime(depart_date, "%Y-%m-%d").date()
+        except ValueError:
+            return json.dumps(
+                {
+                    "ok": False,
+                    "msg": "depart_date 格式错误，需为 YYYY-MM-DD",
+                },
+                ensure_ascii=False,
+            )
+
+        plan_limit = min(max(int(max_plans or 4), 1), 8)
+        target_stay_minutes = self._resolve_stay_minutes(stay_hours, stay_days)
+
+        try:
+            first_leg_trains = self.train_service.search_tickets(
+                from_station=from_station,
+                to_station=via_station,
+                travel_date=first_leg_date,
+            )
+        except Exception as exc:
+            logger.error(f"查询首段车次失败: {exc}")
+            return json.dumps(
+                {"ok": False, "msg": f"查询首段车次失败: {exc}"},
+                ensure_ascii=False,
+            )
+
+        if not first_leg_trains:
+            return json.dumps(
+                {
+                    "ok": True,
+                    "from": from_station,
+                    "to": to_station,
+                    "date": depart_date,
+                    "via": via_station,
+                    "stay_min": target_stay_minutes,
+                    "plans": [],
+                    "msg": f"{depart_date} 未查到 {from_station}→{via_station} 的车次",
+                    "hint": "可改查前后一天，或更换中途停留城市",
+                },
+                ensure_ascii=False,
+            )
+
+        def build_leg_payload(train: Any, travel_dt: date) -> Dict[str, Any]:
+            return {
+                "t": train.train_no,
+                "y": train.train_type,
+                "f": train.from_station,
+                "o": train.to_station,
+                "d": train.departure_time,
+                "a": train.arrival_time,
+                "m": train.duration_minutes,
+                "p": self.train_service._get_lowest_ticket_price(train),
+                "price_second_seat": train.price_second_seat,
+                "price_first_seat": train.price_first_seat,
+                "price_business_seat": train.price_business_seat,
+                "price_soft_sleeper": train.price_soft_sleeper,
+                "price_hard_sleeper": train.price_hard_sleeper,
+                "price_hard_seat": train.price_hard_seat,
+                "price_no_seat": train.price_no_seat,
+                "dt": travel_dt.strftime("%Y-%m-%d"),
+            }
+
+        plans: List[Dict[str, Any]] = []
+        seen_signatures: set[tuple[str, str, str, str]] = set()
+        next_leg_window_days = 4 if target_stay_minutes >= 24 * 60 else 2
+
+        first_leg_candidates = sorted(first_leg_trains, key=lambda x: x.departure_time)[:18]
+        for first_leg in first_leg_candidates:
+            first_dt = self._segment_datetimes(
+                segment_date=first_leg_date,
+                departure_time=first_leg.departure_time,
+                arrival_time=first_leg.arrival_time,
+            )
+            if not first_dt:
+                continue
+
+            first_dep_dt, first_arr_dt = first_dt
+            earliest_second_dep = first_arr_dt + timedelta(minutes=target_stay_minutes)
+            second_leg_start_date = earliest_second_dep.date()
+
+            for offset in range(next_leg_window_days + 1):
+                second_leg_date = second_leg_start_date + timedelta(days=offset)
+                try:
+                    second_leg_trains = self.train_service.search_tickets(
+                        from_station=via_station,
+                        to_station=to_station,
+                        travel_date=second_leg_date,
+                    )
+                except Exception:
+                    second_leg_trains = []
+
+                if not second_leg_trains:
+                    continue
+
+                for second_leg in second_leg_trains[:20]:
+                    second_dt = self._segment_datetimes(
+                        segment_date=second_leg_date,
+                        departure_time=second_leg.departure_time,
+                        arrival_time=second_leg.arrival_time,
+                    )
+                    if not second_dt:
+                        continue
+
+                    second_dep_dt, second_arr_dt = second_dt
+                    if second_dep_dt < earliest_second_dep:
+                        continue
+
+                    stay_wait_minutes = int((second_dep_dt - first_arr_dt).total_seconds() // 60)
+                    if stay_wait_minutes > 14 * 24 * 60:
+                        continue
+
+                    leg1_price = self.train_service._get_lowest_ticket_price(first_leg)
+                    leg2_price = self.train_service._get_lowest_ticket_price(second_leg)
+                    total_price = None
+                    if leg1_price is not None and leg2_price is not None:
+                        total_price = round(leg1_price + leg2_price, 1)
+
+                    total_minutes = first_leg.duration_minutes + stay_wait_minutes + second_leg.duration_minutes
+
+                    deviation_hours = abs(stay_wait_minutes - target_stay_minutes) / 60.0
+                    score = 100.0 - deviation_hours * 1.2 - total_minutes / 360.0
+                    if total_price is not None:
+                        score -= total_price / 180.0
+                    if prefer_overnight and self._is_overnight(first_dep_dt, first_arr_dt):
+                        score += 8
+                    if prefer_overnight and self._is_overnight(second_dep_dt, second_arr_dt):
+                        score += 8
+
+                    signature = (
+                        first_leg.train_no,
+                        first_dep_dt.strftime("%Y-%m-%d"),
+                        second_leg.train_no,
+                        second_dep_dt.strftime("%Y-%m-%d"),
+                    )
+                    if signature in seen_signatures:
+                        continue
+                    seen_signatures.add(signature)
+
+                    plans.append(
+                        {
+                            "legs": [
+                                build_leg_payload(first_leg, first_dep_dt.date()),
+                                build_leg_payload(second_leg, second_dep_dt.date()),
+                            ],
+                            "via": [via_station],
+                            "total_min": total_minutes,
+                            "total_price": total_price,
+                            "waits": [stay_wait_minutes],
+                            "stay_min": stay_wait_minutes,
+                            "score": round(score, 1),
+                        }
+                    )
+
+        plans.sort(
+            key=lambda x: (
+                -(x.get("score") or 0),
+                x.get("total_min") or 10**9,
+                x.get("total_price") if x.get("total_price") is not None else 10**9,
+            )
+        )
+        plans = plans[:plan_limit]
+
+        if not plans:
+            return json.dumps(
+                {
+                    "ok": True,
+                    "from": from_station,
+                    "to": to_station,
+                    "date": depart_date,
+                    "via": via_station,
+                    "stay_min": target_stay_minutes,
+                    "plans": [],
+                    "msg": "未找到符合停留时长的分段方案",
+                    "hint": "可调整停留时长（例如改为半天/2天）或切换中途城市",
+                },
+                ensure_ascii=False,
+            )
+
+        return json.dumps(
+            {
+                "ok": True,
+                "from": from_station,
+                "to": to_station,
+                "date": depart_date,
+                "via": via_station,
+                "stay_min": target_stay_minutes,
+                "plans": plans,
+                "msg": f"找到 {len(plans)} 个沿途游玩分段方案",
+            },
+            ensure_ascii=False,
+        )
+
+    @staticmethod
+    def _normalize_cn_number(token: str) -> Optional[int]:
+        token = token.strip()
+        if not token:
+            return None
+        if token.isdigit():
+            return int(token)
+
+        basic = {
+            "零": 0, "一": 1, "二": 2, "两": 2, "三": 3, "四": 4,
+            "五": 5, "六": 6, "七": 7, "八": 8, "九": 9, "十": 10,
+        }
+        if token in basic:
+            return basic[token]
+        if token.startswith("十"):
+            tail = basic.get(token[1:], 0)
+            return 10 + tail
+        if token.endswith("十"):
+            head = basic.get(token[:-1], 1)
+            return head * 10
+        if "十" in token:
+            head, tail = token.split("十", 1)
+            head_num = basic.get(head, 1)
+            tail_num = basic.get(tail, 0)
+            return head_num * 10 + tail_num
+        return None
+
+    def _extract_stay_minutes_from_text(self, text: str) -> Optional[int]:
+        compact = text.replace(" ", "")
+        if "半天" in compact:
+            return 12 * 60
+        if "一整天" in compact:
+            return 24 * 60
+
+        day_match = re.search(r"(\d+)\s*天", text)
+        if day_match:
+            return int(day_match.group(1)) * 24 * 60
+        day_cn_match = re.search(r"([零一二两三四五六七八九十]+)\s*天", compact)
+        if day_cn_match:
+            days = self._normalize_cn_number(day_cn_match.group(1))
+            if days is not None:
+                return days * 24 * 60
+
+        hour_match = re.search(r"(\d+)\s*(小时|h|H)", text)
+        if hour_match:
+            return int(hour_match.group(1)) * 60
+        hour_cn_match = re.search(r"([零一二两三四五六七八九十]+)\s*小时", compact)
+        if hour_cn_match:
+            hours = self._normalize_cn_number(hour_cn_match.group(1))
+            if hours is not None:
+                return hours * 60
+
+        night_match = re.search(r"(\d+)\s*晚", compact)
+        if night_match:
+            return int(night_match.group(1)) * 24 * 60
+        night_cn_match = re.search(r"([零一二两三四五六七八九十]+)\s*晚", compact)
+        if night_cn_match:
+            nights = self._normalize_cn_number(night_cn_match.group(1))
+            if nights is not None:
+                return nights * 24 * 60
+
+        return None
+
+    def _needs_stopover_duration_clarification(self, text: str) -> bool:
+        if not text.strip():
+            return False
+
+        stopover_cue = bool(re.search(r"(顺路|沿途|路过|中途|途经|先去|再去|然后去|再到|中转)", text))
+        play_cue = bool(re.search(r"(玩|游玩|逛|停留|住|待)", text))
+        if not stopover_cue:
+            return False
+        if not play_cue and self._active_planning_mode != "stopover_explore":
+            return False
+
+        if self._extract_stay_minutes_from_text(text) is not None:
+            return False
+
+        return True
     
     # ==================== 工具辅助方法 ====================
     
@@ -709,6 +1102,27 @@ class RailMateAgent:
         max_tool_rounds = 8
         
         try:
+            if self._needs_stopover_duration_clarification(message):
+                clarification = (
+                    "你这类“顺路游玩”我可以按分段行程来规划 👍\n"
+                    "先确认两个关键信息：\n"
+                    "1) 你想在中途城市玩多久（几小时/几天）？\n"
+                    "2) 你希望大概几点继续出发去下一站？"
+                )
+                self.memory.add_message(conv_id, "assistant", clarification)
+                self._report_progress(
+                    on_progress,
+                    status="completed",
+                    percent=100,
+                    message="需要补充停留时长",
+                    detail="已向用户追问沿途游玩时长与继续出发时间",
+                )
+                return ChatResponse(
+                    answer=clarification,
+                    conversation_id=conv_id,
+                    tool_calls=[],
+                )
+
             # 调用 LLM
             self._report_progress(
                 on_progress,
