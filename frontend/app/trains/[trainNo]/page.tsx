@@ -12,7 +12,7 @@ import { TrainTimeline } from "@/components/tickets/TrainTimeline";
 import { getTrainSchedule, getTrainPrices } from "@/services/trains";
 import type { TrainPrices } from "@/services/trains";
 import type { TrainScheduleStop } from "@/types/trains";
-import { getTrainTypeLabel, getTrainTypeColor } from "@/utils/format";
+import { getFareLabel, getTrainTypeLabel, getTrainTypeColor } from "@/utils/format";
 import { formatDateLocalized, getToday } from "@/utils/date";
 import { cn } from "@/utils/cn";
 import { useI18n } from "@/lib/i18n/i18n";
@@ -90,7 +90,7 @@ export default function TrainDetailPage() {
   const totalStops = stops.length;
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-4 py-4 space-y-4 overflow-y-auto">
+    <div className="mx-auto w-full max-w-5xl overflow-y-auto px-4 py-4 space-y-4 sm:px-6 lg:px-8">
       <button
         onClick={() => router.back()}
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -101,23 +101,23 @@ export default function TrainDetailPage() {
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <Card>
           <CardContent className="pt-5 pb-4">
-            <div className="flex items-center gap-3 mb-4">
+            <div className="mb-4 flex flex-wrap items-center gap-3">
               <span className={cn("inline-flex items-center rounded-lg px-3 py-1.5 text-base font-bold text-white", getTrainTypeColor(trainType))}>{trainNo}</span>
-              <Badge variant="secondary">{getTrainTypeLabel(trainType)}</Badge>
-              <div className="flex items-center gap-1.5 ml-auto text-xs text-muted-foreground">
+              <Badge variant="secondary">{getTrainTypeLabel(trainType, locale === "en" ? "en" : "zh-CN")}</Badge>
+              <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Calendar className="h-3.5 w-3.5" />{formatDateLocalized(date, dateLocale)}
               </div>
             </div>
 
             {(fromStation && toStation) || (originStop && terminalStop) ? (
-              <div className="flex items-center justify-between gap-4 rounded-lg bg-muted/50 px-4 py-3">
+              <div className="grid gap-4 rounded-lg bg-muted/50 px-4 py-4 md:grid-cols-[minmax(0,1fr)_minmax(180px,240px)_minmax(0,1fr)] md:items-center">
                 <div className="text-center">
-                  <p className="text-lg font-semibold">{fromStation || originStop?.station_name}</p>
+                  <p className="text-lg font-semibold md:text-2xl">{fromStation || originStop?.station_name}</p>
                   {originStop && (
                     <p className="text-sm text-muted-foreground tabular-nums">{originStop.departure_time !== "--" ? originStop.departure_time : ""}</p>
                   )}
                 </div>
-                <div className="flex flex-col items-center gap-0.5 flex-1 min-w-0">
+                <div className="flex min-w-0 flex-col items-center gap-1">
                   <div className="flex items-center gap-1 w-full">
                     <div className="h-px flex-1 bg-border" />
                     <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -130,7 +130,7 @@ export default function TrainDetailPage() {
                   )}
                 </div>
                 <div className="text-center">
-                  <p className="text-lg font-semibold">{toStation || terminalStop?.station_name}</p>
+                  <p className="text-lg font-semibold md:text-2xl">{toStation || terminalStop?.station_name}</p>
                   {terminalStop && (
                     <p className="text-sm text-muted-foreground tabular-nums">{terminalStop.arrival_time !== "--" ? terminalStop.arrival_time : ""}</p>
                   )}
@@ -147,30 +147,30 @@ export default function TrainDetailPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <span className="text-base">¥</span>
-                {locale === "en" ? "Ticket Prices" : "票价"}
+                {t("train.price.title")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {pricesLoading ? (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
                   {Array.from({ length: 4 }).map((_, i) => (
                     <Skeleton key={i} className="h-10 w-full rounded-lg" />
                   ))}
                 </div>
               ) : prices && Object.values(prices).some(v => v != null) ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
                   {[
                     { key: "business_seat", label: locale === "en" ? "Business" : "商务/特等座" },
-                    { key: "first_seat",    label: locale === "en" ? "1st Class" : "一等座" },
-                    { key: "second_seat",   label: locale === "en" ? "2nd Class" : "二等座" },
-                    { key: "soft_sleeper",  label: locale === "en" ? "Soft Sleeper" : "软卧" },
-                    { key: "hard_sleeper",  label: locale === "en" ? "Hard Sleeper" : "硬卧" },
-                    { key: "hard_seat",     label: locale === "en" ? "Hard Seat" : "硬座" },
-                    { key: "no_seat",       label: locale === "en" ? "No Seat" : "无座" },
+                    { key: "first_seat",    label: getFareLabel("price_first_seat", locale === "en" ? "en" : "zh-CN") },
+                    { key: "second_seat",   label: getFareLabel("price_second_seat", locale === "en" ? "en" : "zh-CN") },
+                    { key: "soft_sleeper",  label: getFareLabel("price_soft_sleeper", locale === "en" ? "en" : "zh-CN") },
+                    { key: "hard_sleeper",  label: getFareLabel("price_hard_sleeper", locale === "en" ? "en" : "zh-CN") },
+                    { key: "hard_seat",     label: getFareLabel("price_hard_seat", locale === "en" ? "en" : "zh-CN") },
+                    { key: "no_seat",       label: getFareLabel("price_no_seat", locale === "en" ? "en" : "zh-CN") },
                   ]
                     .filter(({ key }) => (prices as Record<string, number | null | undefined>)[key] != null)
                     .map(({ key, label }) => (
-                      <div key={key} className="flex flex-col items-center justify-center rounded-xl bg-muted/50 px-3 py-2.5 gap-0.5">
+                      <div key={key} className="flex min-h-20 flex-col items-center justify-center rounded-xl bg-muted/50 px-3 py-2.5 gap-0.5">
                         <span className="text-[11px] text-muted-foreground">{label}</span>
                         <span className="text-base font-bold text-foreground">
                           ¥{(prices as Record<string, number | null | undefined>)[key]?.toFixed(0)}
@@ -186,9 +186,7 @@ export default function TrainDetailPage() {
                   <p className="max-w-md text-xs text-muted-foreground">
                     {priceMeta?.requires_login
                       ? t("train.price.needLogin")
-                      : locale === "en"
-                        ? "The backend did not receive enough fare data this time. You can retry once more."
-                        : "本次后端没有拿到足够的实时票价数据，可以再重试一次。"}
+                      : t("train.price.partial")}
                   </p>
                   <div className="flex flex-wrap items-center justify-center gap-2">
                     {priceMeta?.requires_login ? (

@@ -1,29 +1,46 @@
 "use client";
 
-import { useState, useRef, useCallback, type KeyboardEvent } from "react";
+import { useState, useRef, useCallback, useEffect, type KeyboardEvent } from "react";
 import { Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 import { useI18n } from "@/lib/i18n/i18n";
 import { VoiceButton } from "./VoiceButton";
+import { useChatViewStore } from "@/store/chatViewStore";
 
 interface Props {
   onSend: (text: string) => void;
   loading: boolean;
+  conversationId?: string | null;
 }
 
-export function ChatInput({ onSend, loading }: Props) {
+export function ChatInput({ onSend, loading, conversationId }: Props) {
   const [text, setText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { t } = useI18n();
+  const draft = useChatViewStore((s) => (conversationId ? s.drafts[conversationId] : ""));
+  const setDraft = useChatViewStore((s) => s.setDraft);
+  const clearDraft = useChatViewStore((s) => s.clearDraft);
+
+  useEffect(() => {
+    setText(draft || "");
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (el) {
+        el.style.height = "auto";
+        el.style.height = Math.min(el.scrollHeight, 160) + "px";
+      }
+    });
+  }, [draft, conversationId]);
 
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
     onSend(trimmed);
     setText("");
+    if (conversationId) clearDraft(conversationId);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
-  }, [text, loading, onSend]);
+  }, [text, loading, onSend, clearDraft, conversationId]);
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
@@ -35,15 +52,23 @@ export function ChatInput({ onSend, loading }: Props) {
   };
 
   const handleVoiceTranscript = useCallback((transcript: string) => {
-    setText((prev) => prev + transcript);
+    setText((prev) => {
+      const next = prev + transcript;
+      if (conversationId) setDraft(conversationId, next);
+      return next;
+    });
     textareaRef.current?.focus();
-  }, []);
+  }, [conversationId, setDraft]);
 
   return (
     <div className="flex items-end gap-2 rounded-2xl border border-border bg-card p-3 shadow-sm">
       <textarea
         ref={textareaRef} value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          const next = e.target.value;
+          setText(next);
+          if (conversationId) setDraft(conversationId, next);
+        }}
         onKeyDown={handleKeyDown} onInput={handleInput}
         placeholder={t("chat.inputPlaceholder")} rows={1}
         className={cn(

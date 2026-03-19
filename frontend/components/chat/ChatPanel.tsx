@@ -9,6 +9,7 @@ import { ChatInput } from "./ChatInput";
 import { QuickActions } from "./QuickActions";
 import { RobotAnimation } from "./RobotAnimation";
 import { useI18n } from "@/lib/i18n/i18n";
+import { useChatViewStore } from "@/store/chatViewStore";
 
 export function ChatPanel() {
   const activeConv = useChatStore((s) =>
@@ -16,11 +17,36 @@ export function ChatPanel() {
   );
   const { sendMessage, loading } = useChat();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const lastMessageCountRef = useRef<number | null>(null);
   const { t } = useI18n();
+  const savedScrollTop = useChatViewStore((s) =>
+    activeConv?.id ? s.scrollTopByConversation[activeConv.id] : undefined,
+  );
+  const setScrollTop = useChatViewStore((s) => s.setScrollTop);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeConv?.messages.length]);
+    const container = scrollRef.current;
+    if (!container) return;
+    const currentCount = activeConv?.messages.length ?? 0;
+    if (lastMessageCountRef.current == null) {
+      if (typeof savedScrollTop === "number") {
+        container.scrollTop = savedScrollTop;
+      } else {
+        container.scrollTop = container.scrollHeight;
+      }
+    } else if (currentCount > lastMessageCountRef.current) {
+      const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+      if (distanceFromBottom < 140) {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+    lastMessageCountRef.current = currentCount;
+  }, [activeConv?.id, activeConv?.messages.length, savedScrollTop]);
+
+  useEffect(() => {
+    lastMessageCountRef.current = null;
+  }, [activeConv?.id]);
 
   const handleQueryTransfer = useCallback(
     (from: string, to: string) => {
@@ -34,7 +60,15 @@ export function ChatPanel() {
 
   return (
     <div className="flex h-full w-full flex-col">
-      <div className="flex-1 overflow-y-auto">
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto"
+        onScroll={() => {
+          if (activeConv?.id && scrollRef.current) {
+            setScrollTop(activeConv.id, scrollRef.current.scrollTop);
+          }
+        }}
+      >
         {messages.length === 0 ? (
           <div className="flex h-full w-full flex-col items-center justify-center px-4 sm:px-6 lg:px-8 2xl:mx-auto 2xl:max-w-6xl">
             <motion.div
@@ -71,7 +105,7 @@ export function ChatPanel() {
       </div>
       <div className="border-t border-border bg-background/85 px-4 py-4 backdrop-blur-sm sm:px-6 lg:px-8">
         <div className="w-full 2xl:mx-auto 2xl:max-w-6xl">
-          <ChatInput onSend={sendMessage} loading={loading} />
+          <ChatInput onSend={sendMessage} loading={loading} conversationId={activeConv?.id} />
         </div>
       </div>
     </div>

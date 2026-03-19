@@ -53,7 +53,7 @@ export function TrainCard({ train, date, index = 0, tags = [] }: Props) {
                 </div>
               )}
               {additionalFares.map((fare) => (
-                <div className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1">
+                <div key={fare.key} className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1">
                   <span className="text-[11px] text-muted-foreground">{getFareLabel(fare.key, fmtLocale)}</span>
                   <span className="text-sm font-medium text-foreground/80">{formatPrice(fare.price)}</span>
                 </div>

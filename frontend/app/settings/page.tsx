@@ -193,7 +193,8 @@ export default function SettingsPage() {
   ] as const;
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-5 overflow-y-auto flex-1">
+    <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col overflow-y-auto px-4 py-4 sm:px-6 lg:px-8">
+      <div className="space-y-5">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-xl font-bold mb-1">{t("settings.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("settings.subtitle")}</p>
@@ -216,7 +217,7 @@ export default function SettingsPage() {
               </div>
             ) : (<p className="text-sm text-muted-foreground">{t("settings.location.unset")}</p>)}
             {error && <p className="text-xs text-destructive">{error}</p>}
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={() => detectByIP()} disabled={loading} className="gap-1.5"><Navigation className="h-3.5 w-3.5" />{t("settings.btn.ip")}</Button>
               <Button variant="outline" size="sm" onClick={() => detectByGPS()} disabled={loading} className="gap-1.5"><Satellite className="h-3.5 w-3.5" />{t("settings.btn.gps")}</Button>
             </div>
@@ -228,7 +229,7 @@ export default function SettingsPage() {
         <Card>
           <CardHeader><CardTitle className="text-base flex items-center gap-2"><Edit3 className="h-4 w-4 text-primary" />{t("settings.manual")}</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-muted-foreground">{t("settings.city")}</label>
                 <Input value={manualCity} onChange={(e) => setManualCity(e.target.value)} placeholder={t("settings.cityPlaceholder")} />
@@ -253,7 +254,7 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-medium">{t("settings.theme")}</p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap justify-end gap-2">
                 <Button variant={theme === "system" ? "default" : "outline"} size="sm" onClick={() => setTheme("system")}>{t("settings.theme.system")}</Button>
                 <Button variant={theme === "light" ? "default" : "outline"} size="sm" onClick={() => setTheme("light")}>{t("settings.theme.light")}</Button>
                 <Button variant={theme === "dark" ? "default" : "outline"} size="sm" onClick={() => setTheme("dark")}>{t("settings.theme.dark")}</Button>
@@ -261,7 +262,7 @@ export default function SettingsPage() {
             </div>
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-medium">{t("settings.language")}</p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap justify-end gap-2">
                 <Button variant={locale === "zh-CN" ? "default" : "outline"} size="sm" onClick={() => setLocale("zh-CN")}>{t("settings.lang.zh")}</Button>
                 <Button variant={locale === "en" ? "default" : "outline"} size="sm" onClick={() => setLocale("en")}>{t("settings.lang.en")}</Button>
               </div>
@@ -471,7 +472,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-muted-foreground">Base URL</label>
                 <Input value={aiBaseUrl} onChange={(e) => setAiBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" className="text-xs" />
@@ -498,6 +499,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </motion.div>
+      </div>
     </div>
   );
 }

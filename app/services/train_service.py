@@ -286,6 +286,14 @@ class TrainService:
                 return []
             
             results: List[TrainSearchResult] = []
+            station_name_cache: Dict[str, Optional[str]] = {}
+
+            def resolve_station_name(station_code: Optional[str], fallback: str) -> str:
+                if not station_code:
+                    return fallback
+                if station_code not in station_name_cache:
+                    station_name_cache[station_code] = api.get_station_name(station_code)
+                return station_name_cache[station_code] or fallback
             
             for ticket in tickets:
                 result = TrainSearchResult(
@@ -293,6 +301,8 @@ class TrainService:
                     train_type=ticket["train_type"],
                     from_station=ticket["from_station_name"],
                     to_station=ticket["to_station_name"],
+                    start_station=resolve_station_name(ticket.get("start_station_code"), ticket["from_station_name"]),
+                    end_station=resolve_station_name(ticket.get("end_station_code"), ticket["to_station_name"]),
                     train_code=ticket.get("train_code"),
                     from_station_code=ticket.get("from_station_code"),
                     to_station_code=ticket.get("to_station_code"),
@@ -414,6 +424,15 @@ class TrainService:
         
         # 3. 找到同时经过两站且方向正确的车次
         results: List[TrainSearchResult] = []
+        station_name_cache: Dict[str, Optional[str]] = {}
+
+        def resolve_station_name(station_code: Optional[str], fallback: str) -> str:
+            if not station_code:
+                return fallback
+            if station_code not in station_name_cache:
+                station = self.get_station_by_code(station_code)
+                station_name_cache[station_code] = station.name if station else None
+            return station_name_cache[station_code] or fallback
         
         for train_id, from_stop in from_train_ids.items():
             if train_id not in to_train_map:
@@ -478,6 +497,8 @@ class TrainService:
                 train_type=train.train_type,
                 from_station=from_station_obj.name,
                 to_station=to_station_obj.name,
+                start_station=resolve_station_name(train.origin_station_code, from_station_obj.name),
+                end_station=resolve_station_name(train.terminal_station_code, to_station_obj.name),
                 departure_time=from_stop.departure_time.strftime("%H:%M") if from_stop.departure_time else "--",
                 arrival_time=to_stop.arrival_time.strftime("%H:%M") if to_stop.arrival_time else "--",
                 duration_minutes=duration_minutes,
@@ -539,6 +560,8 @@ class TrainService:
                         "y": r.train_type,     # type
                         "f": r.from_station,   # actual from station (may differ from query param)
                         "o": r.to_station,     # actual to station
+                        "s": r.start_station,  # start station
+                        "e": r.end_station,    # end station
                         "d": r.departure_time, # depart
                         "a": r.arrival_time,   # arrive
                         "m": r.duration_minutes,

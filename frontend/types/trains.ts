@@ -3,6 +3,8 @@ export interface TrainSearchResult {
   train_type: string;
   from_station: string;
   to_station: string;
+  start_station?: string | null;
+  end_station?: string | null;
   departure_time: string;
   arrival_time: string;
   duration_minutes: number;

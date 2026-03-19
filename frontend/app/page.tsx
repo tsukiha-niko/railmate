@@ -12,6 +12,7 @@ import { useGeoLocation } from "@/hooks/useGeoLocation";
 import { useUserContextStore } from "@/store/userContextStore";
 import { setUserLocation } from "@/services/chat";
 import { cn } from "@/utils/cn";
+import { useI18n } from "@/lib/i18n/i18n";
 
 export default function HomePage() {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
@@ -26,6 +27,7 @@ export default function HomePage() {
   const locationHydrated = useUserContextStore((s) => s._hasHydrated);
   const userId = useChatStore((s) => s.userId);
   const { detectByIP } = useGeoLocation();
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!locationHydrated) return;
@@ -54,7 +56,7 @@ export default function HomePage() {
           <>
             <motion.button
               type="button"
-              aria-label="Close sidebar"
+              aria-label={t("chat.sidebar.close")}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -72,12 +74,12 @@ export default function HomePage() {
               <div className="flex items-center justify-between border-b border-border px-4 py-3">
                 <div>
                   <p className="text-sm font-semibold text-foreground">RailMate</p>
-                  <p className="text-xs text-muted-foreground">对话与规划</p>
+                  <p className="text-xs text-muted-foreground">{t("chat.sidebar.subtitle")}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setMobileSidebarOpen(false)}
-                  aria-label="Close sidebar"
+                  aria-label={t("chat.sidebar.close")}
                   className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                 >
                   <PanelLeftClose className="h-4.5 w-4.5" />

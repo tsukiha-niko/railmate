@@ -5,6 +5,8 @@ export interface TrainCardData {
   train_type: string;
   from_station: string;
   to_station: string;
+  start_station?: string | null;
+  end_station?: string | null;
   departure_time: string;
   arrival_time: string;
   duration_minutes: number;
@@ -76,6 +78,8 @@ function normalizeCompactTrain(
     train_type: (raw.y ?? raw.train_type ?? no.charAt(0)) as string,
     from_station: (raw.f ?? raw.from_station ?? fallbackFrom) as string,
     to_station: (raw.o ?? raw.to_station ?? fallbackTo) as string,
+    start_station: (raw.s ?? raw.start_station ?? raw.f ?? raw.from_station ?? fallbackFrom) as string,
+    end_station: (raw.e ?? raw.end_station ?? raw.o ?? raw.to_station ?? fallbackTo) as string,
     departure_time: (raw.d ?? raw.departure_time ?? "") as string,
     arrival_time: (raw.a ?? raw.arrival_time ?? "") as string,
     duration_minutes: Number(raw.m ?? raw.duration_minutes ?? 0),

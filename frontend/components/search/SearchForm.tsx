@@ -57,7 +57,7 @@ export function SearchForm({ onSearch, loading }: Props) {
       className="rounded-xl border border-border bg-card p-5 shadow-sm"
     >
       {/* Station inputs */}
-      <div className="flex items-end gap-2 mb-4">
+      <div className="mb-4 grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-end">
         <div className="flex-1 space-y-1.5">
           <label className="text-xs font-medium text-muted-foreground">{t("search.from")}</label>
           <div className="relative">
@@ -83,7 +83,7 @@ export function SearchForm({ onSearch, loading }: Props) {
           variant="ghost"
           size="icon"
           onClick={handleSwap}
-          className="shrink-0 mb-0.5 hover:bg-primary/10"
+          className="shrink-0 justify-self-center md:mb-0.5 hover:bg-primary/10"
         >
           <ArrowLeftRight className="h-4 w-4" />
         </Button>
@@ -99,14 +99,14 @@ export function SearchForm({ onSearch, loading }: Props) {
       </div>
 
       {/* Date row */}
-      <div className="flex items-end gap-3 mb-4">
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end">
         <div className="flex-1 space-y-1.5">
           <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
             <CalendarDays className="h-3.5 w-3.5" />{t("search.departDate")}
           </label>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} min={getToday()} />
         </div>
-        <div className="flex gap-1.5 mb-0.5">
+        <div className="flex flex-wrap gap-1.5 lg:mb-0.5">
           <Button
             variant={date === getToday() ? "default" : "outline"}
             size="sm"
@@ -125,7 +125,7 @@ export function SearchForm({ onSearch, loading }: Props) {
       </div>
 
       {/* Train type filter */}
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="text-xs text-muted-foreground">{t("search.trainType")}</span>
         {TRAIN_TYPES.map((tt) => (
           <Badge
@@ -151,7 +151,7 @@ export function SearchForm({ onSearch, loading }: Props) {
       </Button>
 
       {date && (
-        <p className="text-[11px] text-muted-foreground text-center mt-2">
+        <p className="mt-2 text-center text-[11px] text-muted-foreground">
           {formatDateLocalized(date, locale === "en" ? "en" : "zh-CN")}
         </p>
       )}

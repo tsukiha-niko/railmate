@@ -121,6 +121,8 @@ class TrainSearchResult(BaseModel):
     train_type: str
     from_station: str
     to_station: str
+    start_station: Optional[str] = None
+    end_station: Optional[str] = None
     # Live 模式用于按需补票价/时刻表的元数据（前端可忽略）
     train_code: Optional[str] = None
     from_station_code: Optional[str] = None
@@ -146,6 +148,8 @@ class TrainSearchResult(BaseModel):
                 "train_type": "G",
                 "from_station": "广州南",
                 "to_station": "长沙南",
+                "start_station": "深圳北",
+                "end_station": "武汉",
                 "departure_time": "08:00",
                 "arrival_time": "10:30",
                 "duration_minutes": 150,

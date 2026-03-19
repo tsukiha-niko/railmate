@@ -17,7 +17,7 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto w-full p-4 space-y-5 overflow-y-auto flex-1">
+    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col overflow-y-auto px-4 py-4 sm:px-6 lg:px-8">
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
         <div className="flex items-center gap-3 mb-1">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
@@ -30,40 +30,42 @@ export default function SearchPage() {
         </div>
       </motion.div>
 
-      <SearchForm onSearch={handleSearch} loading={loading} />
+      <div className="space-y-5">
+        <SearchForm onSearch={handleSearch} loading={loading} />
 
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3"
-        >
-          <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
-          <p className="text-sm text-destructive">{error}</p>
-        </motion.div>
-      )}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3"
+          >
+            <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+            <p className="text-sm text-destructive">{error}</p>
+          </motion.div>
+        )}
 
-      {searched && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.1 }}
-        >
-          {!loading && results.length > 0 && (
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-medium text-muted-foreground">
-                {t("search.found", { count: results.length })}
-              </p>
-            </div>
-          )}
-          <TrainCardList
-            trains={results}
-            date={searchDate}
-            loading={loading}
-            emptyMessage={t("search.empty")}
-          />
-        </motion.div>
-      )}
+        {searched && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1 }}
+          >
+            {!loading && results.length > 0 && (
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-sm font-medium text-muted-foreground">
+                  {t("search.found", { count: results.length })}
+                </p>
+              </div>
+            )}
+            <TrainCardList
+              trains={results}
+              date={searchDate}
+              loading={loading}
+              emptyMessage={t("search.empty")}
+            />
+          </motion.div>
+        )}
+      </div>
     </div>
   );
 }

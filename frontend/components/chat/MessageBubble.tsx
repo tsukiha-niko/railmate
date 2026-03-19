@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import { Bot, Check, ChevronDown, Loader2, User, Wrench } from "lucide-react";
@@ -10,6 +10,7 @@ import { cn } from "@/utils/cn";
 import { extractCards } from "@/utils/parseToolCards";
 import { TrainResultCards } from "./TrainResultCards";
 import { useI18n } from "@/lib/i18n/i18n";
+import { useChatViewStore } from "@/store/chatViewStore";
 
 interface Props {
   message: ChatMessage;
@@ -24,7 +25,8 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
     () => (isUser ? [] : extractCards(message.tool_calls)),
     [isUser, message.tool_calls],
   );
-  const [expanded, setExpanded] = useState(false);
+  const progressExpanded = useChatViewStore((s) => s.progressExpandedByMessage[message.id] ?? false);
+  const setProgressExpanded = useChatViewStore((s) => s.setProgressExpanded);
   const recentEvents = message.progress?.events?.slice(-6) ?? [];
 
   const stageDefs = [
@@ -89,7 +91,7 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
             <div className="min-w-[290px] max-w-[420px]">
               <button
                 type="button"
-                onClick={() => setExpanded((value) => !value)}
+                onClick={() => setProgressExpanded(message.id, !progressExpanded)}
                 className="w-full rounded-2xl border border-white/5 bg-gradient-to-b from-background/70 to-background/40 p-3 text-left transition-colors hover:border-primary/20"
               >
                 <div className="flex items-start gap-3">
@@ -103,7 +105,7 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
                           {t("chat.progress.current")}
                         </p>
                         <p className="truncate text-sm font-semibold text-foreground">
-                          {message.progress?.current_message || "处理中..."}
+                          {message.progress?.current_message || t("chat.progress.processing")}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -113,7 +115,7 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
                         <ChevronDown
                           className={cn(
                             "h-4 w-4 text-muted-foreground transition-transform",
-                            expanded && "rotate-180",
+                            progressExpanded && "rotate-180",
                           )}
                         />
                       </div>
@@ -155,7 +157,7 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
               </button>
 
               <AnimatePresence initial={false}>
-                {expanded && recentEvents.length > 0 ? (
+                {progressExpanded && recentEvents.length > 0 ? (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
@@ -193,7 +195,7 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
         </div>
 
         {cards.length > 0 && (
-          <TrainResultCards cards={cards} onQueryTransfer={onQueryTransfer} />
+          <TrainResultCards cards={cards} onQueryTransfer={onQueryTransfer} messageId={message.id} />
         )}
       </div>
     </motion.div>
