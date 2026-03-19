@@ -62,7 +62,7 @@ export function ChatPanel() {
     <div className="flex h-full w-full flex-col">
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto"
+        className="flex-1 overflow-x-hidden overflow-y-auto"
         onScroll={() => {
           if (activeConv?.id && scrollRef.current) {
             setScrollTop(activeConv.id, scrollRef.current.scrollTop);
@@ -90,7 +90,7 @@ export function ChatPanel() {
             </motion.div>
           </div>
         ) : (
-          <div className="mx-auto w-full max-w-5xl space-y-4 px-4 py-4 sm:px-6 lg:px-8">
+          <div className="mx-auto w-full max-w-6xl space-y-4 px-4 py-4 sm:px-5 lg:px-7">
             {messages.map((msg, i) => (
               <MessageBubble
                 key={msg.id}
@@ -103,8 +103,8 @@ export function ChatPanel() {
           </div>
         )}
       </div>
-      <div className="border-t border-border/70 bg-gradient-to-b from-background/35 via-background/70 to-background/88 px-3 py-3 backdrop-blur-xl sm:px-5 sm:py-3.5 lg:px-6">
-        <div className="mx-auto w-full max-w-5xl">
+      <div className="border-t border-border/60 bg-background/85 px-3 py-2.5 backdrop-blur-sm sm:px-5 sm:py-3 lg:px-6">
+        <div className="mx-auto w-full max-w-6xl">
           <ChatInput onSend={sendMessage} loading={loading} conversationId={activeConv?.id} />
         </div>
       </div>

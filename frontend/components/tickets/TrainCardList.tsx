@@ -101,7 +101,7 @@ export function TrainCardList({ trains, date, loading, emptyMessage }: Props) {
   const annotated = annotateTrains(trains, t);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5 sm:space-y-3">
       {annotated.map(({ train, tags }, i) => (
         <TrainCard
           key={`${train.train_no}:${train.from_station}:${train.departure_time}:${i}`}

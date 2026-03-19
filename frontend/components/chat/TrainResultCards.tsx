@@ -7,11 +7,37 @@ import Link from "next/link";
 import { cn } from "@/utils/cn";
 import { formatDuration } from "@/utils/date";
 import { formatPrice, formatRemaining, getLowestFare, getTrainTypeColor } from "@/utils/format";
-import type { ChatCard, TrainCardData, TransferPlanData } from "@/utils/parseToolCards";
+import type { ChatCard, TrainCardData, TransferLegData, TransferPlanData } from "@/utils/parseToolCards";
 import { useI18n } from "@/lib/i18n/i18n";
 import { useChatViewStore } from "@/store/chatViewStore";
 
 const EMPTY_EXPANDED_CARDS: Record<number, boolean> = {};
+
+function getLowestLegFare(leg: TransferLegData): number | null {
+  const fares = [
+    leg.price_no_seat,
+    leg.price_hard_seat,
+    leg.price_hard_sleeper,
+    leg.price_soft_sleeper,
+    leg.price_second_seat,
+    leg.price_first_seat,
+    leg.price_business_seat,
+  ].filter((price): price is number => typeof price === "number" && Number.isFinite(price) && price > 0);
+
+  if (!fares.length) return null;
+  return Math.min(...fares);
+}
+
+function getLowestTotalFare(legs: TransferLegData[]): number | null {
+  if (!legs.length) return null;
+  let sum = 0;
+  for (const leg of legs) {
+    const fare = getLowestLegFare(leg);
+    if (fare == null) return null;
+    sum += fare;
+  }
+  return Math.round(sum * 10) / 10;
+}
 
 function getDateLabel(trainDate: string | undefined, locale: string): string | null {
   if (!trainDate) return null;
@@ -43,81 +69,72 @@ function MiniTrainCard({ train, index }: { train: TrainCardData; index: number }
       transition={{ duration: 0.2, delay: index * 0.05 }}
     >
       <Link href={href} className="block group">
-        <div className="rounded-lg border border-border/60 bg-card/60 p-3 backdrop-blur-sm transition-all duration-200 hover:border-primary/30 hover:bg-card/80">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,0.95fr)_auto]">
-            <div className="min-w-0 space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={cn(
-                    "inline-flex shrink-0 items-center rounded-md px-1.5 py-0.5 text-[11px] font-bold text-white",
-                    getTrainTypeColor(train.train_type),
-                  )}
-                >
-                  {train.train_no}
-                </span>
-                {dateLabel && (
-                  <span className="inline-flex shrink-0 items-center rounded px-1 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
-                    {dateLabel}
-                  </span>
-                )}
-              </div>
-
-              <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold tabular-nums sm:text-base">{train.departure_time}</div>
-                  <div className="truncate text-[11px] text-muted-foreground">{train.from_station}</div>
-                </div>
-
-                <div className="flex flex-col items-center gap-1 px-1 text-muted-foreground">
-                  <div className="flex items-center gap-1 whitespace-nowrap text-[10px] font-medium">
-                    <Clock className="h-3 w-3" />
-                    <span>{formatDuration(train.duration_minutes, fmtLocale)}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="h-px w-4 bg-border sm:w-6" />
-                    <ArrowRight className="h-3 w-3 text-primary/50" />
-                    <div className="h-px w-4 bg-border sm:w-6" />
-                  </div>
-                </div>
-
-                <div className="min-w-0 text-right">
-                  <div className="text-sm font-semibold tabular-nums sm:text-base">{train.arrival_time}</div>
-                  <div className="truncate text-[11px] text-muted-foreground">{train.to_station}</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="hidden min-w-0 grid-cols-2 gap-0 rounded-lg border border-border/60 bg-muted/25 px-3 py-2 lg:grid">
-              <div className="min-w-0 pr-3">
-                <div className="text-[10px] font-medium text-muted-foreground">{t("chat.card.origin")}</div>
-                <div className="truncate text-sm font-semibold text-foreground">{startStation}</div>
-              </div>
-              <div className="min-w-0 border-l border-border/70 pl-3 text-right">
-                <div className="text-[10px] font-medium text-muted-foreground">{t("chat.card.terminal")}</div>
-                <div className="truncate text-sm font-semibold text-foreground">{endStation}</div>
-              </div>
-            </div>
-
-            <div className="flex min-w-[72px] flex-col items-end justify-center gap-1.5 text-right">
-              {lowestFare != null && (
-                <div>
-                  <div className="text-[10px] text-muted-foreground">{t("tickets.fare.from")}</div>
-                  <div className="text-sm font-semibold text-primary">{formatPrice(lowestFare.price)}</div>
-                </div>
-              )}
+        <div className="rounded-xl border border-border/65 bg-background/45 px-3.5 py-3 transition-all duration-200 hover:border-primary/30 hover:bg-background/65">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
               <span
                 className={cn(
-                  "text-[10px] font-medium",
+                  "inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-[11px] font-bold text-white",
+                  getTrainTypeColor(train.train_type),
+                )}
+              >
+                {train.train_no}
+              </span>
+              {dateLabel && (
+                <span className="inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                  {dateLabel}
+                </span>
+              )}
+            </div>
+            <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1.5">
+              <span className="inline-flex items-center whitespace-nowrap rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                {t("tickets.fare.from")} {lowestFare != null ? formatPrice(lowestFare.price) : "--"}
+              </span>
+              <span
+                className={cn(
+                  "inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold",
                   train.remaining_tickets === 0
-                    ? "text-destructive"
+                    ? "border-destructive/35 bg-destructive/10 text-destructive"
                     : train.remaining_tickets != null && train.remaining_tickets < 10
-                      ? "text-warning"
-                      : "text-emerald-600 dark:text-emerald-400",
+                      ? "border-amber-400/30 bg-amber-500/10 text-warning"
+                      : "border-emerald-400/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
                 )}
               >
                 {formatRemaining(train.remaining_tickets, fmtLocale)}
               </span>
             </div>
+          </div>
+
+          <div className="mt-2.5 grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2.5">
+            <div className="min-w-0">
+              <div className="text-base font-bold tabular-nums">{train.departure_time}</div>
+              <div className="truncate text-xs text-muted-foreground">{train.from_station}</div>
+            </div>
+
+            <div className="flex flex-col items-center gap-1 px-1 text-muted-foreground">
+              <div className="flex items-center gap-1 whitespace-nowrap text-[11px] font-medium">
+                <Clock className="h-3 w-3" />
+                <span>{formatDuration(train.duration_minutes, fmtLocale)}</span>
+              </div>
+              <div className="flex items-center">
+                <div className="h-px w-6 bg-border sm:w-8" />
+                <ArrowRight className="h-3 w-3 text-primary/55" />
+                <div className="h-px w-6 bg-border sm:w-8" />
+              </div>
+            </div>
+
+            <div className="min-w-0 text-right">
+              <div className="text-base font-bold tabular-nums">{train.arrival_time}</div>
+              <div className="truncate text-xs text-muted-foreground">{train.to_station}</div>
+            </div>
+          </div>
+
+          <div className="mt-2 hidden items-center gap-2 text-[11px] text-muted-foreground sm:flex">
+            <span className="font-medium">{t("chat.card.origin")}:</span>
+            <span className="truncate">{startStation}</span>
+            <span className="text-muted-foreground/50">→</span>
+            <span className="font-medium">{t("chat.card.terminal")}:</span>
+            <span className="truncate">{endStation}</span>
           </div>
         </div>
       </Link>
@@ -132,6 +149,8 @@ function TransferPlanCard({ plan, index }: { plan: TransferPlanData; index: numb
   const transfers = Math.max(0, plan.legs.length - 1);
   const maxWait = plan.waits?.length ? Math.max(...plan.waits.filter((x) => typeof x === "number")) : 0;
   const worstWait = maxWait || (plan.waits?.[0] ?? 0) || 0;
+  const lowestLegTotal = getLowestTotalFare(plan.legs);
+  const displayTotalPrice = lowestLegTotal ?? (typeof plan.total_price === "number" && Number.isFinite(plan.total_price) ? plan.total_price : null);
 
   function waitLevel(waitMin: number) {
     if (waitMin <= 0) return "none" as const;
@@ -189,7 +208,7 @@ function TransferPlanCard({ plan, index }: { plan: TransferPlanData; index: numb
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.2, delay: index * 0.08 }}
-      className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-4 md:p-4 space-y-2.5"
+      className="space-y-2.5 rounded-xl border border-border/60 bg-card/60 p-3.5 backdrop-blur-sm md:p-4"
     >
       {/* Header: compressed, decision-first */}
       <div className="space-y-1">
@@ -208,9 +227,9 @@ function TransferPlanCard({ plan, index }: { plan: TransferPlanData; index: numb
             <div className="text-[10px] text-muted-foreground">{locale === "en" ? "Total" : "总价"}</div>
             <div className={cn(
               "text-2xl md:text-3xl font-extrabold tabular-nums leading-none",
-              plan.total_price != null ? "text-primary" : "text-muted-foreground",
+              displayTotalPrice != null ? "text-primary" : "text-muted-foreground",
             )}>
-              {plan.total_price != null ? formatPrice(plan.total_price) : "--"}
+              {displayTotalPrice != null ? formatPrice(displayTotalPrice) : "--"}
             </div>
           </div>
         </div>
@@ -358,31 +377,36 @@ export function TrainResultCards({ cards, onQueryTransfer, messageId }: TrainRes
   );
 
   return (
-    <div className="mt-2 w-full space-y-2.5">
-      {cards.map((card, ci) => {
-        const isExpanded = expandedCards[ci] ?? false;
-        const trainList = card.type !== "transfer" ? card.trains : [];
-        const visibleTrains = isExpanded ? trainList : trainList.slice(0, 5);
-        const hiddenCount = trainList.length - 5;
+    <div className="mt-2.5 w-full space-y-3">
+	      {cards.map((card, ci) => {
+	        const isExpanded = expandedCards[ci] ?? false;
+	        const trainList = card.type !== "transfer" ? card.trains : [];
+	        const visibleTrains = isExpanded ? trainList : trainList.slice(0, 5);
+	        const hiddenCount = trainList.length - 5;
+          const isTransferCard = card.type === "transfer";
 
-        return (
-          <motion.div
-            key={cardKeys[ci]}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, delay: ci * 0.08 }}
-            className="rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/[0.035] to-accent/20 p-3"
-          >
-            {/* Header */}
-            <div className="mb-2 flex items-center gap-2 px-0.5">
-              {card.type === "fastest_train" ? (
-                <Zap className="h-3.5 w-3.5 text-amber-500" />
-              ) : card.type === "transfer" ? (
-                <ArrowRightLeft className="h-3.5 w-3.5 text-emerald-500" />
-              ) : (
-                <TrainFront className="h-3.5 w-3.5 text-primary" />
+	        return (
+	          <motion.div
+	            key={cardKeys[ci]}
+	            initial={{ opacity: 0, y: 6 }}
+	            animate={{ opacity: 1, y: 0 }}
+	            transition={{ duration: 0.25, delay: ci * 0.08 }}
+	            className={cn(
+                isTransferCard
+                  ? "rounded-none border-0 bg-transparent p-0"
+                  : "rounded-2xl border border-border/70 bg-card/62 p-3.5",
               )}
-              <span className="text-xs font-medium text-foreground/80">
+	          >
+	            {/* Header */}
+	            <div className={cn("mb-2.5 flex items-center gap-2 px-0.5", isTransferCard && "mb-2 px-0")}>
+              {card.type === "fastest_train" ? (
+                <Zap className="h-4 w-4 text-amber-500" />
+              ) : card.type === "transfer" ? (
+                <ArrowRightLeft className="h-4 w-4 text-emerald-500" />
+              ) : (
+                <TrainFront className="h-4 w-4 text-primary" />
+              )}
+              <span className="text-sm font-semibold text-foreground/90">
                 {card.type === "train_list"
                   ? `${card.from} → ${card.to}  ·  ${card.trains.length}${locale === "en" ? " trains" : "趟"}`
                   : card.type === "transfer"
@@ -392,7 +416,7 @@ export function TrainResultCards({ cards, onQueryTransfer, messageId }: TrainRes
             </div>
 
             {/* Content */}
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {card.type === "transfer"
                 ? [...card.plans]
                     .sort((a, b) => (
@@ -416,7 +440,7 @@ export function TrainResultCards({ cards, onQueryTransfer, messageId }: TrainRes
             {card.type !== "transfer" && hiddenCount > 0 && (
               <button
                 onClick={() => toggleExpand(ci)}
-                className="flex items-center justify-center gap-1 w-full mt-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                className="mt-1.5 flex w-full items-center justify-center gap-1 rounded-lg py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary/45 hover:text-foreground"
               >
                 <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isExpanded && "rotate-180")} />
                 {isExpanded
@@ -429,7 +453,7 @@ export function TrainResultCards({ cards, onQueryTransfer, messageId }: TrainRes
             {card.type === "train_list" && onQueryTransfer && (
               <button
                 onClick={() => onQueryTransfer(card.from, card.to)}
-                className="flex items-center justify-center gap-1.5 w-full mt-1.5 pt-1.5 border-t border-border/40 text-[11px] text-muted-foreground hover:text-primary transition-colors"
+                className="mt-1.5 flex w-full items-center justify-center gap-1.5 border-t border-border/50 pt-2 text-[11px] text-muted-foreground transition-colors hover:text-primary"
               >
                 <ArrowRightLeft className="h-3 w-3" />
                 {t("chat.card.queryTransfer")}

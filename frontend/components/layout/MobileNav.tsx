@@ -17,7 +17,7 @@ export function MobileNav() {
   const { t } = useI18n();
 
   return (
-    <nav className="z-40 flex shrink-0 items-center justify-around border-t border-border/70 bg-card/80 px-2 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] backdrop-blur-xl md:hidden">
+    <nav className="z-40 flex shrink-0 items-center justify-around border-t border-border/70 bg-card/88 px-2 pt-1 pb-[calc(env(safe-area-inset-bottom)+0.3rem)] backdrop-blur-xl md:hidden">
       {TABS.map((tab) => {
         const active = tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href);
         return (
@@ -25,11 +25,11 @@ export function MobileNav() {
             key={tab.href}
             href={tab.href}
             className={cn(
-              "flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl px-2.5 py-1.5 text-[11px] transition-all",
+              "flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl px-2 py-1 text-[10px] transition-all",
               active ? "bg-primary/12 text-primary" : "text-muted-foreground",
             )}
           >
-            <tab.icon className={cn("h-5 w-5", active && "scale-105")} />
+            <tab.icon className={cn("h-[18px] w-[18px]", active && "scale-105")} />
             <span>{t(tab.labelKey)}</span>
           </Link>
         );

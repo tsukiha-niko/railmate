@@ -144,21 +144,19 @@ export default function TrainDetailPage() {
       {fromStation && toStation && (
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
+            <CardContent className="space-y-3 pt-4">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <span className="text-base">¥</span>
                 {t("train.price.title")}
               </CardTitle>
-            </CardHeader>
-            <CardContent>
               {pricesLoading ? (
-                <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
                   {Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={i} className="h-10 w-full rounded-lg" />
+                    <Skeleton key={i} className="h-[84px] w-full rounded-xl" />
                   ))}
                 </div>
               ) : prices && Object.values(prices).some(v => v != null) ? (
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+                <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
                   {[
                     { key: "business_seat", label: locale === "en" ? "Business" : "商务/特等座" },
                     { key: "first_seat",    label: getFareLabel("price_first_seat", locale === "en" ? "en" : "zh-CN") },
@@ -170,9 +168,11 @@ export default function TrainDetailPage() {
                   ]
                     .filter(({ key }) => (prices as Record<string, number | null | undefined>)[key] != null)
                     .map(({ key, label }) => (
-                      <div key={key} className="flex min-h-20 flex-col items-center justify-center rounded-xl bg-muted/50 px-3 py-2.5 gap-0.5">
-                        <span className="text-[11px] text-muted-foreground">{label}</span>
-                        <span className="text-base font-bold text-foreground">
+                      <div key={key} className="flex min-h-[84px] flex-col items-center justify-center gap-1 rounded-xl border border-border/65 bg-muted/35 px-3 py-2.5 text-center">
+                        <span title={label} className="max-w-full truncate whitespace-nowrap text-[11px] text-muted-foreground">
+                          {label}
+                        </span>
+                        <span className="text-lg font-bold tabular-nums text-foreground">
                           ¥{(prices as Record<string, number | null | undefined>)[key]?.toFixed(0)}
                         </span>
                       </div>

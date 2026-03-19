@@ -112,7 +112,7 @@ export function VoiceButton({ onTranscript, disabled }: Props) {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.8, opacity: 0 }}
-            className="absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground shadow-md"
+            className="absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border/70 bg-card px-2.5 py-1 text-xs text-muted-foreground shadow-md"
           >
             {interim || (locale === "en" ? "Listening..." : "正在听...")}
           </motion.div>
@@ -125,7 +125,10 @@ export function VoiceButton({ onTranscript, disabled }: Props) {
         size="icon"
         disabled={disabled}
         onClick={toggle}
-        className={cn("relative h-10 w-10 shrink-0 rounded-xl", listening && "animate-pulse")}
+        className={cn(
+          "relative h-10 w-10 shrink-0 rounded-xl border-border/70 bg-background/70 hover:bg-secondary/70",
+          listening && "animate-pulse",
+        )}
       >
         {listening ? (
           <>

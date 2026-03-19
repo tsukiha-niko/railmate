@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   MapPin, Navigation, Satellite, Edit3, TrendingUp, Check,
   Settings, Bot, Eye, EyeOff, Loader2, LogIn, LogOut,
-  RefreshCw, ShieldCheck, ShieldOff, Ticket,
+  RefreshCw, ShieldOff, Ticket,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -192,317 +192,431 @@ export default function SettingsPage() {
     { value: "stopover_explore", label: t("settings.tripMode.stopover"), desc: t("settings.tripMode.stopover.desc") },
   ] as const;
 
+  const currentPreferenceLabel = PREFS.find((item) => item.value === preference)?.label ?? "";
+  const currentModeLabel = MODES.find((item) => item.value === planningMode)?.label ?? "";
+  const currentLocationSourceLabel = location
+    ? location.source === "ip"
+      ? t("settings.location.ip")
+      : location.source === "gps"
+        ? t("settings.location.gps")
+        : t("settings.location.manual")
+    : null;
+
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col overflow-y-auto px-4 py-4 sm:px-6 lg:px-8">
-      <div className="space-y-5 pb-2">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-xl font-bold mb-1">{t("settings.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("settings.subtitle")}</p>
-      </motion.div>
-
-      <div className="grid gap-5 lg:grid-cols-2">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-        <Card>
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" />{t("settings.currentLocation")}</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {location ? (
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary/50">
-                <MapPin className="h-5 w-5 text-primary mt-0.5" />
-                <div>
-                  <p className="font-medium">{location.city}</p>
-                  {location.station && <p className="text-sm text-muted-foreground">{t("settings.recommendStation", { station: location.station })}</p>}
-                  <Badge variant="secondary" className="mt-1.5 text-xs">
-                    {location.source === "ip" ? t("settings.location.ip") : location.source === "gps" ? t("settings.location.gps") : t("settings.location.manual")}
-                  </Badge>
+    <div className="mx-auto flex w-full max-w-[1320px] flex-1 flex-col overflow-y-auto px-2 pb-24 pt-2 sm:px-4 sm:pb-6 sm:pt-4 lg:px-6">
+      <div className="space-y-3 sm:space-y-4">
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="grid gap-3 xl:grid-cols-12 xl:items-stretch xl:gap-4">
+            <Card className="border-border/70 bg-gradient-to-br from-primary/[0.1] via-card/90 to-card/75 xl:col-span-7 xl:h-full">
+              <CardContent className="flex h-full flex-col justify-center p-4 sm:p-5">
+                <h1 className="text-xl font-bold sm:text-2xl">{t("settings.title")}</h1>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">{t("settings.subtitle")}</p>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <Badge variant="secondary" className="text-[11px]">{t("settings.currentLocation")}</Badge>
+                  <Badge variant="secondary" className="text-[11px]">{t("settings.preference")}</Badge>
+                  <Badge variant="secondary" className="text-[11px]">{t("settings.tripMode")}</Badge>
                 </div>
-              </div>
-            ) : (<p className="text-sm text-muted-foreground">{t("settings.location.unset")}</p>)}
-            {error && <p className="text-xs text-destructive">{error}</p>}
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={() => detectByIP()} disabled={loading} className="gap-1.5"><Navigation className="h-3.5 w-3.5" />{t("settings.btn.ip")}</Button>
-              <Button variant="outline" size="sm" onClick={() => detectByGPS()} disabled={loading} className="gap-1.5"><Satellite className="h-3.5 w-3.5" />{t("settings.btn.gps")}</Button>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+              </CardContent>
+            </Card>
 
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-        <Card>
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><Edit3 className="h-4 w-4 text-primary" />{t("settings.manual")}</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">{t("settings.city")}</label>
-                <Input value={manualCity} onChange={(e) => setManualCity(e.target.value)} placeholder={t("settings.cityPlaceholder")} />
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:col-span-5 xl:h-full xl:grid-cols-1 xl:gap-3">
+              <div className="rounded-xl border border-border/65 bg-card/70 px-3 py-2.5 xl:h-full xl:px-4 xl:py-3">
+                <p className="text-[11px] text-muted-foreground">{t("settings.currentLocation")}</p>
+                <p className="truncate text-sm font-semibold">{location ? location.city : t("settings.location.unset")}</p>
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">{t("settings.stationOptional")}</label>
-                <Input value={manualStation} onChange={(e) => setManualStation(e.target.value)} placeholder={t("settings.stationPlaceholder")} />
+              <div className="rounded-xl border border-border/65 bg-card/70 px-3 py-2.5 xl:h-full xl:px-4 xl:py-3">
+                <p className="text-[11px] text-muted-foreground">{t("settings.preference")}</p>
+                <p className="truncate text-sm font-semibold">{currentPreferenceLabel}</p>
+              </div>
+              <div className="col-span-2 rounded-xl border border-border/65 bg-card/70 px-3 py-2.5 sm:col-span-1 xl:h-full xl:px-4 xl:py-3">
+                <p className="text-[11px] text-muted-foreground">{t("settings.tripMode")}</p>
+                <p className="truncate text-sm font-semibold">{currentModeLabel}</p>
               </div>
             </div>
-            <Button onClick={handleManualSet} disabled={!manualCity.trim() || saving} size="sm" className="gap-1.5">
-              <Check className="h-3.5 w-3.5" />{saving ? t("settings.btn.saving") : t("settings.btn.confirm")}
-            </Button>
-          </CardContent>
-        </Card>
-      </motion.div>
-      </div>
+          </div>
+        </motion.div>
 
-      <Separator />
-
-      <div className="grid gap-5 xl:grid-cols-2">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.125 }}>
-        <Card>
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><Settings className="h-4 w-4 text-primary" />{t("settings.appearance")}</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-medium">{t("settings.theme")}</p>
-              <div className="flex flex-wrap justify-end gap-2">
-                <Button variant={theme === "system" ? "default" : "outline"} size="sm" onClick={() => setTheme("system")}>{t("settings.theme.system")}</Button>
-                <Button variant={theme === "light" ? "default" : "outline"} size="sm" onClick={() => setTheme("light")}>{t("settings.theme.light")}</Button>
-                <Button variant={theme === "dark" ? "default" : "outline"} size="sm" onClick={() => setTheme("dark")}>{t("settings.theme.dark")}</Button>
-              </div>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-medium">{t("settings.language")}</p>
-              <div className="flex flex-wrap justify-end gap-2">
-                <Button variant={locale === "zh-CN" ? "default" : "outline"} size="sm" onClick={() => setLocale("zh-CN")}>{t("settings.lang.zh")}</Button>
-                <Button variant={locale === "en" ? "default" : "outline"} size="sm" onClick={() => setLocale("en")}>{t("settings.lang.en")}</Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-        <Card>
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary" />{t("settings.preference")}</CardTitle></CardHeader>
-          <CardContent>
-            <div className="grid gap-2">
-              {PREFS.map((p) => (
-                <button key={p.value} onClick={() => setPreference(p.value)}
-                  className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-all ${preference === p.value ? "border-primary bg-primary/5" : "border-border hover:border-primary/20 hover:bg-secondary/50"}`}>
-                  <div className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors ${preference === p.value ? "border-primary bg-primary" : "border-border"}`}>
-                    {preference === p.value && <Check className="h-3 w-3 text-primary-foreground" />}
+        <div className="grid gap-3 xl:grid-cols-12 xl:items-stretch xl:gap-4">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="xl:col-span-7 xl:h-full"
+          >
+            <Card className="h-full">
+              <CardHeader className="px-4 py-4 sm:px-5 sm:py-4">
+                <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  {t("settings.currentLocation")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
+                {location ? (
+                  <div className="flex items-start gap-3 rounded-xl border border-border/70 bg-secondary/30 p-3">
+                    <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold sm:text-base">{location.city}</p>
+                      {location.station && (
+                        <p className="truncate text-xs text-muted-foreground sm:text-sm">
+                          {t("settings.recommendStation", { station: location.station })}
+                        </p>
+                      )}
+                      {currentLocationSourceLabel ? (
+                        <Badge variant="secondary" className="mt-1.5 text-[11px]">
+                          {currentLocationSourceLabel}
+                        </Badge>
+                      ) : null}
+                    </div>
                   </div>
-                  <div><p className="text-sm font-medium">{p.label}</p><p className="text-xs text-muted-foreground">{p.desc}</p></div>
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-      </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{t("settings.location.unset")}</p>
+                )}
 
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}>
-        <Card>
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><Bot className="h-4 w-4 text-primary" />{t("settings.tripMode")}</CardTitle></CardHeader>
-          <CardContent>
-            <div className="grid gap-2">
-              {MODES.map((mode) => (
-                <button
-                  key={mode.value}
-                  onClick={() => setPlanningMode(mode.value)}
-                  className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-all ${planningMode === mode.value ? "border-primary bg-primary/5" : "border-border hover:border-primary/20 hover:bg-secondary/50"}`}
-                >
-                  <div className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors ${planningMode === mode.value ? "border-primary bg-primary" : "border-border"}`}>
-                    {planningMode === mode.value && <Check className="h-3 w-3 text-primary-foreground" />}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">{mode.label}</p>
-                    <p className="text-xs text-muted-foreground">{mode.desc}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+                {error && <p className="text-xs text-destructive">{error}</p>}
 
-      <Separator />
-
-      <div className="grid gap-5 2xl:grid-cols-2">
-      {/* ── 12306 登录 ── */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.165 }}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Ticket className="h-4 w-4 text-primary" />
-              {locale === "en" ? "12306 Account" : "12306 账户登录"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* 说明 */}
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              {t("settings.railAccount.desc")}
-            </p>
-
-            {/* 状态 */}
-            {rail12306?.logged_in ? (
-              <div className="flex items-center justify-between gap-3 rounded-lg bg-secondary/50 px-4 py-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <ShieldCheck className="h-5 w-5 text-emerald-500 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {rail12306.username || (locale === "en" ? "Logged in" : "已登录")}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {locale === "en"
-                        ? `Cookie valid for ${rail12306.remaining_days} day(s)`
-                        : `Cookie 剩余有效期 ${rail12306.remaining_days} 天`}
-                    </p>
-                  </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" size="sm" onClick={() => detectByIP()} disabled={loading} className="gap-1.5">
+                    <Navigation className="h-3.5 w-3.5" />
+                    {t("settings.btn.ip")}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => detectByGPS()} disabled={loading} className="gap-1.5">
+                    <Satellite className="h-3.5 w-3.5" />
+                    {t("settings.btn.gps")}
+                  </Button>
                 </div>
-                <Button
-                  variant="outline" size="sm"
-                  onClick={handleLogout12306}
-                  disabled={railLoading}
-                  className="gap-1.5 shrink-0"
-                >
-                  {railLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}
-                  {locale === "en" ? "Log out" : "退出"}
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-                <ShieldOff className="h-4 w-4 shrink-0" />
-                {locale === "en" ? "Not logged in — ticket prices may be unavailable." : "未登录 — 票价查询可能无法正常显示。"}
-              </div>
-            )}
 
-            {/* 扫码区域 */}
-            {!rail12306?.logged_in && (
-              <div className="space-y-3">
-                {/* 二维码展示 */}
-                {(qrStatus === "waiting" || qrStatus === "scanned") && qrImage && (
-                  <div className="flex flex-col items-center gap-2">
-                    <div className={`relative rounded-xl overflow-hidden border-2 transition-colors ${qrStatus === "scanned" ? "border-amber-400" : "border-border"}`}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={`data:image/png;base64,${qrImage}`}
-                        alt="12306 登录二维码"
-                        className="w-48 h-48 object-contain block"
+                <Separator />
+
+                <div className="space-y-2.5 rounded-xl border border-border/70 bg-card/55 p-3">
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    <Edit3 className="h-4 w-4 text-primary" />
+                    {t("settings.manual")}
+                  </p>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-muted-foreground">{t("settings.city")}</label>
+                      <Input
+                        value={manualCity}
+                        onChange={(e) => setManualCity(e.target.value)}
+                        placeholder={t("settings.cityPlaceholder")}
+                        className="h-9 text-sm"
                       />
-                      {qrStatus === "scanned" && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm">
-                          <Loader2 className="h-8 w-8 animate-spin text-white mb-1" />
-                          <span className="text-white text-xs font-medium">{locale === "en" ? "Confirming…" : "请在手机上确认登录"}</span>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-muted-foreground">{t("settings.stationOptional")}</label>
+                      <Input
+                        value={manualStation}
+                        onChange={(e) => setManualStation(e.target.value)}
+                        placeholder={t("settings.stationPlaceholder")}
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleManualSet}
+                    disabled={!manualCity.trim() || saving}
+                    size="sm"
+                    className="w-full gap-1.5 sm:w-auto"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                    {saving ? t("settings.btn.saving") : t("settings.btn.confirm")}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.09 }}
+            className="xl:col-span-5 xl:h-full"
+          >
+            <Card className="h-full">
+              <CardHeader className="px-4 py-4 sm:px-5 sm:py-4">
+                <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                  <Settings className="h-4 w-4 text-primary" />
+                  {t("settings.appearance")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">{t("settings.theme")}</p>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <Button variant={theme === "system" ? "default" : "outline"} size="sm" onClick={() => setTheme("system")} className="h-8">
+                      {t("settings.theme.system")}
+                    </Button>
+                    <Button variant={theme === "light" ? "default" : "outline"} size="sm" onClick={() => setTheme("light")} className="h-8">
+                      {t("settings.theme.light")}
+                    </Button>
+                    <Button variant={theme === "dark" ? "default" : "outline"} size="sm" onClick={() => setTheme("dark")} className="h-8">
+                      {t("settings.theme.dark")}
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">{t("settings.language")}</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <Button variant={locale === "zh-CN" ? "default" : "outline"} size="sm" onClick={() => setLocale("zh-CN")} className="h-8">
+                      {t("settings.lang.zh")}
+                    </Button>
+                    <Button variant={locale === "en" ? "default" : "outline"} size="sm" onClick={() => setLocale("en")} className="h-8">
+                      {t("settings.lang.en")}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+
+        <div className="grid gap-3 xl:grid-cols-2 xl:items-stretch xl:gap-4">
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="xl:h-full">
+            <Card className="h-full">
+              <CardHeader className="px-4 py-4 sm:px-5 sm:py-4">
+                <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                  {t("settings.preference")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
+                <div className="grid gap-1.5">
+                  {PREFS.map((p) => (
+                    <button
+                      key={p.value}
+                      onClick={() => setPreference(p.value)}
+                      className={`flex min-h-[56px] items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition-all ${preference === p.value ? "border-primary bg-primary/7" : "border-border hover:border-primary/20 hover:bg-secondary/45"}`}
+                    >
+                      <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${preference === p.value ? "border-primary bg-primary" : "border-border"}`}>
+                        {preference === p.value && <Check className="h-3 w-3 text-primary-foreground" />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{p.label}</p>
+                        <p className="line-clamp-2 text-xs leading-4 text-muted-foreground">{p.desc}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }} className="xl:h-full">
+            <Card className="h-full">
+              <CardHeader className="px-4 py-4 sm:px-5 sm:py-4">
+                <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                  <Bot className="h-4 w-4 text-primary" />
+                  {t("settings.tripMode")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
+                <div className="grid gap-1.5">
+                  {MODES.map((mode) => (
+                    <button
+                      key={mode.value}
+                      onClick={() => setPlanningMode(mode.value)}
+                      className={`flex min-h-[56px] items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition-all ${planningMode === mode.value ? "border-primary bg-primary/7" : "border-border hover:border-primary/20 hover:bg-secondary/45"}`}
+                    >
+                      <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${planningMode === mode.value ? "border-primary bg-primary" : "border-border"}`}>
+                        {planningMode === mode.value && <Check className="h-3 w-3 text-primary-foreground" />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{mode.label}</p>
+                        <p className="line-clamp-2 text-xs leading-4 text-muted-foreground">{mode.desc}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+
+        <Separator className="my-1" />
+
+        <div className="grid gap-3 2xl:grid-cols-12 2xl:items-stretch 2xl:gap-4">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.16 }}
+            className="2xl:col-span-7 2xl:h-full"
+          >
+            <Card className="h-full">
+              <CardHeader className="px-4 py-4 sm:px-5 sm:py-4">
+                <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                  <Ticket className="h-4 w-4 text-primary" />
+                  {locale === "en" ? "12306 Account" : "12306 账户登录"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
+                <p className="text-xs leading-relaxed text-muted-foreground">{t("settings.railAccount.desc")}</p>
+
+                {rail12306?.logged_in ? (
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/8 px-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">
+                        {rail12306.username || (locale === "en" ? "Logged in" : "已登录")}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {locale === "en"
+                          ? `Cookie valid for ${rail12306.remaining_days} day(s)`
+                          : `Cookie 剩余有效期 ${rail12306.remaining_days} 天`}
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={handleLogout12306} disabled={railLoading} className="shrink-0 gap-1.5">
+                      {railLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}
+                      {locale === "en" ? "Log out" : "退出"}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-muted/35 px-3 py-2.5 text-xs text-muted-foreground sm:text-sm">
+                    <ShieldOff className="h-4 w-4 shrink-0" />
+                    {locale === "en" ? "Not logged in — ticket prices may be unavailable." : "未登录 — 票价查询可能无法正常显示。"}
+                  </div>
+                )}
+
+                {!rail12306?.logged_in && (
+                  <div className="space-y-2.5">
+                    {(qrStatus === "waiting" || qrStatus === "scanned") && qrImage && (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className={`relative overflow-hidden rounded-xl border-2 transition-colors ${qrStatus === "scanned" ? "border-amber-400" : "border-border"}`}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={`data:image/png;base64,${qrImage}`}
+                            alt="12306 登录二维码"
+                            className="block h-40 w-40 object-contain sm:h-48 sm:w-48"
+                          />
+                          {qrStatus === "scanned" && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm">
+                              <Loader2 className="mb-1 h-7 w-7 animate-spin text-white" />
+                              <span className="text-xs font-medium text-white">{locale === "en" ? "Confirming…" : "请在手机上确认登录"}</span>
+                            </div>
+                          )}
                         </div>
+                        <p className="text-center text-xs text-muted-foreground">
+                          {qrStatus === "scanned"
+                            ? (locale === "en" ? "Scanned — confirm on your phone" : "已扫描，请在 12306 App 确认")
+                            : (locale === "en" ? "Open 12306 App → scan QR to log in" : "打开 12306 App → 扫一扫 登录")}
+                        </p>
+                      </div>
+                    )}
+
+                    {qrStatus === "confirmed" && (
+                      <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2.5 text-sm text-emerald-600 dark:text-emerald-400">
+                        <Check className="h-4 w-4 shrink-0" />
+                        {qrMsg || (locale === "en" ? "Login successful!" : "登录成功！")}
+                      </div>
+                    )}
+                    {(qrStatus === "expired" || qrStatus === "error") && (
+                      <p className="text-center text-xs text-destructive">{qrMsg}</p>
+                    )}
+
+                    <div className="grid gap-2 sm:flex sm:flex-wrap">
+                      {(qrStatus === "idle" || qrStatus === "expired" || qrStatus === "error" || qrStatus === "confirmed") && (
+                        <Button size="sm" onClick={handleStartQR} className="w-full gap-1.5 sm:w-auto">
+                          <LogIn className="h-3.5 w-3.5" />
+                          {locale === "en" ? "Scan QR to log in" : "扫码登录"}
+                        </Button>
+                      )}
+                      {(qrStatus === "waiting" || qrStatus === "scanned" || qrStatus === "loading") && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleStartQR}
+                          disabled={qrStatus === "loading"}
+                          className="w-full gap-1.5 sm:w-auto"
+                        >
+                          {qrStatus === "loading"
+                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            : <RefreshCw className="h-3.5 w-3.5" />}
+                          {locale === "en" ? "Refresh QR" : "刷新二维码"}
+                        </Button>
                       )}
                     </div>
-                    <p className="text-xs text-center text-muted-foreground">
-                      {qrStatus === "scanned"
-                        ? (locale === "en" ? "Scanned — confirm on your phone" : "已扫描，请在 12306 App 确认")
-                        : (locale === "en" ? "Open 12306 App → scan QR to log in" : "打开 12306 App → 扫一扫 登录")}
-                    </p>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </motion.div>
 
-                {/* 成功/过期/错误提示 */}
-                {qrStatus === "confirmed" && (
-                  <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400">
-                    <Check className="h-4 w-4 shrink-0" />
-                    {qrMsg || (locale === "en" ? "Login successful!" : "登录成功！")}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.18 }}
+            className="2xl:col-span-5 2xl:h-full"
+          >
+            <Card className="h-full">
+              <CardHeader className="px-4 py-4 sm:px-5 sm:py-4">
+                <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                  <Bot className="h-4 w-4 text-primary" />
+                  {locale === "en" ? "AI Configuration" : "AI 模型配置"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
+                <div className="rounded-xl border border-border/70 bg-card/55 px-3 py-2.5">
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="text-muted-foreground">{locale === "en" ? "Status:" : "状态："}</span>
+                    <Badge variant={aiConfigured ? "success" : "destructive"}>
+                      {aiConfigured ? (locale === "en" ? "Configured" : "已配置") : (locale === "en" ? "Not configured" : "未配置")}
+                    </Badge>
+                    {aiKeyMasked && <span className="font-mono text-[11px] text-muted-foreground">{aiKeyMasked}</span>}
                   </div>
-                )}
-                {(qrStatus === "expired" || qrStatus === "error") && (
-                  <p className="text-xs text-destructive text-center">{qrMsg}</p>
-                )}
-
-                {/* 操作按钮 */}
-                <div className="flex gap-2">
-                  {(qrStatus === "idle" || qrStatus === "expired" || qrStatus === "error" || qrStatus === "confirmed") && (
-                    <Button
-                      size="sm"
-                      onClick={handleStartQR}
-                      className="gap-1.5"
-                    >
-                      <LogIn className="h-3.5 w-3.5" />
-                      {locale === "en" ? "Scan QR to log in" : "扫码登录"}
-                    </Button>
-                  )}
-                  {(qrStatus === "waiting" || qrStatus === "scanned" || qrStatus === "loading") && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleStartQR}
-                      disabled={qrStatus === "loading"}
-                      className="gap-1.5"
-                    >
-                      {qrStatus === "loading"
-                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        : <RefreshCw className="h-3.5 w-3.5" />}
-                      {locale === "en" ? "Refresh QR" : "刷新二维码"}
-                    </Button>
-                  )}
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
 
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.175 }}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Bot className="h-4 w-4 text-primary" />
-              {locale === "en" ? "AI Configuration" : "AI 模型配置"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-muted-foreground">{locale === "en" ? "Status:" : "状态："}</span>
-              <Badge variant={aiConfigured ? "success" : "destructive"}>
-                {aiConfigured ? (locale === "en" ? "Configured" : "已配置") : (locale === "en" ? "Not configured" : "未配置")}
-              </Badge>
-              {aiKeyMasked && <span className="text-muted-foreground font-mono">{aiKeyMasked}</span>}
-            </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-muted-foreground">API Key</label>
+                  <div className="relative">
+                    <Input
+                      type={showKey ? "text" : "password"}
+                      value={aiKey}
+                      onChange={(e) => setAiKey(e.target.value)}
+                      placeholder={aiConfigured ? (locale === "en" ? "Enter new key to replace" : "输入新 Key 替换") : "sk-..."}
+                      className="h-9 pr-10 font-mono text-xs"
+                    />
+                    <button onClick={() => setShowKey(!showKey)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">API Key</label>
-              <div className="relative">
-                <Input
-                  type={showKey ? "text" : "password"}
-                  value={aiKey}
-                  onChange={(e) => setAiKey(e.target.value)}
-                  placeholder={aiConfigured ? (locale === "en" ? "Enter new key to replace" : "输入新 Key 替换") : "sk-..."}
-                  className="pr-10 font-mono text-xs"
-                />
-                <button onClick={() => setShowKey(!showKey)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">Base URL</label>
+                    <Input
+                      value={aiBaseUrl}
+                      onChange={(e) => setAiBaseUrl(e.target.value)}
+                      placeholder="https://api.openai.com/v1"
+                      className="h-9 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">{locale === "en" ? "Model" : "模型"}</label>
+                    <Input
+                      value={aiModel}
+                      onChange={(e) => setAiModel(e.target.value)}
+                      placeholder="gpt-4-turbo-preview"
+                      className="h-9 text-xs"
+                    />
+                  </div>
+                </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Base URL</label>
-                <Input value={aiBaseUrl} onChange={(e) => setAiBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" className="text-xs" />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">{locale === "en" ? "Model" : "模型"}</label>
-                <Input value={aiModel} onChange={(e) => setAiModel(e.target.value)} placeholder="gpt-4-turbo-preview" className="text-xs" />
-              </div>
-            </div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <Button onClick={handleSaveAIConfig} disabled={aiSaving} size="sm" className="w-full gap-1.5 sm:w-auto">
+                    {aiSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                    {locale === "en" ? "Save" : "保存"}
+                  </Button>
+                  {aiMsg && <span className="text-xs text-emerald-600 dark:text-emerald-400">{aiMsg}</span>}
+                </div>
 
-            <div className="flex items-center gap-3">
-              <Button onClick={handleSaveAIConfig} disabled={aiSaving} size="sm" className="gap-1.5">
-                {aiSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                {locale === "en" ? "Save" : "保存"}
-              </Button>
-              {aiMsg && <span className="text-xs text-success">{aiMsg}</span>}
-            </div>
-
-            <p className="text-[11px] text-muted-foreground">
-              {locale === "en"
-                ? "Configuration is runtime-only. Restart the backend to reset to .env values."
-                : "配置仅在运行时生效，重启后端后恢复为 .env 的值。"}
-            </p>
-          </CardContent>
-        </Card>
-      </motion.div>
-      </div>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  {locale === "en"
+                    ? "Configuration is runtime-only. Restart the backend to reset to .env values."
+                    : "配置仅在运行时生效，重启后端后恢复为 .env 的值。"}
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
       </div>
     </div>
   );

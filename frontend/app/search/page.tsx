@@ -25,11 +25,12 @@ export default function SearchPage() {
     (getLowestFare(a)?.price ?? Infinity) < (getLowestFare(b)?.price ?? Infinity) ? a : b,
   ) : null;
   const cheapestFare = cheapest ? getLowestFare(cheapest) : null;
+  const statsLocale = locale === "en" ? "en" : "zh-CN";
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col overflow-y-auto px-4 py-4 sm:px-6 lg:px-8">
+    <div className="mx-auto flex w-full max-w-[1680px] flex-1 flex-col overflow-y-auto px-3 py-3 sm:px-5 sm:py-4 lg:px-6">
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="mb-3 flex items-center gap-3">
+        <div className="mb-2.5 flex items-center gap-2.5 sm:mb-3 sm:gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
             <TrainFront className="h-5 w-5 text-primary" />
           </div>
@@ -40,12 +41,12 @@ export default function SearchPage() {
         </div>
       </motion.div>
 
-      <div className="grid flex-1 gap-5 xl:grid-cols-[minmax(300px,360px)_minmax(0,1fr)]">
-        <div className="xl:sticky xl:top-4 xl:h-fit">
+      <div className="grid flex-1 gap-4 lg:grid-cols-[380px_minmax(0,1fr)] lg:gap-5">
+        <div className="lg:sticky lg:top-3 lg:h-fit">
           <SearchForm onSearch={handleSearch} loading={loading} />
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {error && (
             <motion.div
               initial={{ opacity: 0, y: 4 }}
@@ -64,18 +65,18 @@ export default function SearchPage() {
               transition={{ delay: 0.1 }}
             >
               {!loading && results.length > 0 && (
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-medium text-muted-foreground">
+                <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-muted-foreground">
                     {t("search.found", { count: results.length })}
                   </p>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {earliest ? <Badge variant="secondary">{earliest.departure_time}</Badge> : null}
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                    {earliest ? <Badge variant="secondary" className="px-2 py-0.5">{earliest.departure_time}</Badge> : null}
                     {fastest ? (
-                      <Badge variant="secondary">
-                        {formatDuration(fastest.duration_minutes, locale === "en" ? "en" : "zh-CN")}
+                      <Badge variant="secondary" className="px-2 py-0.5">
+                        {formatDuration(fastest.duration_minutes, statsLocale)}
                       </Badge>
                     ) : null}
-                    {cheapestFare ? <Badge variant="default">{formatPrice(cheapestFare.price)}</Badge> : null}
+                    {cheapestFare ? <Badge variant="default" className="px-2 py-0.5">{formatPrice(cheapestFare.price)}</Badge> : null}
                   </div>
                 </div>
               )}

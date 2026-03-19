@@ -29,6 +29,12 @@ export interface TransferLegData {
   arrival_time: string;
   duration_minutes: number;
   price_second_seat?: number | null;
+  price_first_seat?: number | null;
+  price_business_seat?: number | null;
+  price_soft_sleeper?: number | null;
+  price_hard_sleeper?: number | null;
+  price_hard_seat?: number | null;
+  price_no_seat?: number | null;
 }
 
 export interface TransferPlanData {
@@ -64,6 +70,12 @@ export interface TransferCard {
 }
 
 export type ChatCard = TrainListCard | FastestTrainCard | TransferCard;
+
+function toOptionalNumber(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
 
 function normalizeCompactTrain(
   raw: Record<string, unknown>,
@@ -103,8 +115,44 @@ function normalizeTransferLeg(raw: Record<string, unknown>): TransferLegData {
     departure_time: (raw.d ?? raw.departure_time ?? "") as string,
     arrival_time: (raw.a ?? raw.arrival_time ?? "") as string,
     duration_minutes: Number(raw.m ?? raw.duration_minutes ?? 0),
-    price_second_seat: raw.p != null ? Number(raw.p) : null,
+    price_second_seat: toOptionalNumber(raw.p ?? raw.price_second_seat),
+    price_first_seat: toOptionalNumber(raw.price_first_seat),
+    price_business_seat: toOptionalNumber(raw.price_business_seat),
+    price_soft_sleeper: toOptionalNumber(raw.price_soft_sleeper),
+    price_hard_sleeper: toOptionalNumber(raw.price_hard_sleeper),
+    price_hard_seat: toOptionalNumber(raw.price_hard_seat),
+    price_no_seat: toOptionalNumber(raw.price_no_seat),
   };
+}
+
+function getLowestLegFare(leg: TransferLegData): number | null {
+  const candidates = [
+    leg.price_no_seat,
+    leg.price_hard_seat,
+    leg.price_hard_sleeper,
+    leg.price_soft_sleeper,
+    leg.price_second_seat,
+    leg.price_first_seat,
+    leg.price_business_seat,
+  ].filter((price): price is number => typeof price === "number" && Number.isFinite(price) && price > 0);
+
+  if (!candidates.length) return null;
+  return Math.min(...candidates);
+}
+
+function resolveTransferTotalPrice(rawTotal: unknown, legs: TransferLegData[]): number | null {
+  const parsedTotal = toOptionalNumber(rawTotal);
+  if (parsedTotal != null) return parsedTotal;
+  if (!legs.length) return null;
+
+  let sum = 0;
+  for (const leg of legs) {
+    const legFare = getLowestLegFare(leg);
+    if (legFare == null) return null;
+    sum += legFare;
+  }
+
+  return Math.round(sum * 10) / 10;
 }
 
 function tryParse(val: unknown): Record<string, unknown> | null {
@@ -159,16 +207,19 @@ export function extractCards(toolCalls?: ToolCall[]): ChatCard[] {
     }
 
     if (tc.tool_name === "search_transfer_tickets" && Array.isArray(parsed.plans)) {
-      const plans: TransferPlanData[] = (parsed.plans as Record<string, unknown>[]).map((p) => ({
-        legs: Array.isArray(p.legs)
+      const plans: TransferPlanData[] = (parsed.plans as Record<string, unknown>[]).map((p) => {
+        const legs = Array.isArray(p.legs)
           ? (p.legs as Record<string, unknown>[]).map(normalizeTransferLeg)
-          : [],
-        via: Array.isArray(p.via) ? (p.via as string[]) : [],
-        total_minutes: Number(p.total_min ?? p.total_duration_minutes ?? 0),
-        total_price: p.total_price != null ? Number(p.total_price) : null,
-        waits: Array.isArray(p.waits) ? (p.waits as number[]) : [],
-        score: Number(p.score ?? 0),
-      }));
+          : [];
+        return {
+          legs,
+          via: Array.isArray(p.via) ? (p.via as string[]) : [],
+          total_minutes: Number(p.total_min ?? p.total_duration_minutes ?? 0),
+          total_price: resolveTransferTotalPrice(p.total_price, legs),
+          waits: Array.isArray(p.waits) ? (p.waits as number[]) : [],
+          score: Number(p.score ?? 0),
+        };
+      });
       if (plans.length > 0) {
         cards.push({
           type: "transfer",

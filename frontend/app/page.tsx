@@ -100,8 +100,8 @@ export default function HomePage() {
         <ConversationList />
       </aside>
 
-      <section className="flex min-h-0 min-w-0 flex-1 flex-col px-0 pb-0 lg:px-3 lg:pb-3 xl:px-4">
-        <div className="flex min-h-0 flex-1 flex-col border-x border-border/60 bg-gradient-to-b from-card/30 via-card/10 to-card/30 lg:rounded-2xl lg:border">
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col px-0 pb-0 lg:px-2 lg:pb-2 xl:px-3">
+        <div className="flex min-h-0 flex-1 flex-col bg-transparent lg:rounded-2xl lg:border lg:border-border/40 lg:bg-card/[0.18]">
           <ChatPanel />
         </div>
       </section>

@@ -29,7 +29,10 @@ const TRAIN_TYPE_COLORS: Record<string, string> = {
 
 export function getTrainTypeColor(type: string): string { return TRAIN_TYPE_COLORS[type] || "bg-gray-500"; }
 
-export function formatPrice(price: number | null | undefined): string { if (price == null) return "--"; return `¥${price.toFixed(0)}`; }
+export function formatPrice(price: number | null | undefined): string {
+  if (price == null || !Number.isFinite(price)) return "--";
+  return `¥${price.toFixed(0)}`;
+}
 
 const FARE_ORDER = [
   "price_no_seat",

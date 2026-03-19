@@ -28,9 +28,9 @@ export function TrainCard({ train, date, index = 0, tags = [] }: Props) {
         href={`/trains/${train.train_no}?date=${date}&from=${encodeURIComponent(train.from_station)}&to=${encodeURIComponent(train.to_station)}`}
         className="block group"
       >
-        <div className="rounded-2xl border border-border/75 bg-card/82 p-3.5 transition-all duration-200 hover:border-primary/30 hover:shadow-[0_16px_34px_-24px_rgba(15,23,42,0.65)] sm:p-4">
-          <div className="mb-3 flex flex-wrap items-start justify-between gap-2.5 sm:gap-3">
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <div className="rounded-2xl border border-border/70 bg-card/84 p-2.5 transition-all duration-200 hover:border-primary/30 hover:shadow-[0_14px_28px_-22px_rgba(15,23,42,0.6)] sm:p-4">
+          <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
               <span className={cn(
                 "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold text-white",
                 getTrainTypeColor(train.train_type),
@@ -45,21 +45,15 @@ export function TrainCard({ train, date, index = 0, tags = [] }: Props) {
               ))}
             </div>
 
-            <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1.5 sm:gap-2">
-              {lowestFare && (
-                <div className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/8 px-2 py-1 sm:px-2.5">
-                  <span className="text-[11px] text-muted-foreground">{t("tickets.fare.from")}</span>
-                  <span className="text-sm font-semibold text-primary">{formatPrice(lowestFare.price)}</span>
-                </div>
-              )}
-              {additionalFares.map((fare) => (
-                <div key={fare.key} className="inline-flex items-center gap-1 rounded-full border border-border/75 bg-background/70 px-2 py-1 sm:px-2.5">
-                  <span className="text-[11px] text-muted-foreground">{getFareLabel(fare.key, fmtLocale)}</span>
-                  <span className="text-sm font-medium text-foreground/80">{formatPrice(fare.price)}</span>
-                </div>
-              ))}
+            <div className="ml-auto flex items-center gap-1.5">
+              {lowestFare ? (
+                <span className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-xs">
+                  <span className="text-muted-foreground">{t("tickets.fare.from")}</span>
+                  <span className="font-semibold tabular-nums text-primary">{formatPrice(lowestFare.price)}</span>
+                </span>
+              ) : null}
               <span className={cn(
-                "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium",
+                "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold",
                 train.remaining_tickets === 0 ? "bg-destructive/10 text-destructive" :
                 train.remaining_tickets != null && train.remaining_tickets < 10 ? "bg-amber-500/10 text-warning" : "bg-emerald-500/10 text-success",
               )}>
@@ -70,24 +64,38 @@ export function TrainCard({ train, date, index = 0, tags = [] }: Props) {
 
           <div className="flex items-center gap-2.5 sm:gap-3">
             <div className="flex-1">
-              <p className="text-xl font-bold tabular-nums sm:text-2xl">{train.departure_time}</p>
-              <p className="text-sm text-muted-foreground mt-0.5">{train.from_station}</p>
+              <p className="text-lg font-bold tabular-nums sm:text-2xl">{train.departure_time}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">{train.from_station}</p>
             </div>
             <div className="flex flex-col items-center gap-0.5 px-2">
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1 text-[11px] text-muted-foreground sm:text-xs">
                 <Clock className="h-3 w-3" />
                 {formatDuration(train.duration_minutes, fmtLocale)}
               </div>
               <div className="flex items-center">
-                <div className="h-px w-10 bg-gradient-to-r from-border to-primary/30 sm:w-14" />
+                <div className="h-px w-8 bg-gradient-to-r from-border to-primary/30 sm:w-14" />
                 <ArrowRight className="h-3.5 w-3.5 text-primary/50" />
               </div>
             </div>
             <div className="flex-1 text-right">
-              <p className="text-xl font-bold tabular-nums sm:text-2xl">{train.arrival_time}</p>
-              <p className="text-sm text-muted-foreground mt-0.5">{train.to_station}</p>
+              <p className="text-lg font-bold tabular-nums sm:text-2xl">{train.arrival_time}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">{train.to_station}</p>
             </div>
           </div>
+
+          {additionalFares.length > 0 && (
+            <div className="mt-2 hidden flex-wrap items-center gap-1.5 sm:flex">
+              {additionalFares.map((fare) => (
+                <span
+                  key={fare.key}
+                  className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/65 px-2 py-1 text-xs text-foreground/90"
+                >
+                  <span className="text-muted-foreground">{getFareLabel(fare.key, fmtLocale)}</span>
+                  <span className="font-semibold tabular-nums">{formatPrice(fare.price)}</span>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </Link>
     </motion.div>

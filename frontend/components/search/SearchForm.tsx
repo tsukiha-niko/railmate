@@ -54,17 +54,10 @@ export function SearchForm({ onSearch, loading }: Props) {
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border border-border/75 bg-card/80 p-4 shadow-[0_18px_38px_-32px_rgba(15,23,42,0.65)] backdrop-blur-sm sm:p-5"
+      className="rounded-2xl border border-border/70 bg-card/82 p-3.5 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.58)] sm:p-4"
     >
-      <div className="mb-4 flex items-center justify-between rounded-xl border border-border/70 bg-secondary/35 px-3 py-2.5">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">{from || t("search.from")} → {to || t("search.to")}</p>
-          <p className="text-[11px] text-muted-foreground">{formatDateLocalized(date, locale === "en" ? "en" : "zh-CN")}</p>
-        </div>
-      </div>
-
       {/* Station inputs */}
-      <div className="mb-4 grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-end">
+      <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2 sm:gap-2.5">
         <div className="flex-1 space-y-1.5">
           <label className="text-xs font-medium text-muted-foreground">{t("search.from")}</label>
           <div className="relative">
@@ -90,7 +83,7 @@ export function SearchForm({ onSearch, loading }: Props) {
           variant="ghost"
           size="icon"
           onClick={handleSwap}
-          className="shrink-0 justify-self-center border border-border/70 bg-card/65 text-muted-foreground hover:bg-primary/10 hover:text-primary md:mb-0.5"
+          className="h-9 w-9 shrink-0 justify-self-center border border-border/70 bg-card/65 text-muted-foreground hover:bg-primary/10 hover:text-primary sm:h-10 sm:w-10"
         >
           <ArrowLeftRight className="h-4 w-4" />
         </Button>
@@ -106,14 +99,14 @@ export function SearchForm({ onSearch, loading }: Props) {
       </div>
 
       {/* Date row */}
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end">
+      <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2 sm:gap-2.5">
         <div className="flex-1 space-y-1.5">
           <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
             <CalendarDays className="h-3.5 w-3.5" />{t("search.departDate")}
           </label>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} min={getToday()} />
         </div>
-        <div className="flex flex-wrap gap-1.5 lg:mb-0.5">
+        <div className="flex flex-wrap gap-1.5">
           <Button
             variant={date === getToday() ? "default" : "outline"}
             size="sm"
@@ -132,7 +125,7 @@ export function SearchForm({ onSearch, loading }: Props) {
       </div>
 
       {/* Train type filter */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
         <span className="text-xs text-muted-foreground">{t("search.trainType")}</span>
         {TRAIN_TYPES.map((tt) => (
           <button
@@ -155,18 +148,16 @@ export function SearchForm({ onSearch, loading }: Props) {
       <Button
         onClick={handleSearch}
         disabled={!from.trim() || !to.trim() || loading}
-        className="w-full gap-2"
+        className="h-11 w-full gap-2 text-base sm:h-12"
         size="lg"
       >
         <Search className="h-4 w-4" />
         {loading ? t("search.searching") : t("search.btn.search")}
       </Button>
 
-      {date && (
-        <p className="mt-2 text-center text-[11px] text-muted-foreground">
-          {formatDateLocalized(date, locale === "en" ? "en" : "zh-CN")}
-        </p>
-      )}
+      <p className="mt-2 text-center text-[11px] text-muted-foreground">
+        {formatDateLocalized(date, locale === "en" ? "en" : "zh-CN")}
+      </p>
     </motion.div>
   );
 }

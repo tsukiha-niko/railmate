@@ -48,13 +48,14 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
 
   const currentStageIndex = resolveStageIndex(message.progress?.current_message);
   const latestDetail = recentEvents[recentEvents.length - 1]?.detail || null;
+  const isProgressOnly = !isUser && message.status === "pending" && !message.content;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, delay: Math.min(index * 0.05, 0.3) }}
-      className={cn("flex max-w-full gap-2.5 sm:gap-3", isUser ? "flex-row-reverse" : "flex-row")}
+      className={cn("flex w-full gap-2.5 sm:gap-3", isUser ? "flex-row-reverse" : "flex-row")}
     >
       <div
         className={cn(
@@ -65,7 +66,14 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
         {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
       </div>
 
-      <div className={cn("flex max-w-[90%] flex-col gap-1.5 sm:max-w-[86%] lg:max-w-[80%]", isUser ? "items-end" : "items-start")}>
+      <div
+        className={cn(
+          "flex min-w-0 flex-col gap-1.5 overflow-x-hidden",
+          isUser
+            ? "ml-auto max-w-[82%] items-end sm:max-w-[74%]"
+            : "w-full max-w-[980px] items-start",
+        )}
+      >
         {!isUser && message.tool_calls && message.tool_calls.length > 0 && (
           <div className="mb-1 flex flex-wrap gap-1.5">
             {message.tool_calls.map((tc, i) => (
@@ -79,16 +87,18 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
 
         <div
           className={cn(
-            "rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed sm:px-4",
+            "text-sm leading-relaxed",
             isUser
-              ? "rounded-br-md bg-gradient-to-br from-primary to-primary/85 text-primary-foreground whitespace-pre-wrap shadow-[0_8px_22px_-18px_color-mix(in_oklab,var(--primary)_80%,transparent)]"
-              : "rounded-bl-md border border-border/70 bg-card/75 text-secondary-foreground",
+              ? "max-w-[min(840px,100%)] rounded-2xl rounded-br-md bg-gradient-to-br from-primary to-primary/85 px-3.5 py-2.5 text-primary-foreground whitespace-pre-wrap shadow-[0_8px_22px_-18px_color-mix(in_oklab,var(--primary)_80%,transparent)] sm:px-4"
+              : isProgressOnly
+                ? "w-full max-w-full"
+                : "max-w-[min(840px,100%)] rounded-2xl rounded-bl-md border border-border/70 bg-card/75 px-3.5 py-2.5 text-secondary-foreground sm:px-4",
           )}
         >
           {isUser ? (
             message.content
-          ) : message.status === "pending" && !message.content ? (
-            <div className="w-[min(78vw,420px)] min-w-[250px]">
+          ) : isProgressOnly ? (
+            <div className="w-full max-w-[620px] min-w-0">
               <button
                 type="button"
                 onClick={() => setProgressExpanded(message.id, !progressExpanded)}
