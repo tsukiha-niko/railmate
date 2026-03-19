@@ -5,11 +5,11 @@ import { motion } from "framer-motion";
 import {
   MapPin, Navigation, Satellite, Edit3, TrendingUp, Check,
   Settings, Bot, Eye, EyeOff, Loader2, LogIn, LogOut,
-  RefreshCw, ShieldOff, Ticket,
+  RefreshCw, ShieldCheck, ShieldOff, Ticket,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useUserContextStore } from "@/store/userContextStore";
@@ -23,6 +23,7 @@ import {
 import { useChatStore } from "@/store/chatStore";
 import { useTheme } from "@/lib/theme/theme";
 import { useI18n } from "@/lib/i18n/i18n";
+import { getTicketingCapabilities } from "@/services/ticketing";
 
 export default function SettingsPage() {
   const location = useUserContextStore((s) => s.location);
@@ -47,6 +48,7 @@ export default function SettingsPage() {
   const [qrMsg, setQrMsg] = useState("");
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const [railLoading, setRailLoading] = useState(false);
+  const [demoModeMessage, setDemoModeMessage] = useState("");
 
   const clearQrPoll = useCallback(() => {
     if (pollTimer.current) { clearInterval(pollTimer.current); pollTimer.current = null; }
@@ -60,6 +62,12 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => { loadRailStatus(); }, [loadRailStatus]);
+
+  useEffect(() => {
+    getTicketingCapabilities()
+      .then((cap) => setDemoModeMessage(cap.message))
+      .catch(() => setDemoModeMessage(""));
+  }, []);
 
   const handleStartQR = useCallback(async () => {
     clearQrPoll();
@@ -201,12 +209,13 @@ export default function SettingsPage() {
         ? t("settings.location.gps")
         : t("settings.location.manual")
     : null;
+  const sectionContentClass = "space-y-3 px-4 py-4 sm:px-5 sm:py-5";
 
   return (
-    <div className="mx-auto flex w-full max-w-[1320px] flex-1 flex-col overflow-y-auto px-2 pb-24 pt-2 sm:px-4 sm:pb-6 sm:pt-4 lg:px-6">
-      <div className="space-y-3 sm:space-y-4">
+    <div className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col overflow-y-auto px-3 pb-24 pt-2 sm:px-5 sm:pb-6 sm:pt-4 lg:px-7 xl:px-8">
+      <div className="space-y-4 xl:space-y-5">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="grid gap-3 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,1fr)] xl:items-stretch xl:gap-4">
+          <div className="grid gap-3 xl:grid-cols-[minmax(0,1.5fr)_minmax(300px,1fr)] xl:items-stretch xl:gap-4">
             <Card className="h-full border-border/70 bg-gradient-to-br from-primary/[0.1] via-card/90 to-card/75">
               <CardContent className="flex h-full flex-col justify-center p-4 sm:p-5">
                 <h1 className="text-xl font-bold sm:text-2xl">{t("settings.title")}</h1>
@@ -244,13 +253,11 @@ export default function SettingsPage() {
             className="xl:col-span-7 xl:h-full"
           >
             <Card className="h-full">
-              <CardHeader className="px-4 py-4 sm:px-5 sm:py-4">
-                <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+              <CardContent className={sectionContentClass}>
+                <div className="flex items-center gap-2 text-sm font-semibold sm:text-base">
                   <MapPin className="h-4 w-4 text-primary" />
                   {t("settings.currentLocation")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
+                </div>
                 {location ? (
                   <div className="flex items-start gap-3 rounded-xl border border-border/70 bg-secondary/30 p-3">
                     <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
@@ -333,13 +340,11 @@ export default function SettingsPage() {
             className="xl:col-span-5 xl:h-full"
           >
             <Card className="h-full">
-              <CardHeader className="px-4 py-4 sm:px-5 sm:py-4">
-                <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+              <CardContent className={sectionContentClass}>
+                <div className="flex items-center gap-2 text-sm font-semibold sm:text-base">
                   <Settings className="h-4 w-4 text-primary" />
                   {t("settings.appearance")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
+                </div>
                 <div className="space-y-1.5">
                   <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">{t("settings.theme")}</p>
                   <div className="grid grid-cols-3 gap-1.5">
@@ -373,13 +378,11 @@ export default function SettingsPage() {
         <div className="grid gap-3 xl:grid-cols-2 xl:items-stretch xl:gap-4">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="xl:h-full">
             <Card className="h-full">
-              <CardHeader className="px-4 py-4 sm:px-5 sm:py-4">
-                <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+              <CardContent className={sectionContentClass}>
+                <div className="flex items-center gap-2 text-sm font-semibold sm:text-base">
                   <TrendingUp className="h-4 w-4 text-primary" />
                   {t("settings.preference")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
+                </div>
                 <div className="grid gap-1.5">
                   {PREFS.map((p) => (
                     <button
@@ -403,13 +406,11 @@ export default function SettingsPage() {
 
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }} className="xl:h-full">
             <Card className="h-full">
-              <CardHeader className="px-4 py-4 sm:px-5 sm:py-4">
-                <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+              <CardContent className={sectionContentClass}>
+                <div className="flex items-center gap-2 text-sm font-semibold sm:text-base">
                   <Bot className="h-4 w-4 text-primary" />
                   {t("settings.tripMode")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
+                </div>
                 <div className="grid gap-1.5">
                   {MODES.map((mode) => (
                     <button
@@ -434,21 +435,65 @@ export default function SettingsPage() {
 
         <Separator className="my-1" />
 
-        <div className="grid gap-3 2xl:grid-cols-12 2xl:items-stretch 2xl:gap-4">
+        <div className="grid gap-3 xl:grid-cols-12 xl:items-stretch xl:gap-4">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.155 }}
+            className="xl:col-span-12"
+          >
+            <Card className="overflow-hidden border-border/70 bg-gradient-to-br from-primary/[0.08] via-card/92 to-card/80">
+              <CardContent className="relative p-4 sm:p-5">
+                <div className="pr-[10.5rem] sm:pr-[12rem]">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <ShieldCheck className="h-5 w-5 text-primary" />
+                      <h3 className="text-base font-semibold">{t("settings.demoMode.title")}</h3>
+                      <Badge variant="secondary">{t("settings.demoMode.locked")}</Badge>
+                    </div>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">{t("settings.demoMode.desc")}</p>
+                  </div>
+                </div>
+
+                <div className="absolute top-4 right-4 z-10 inline-flex items-center gap-3 rounded-full border border-primary/20 bg-background/95 px-3 py-2 shadow-sm sm:top-5 sm:right-5">
+                  <span className="text-sm font-medium">{t("settings.demoMode.switchLabel")}</span>
+                  <div className="relative h-7 w-12 rounded-full bg-primary shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14)]">
+                    <div className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-primary shadow-sm">
+                      <Check className="h-3 w-3" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  <div className="rounded-2xl border border-border/65 bg-card/70 p-3.5 xl:min-h-[132px]">
+                    <p className="text-xs text-muted-foreground">{t("settings.demoMode.effect.buy")}</p>
+                    <p className="mt-1 text-sm font-medium leading-6">{t("settings.demoMode.effect.buyDesc")}</p>
+                  </div>
+                  <div className="rounded-2xl border border-border/65 bg-card/70 p-3.5 xl:min-h-[132px]">
+                    <p className="text-xs text-muted-foreground">{t("settings.demoMode.effect.refund")}</p>
+                    <p className="mt-1 text-sm font-medium leading-6">{t("settings.demoMode.effect.refundDesc")}</p>
+                  </div>
+                  <div className="rounded-2xl border border-border/65 bg-card/70 p-3.5 md:col-span-2 xl:col-span-1 xl:min-h-[132px]">
+                    <p className="text-xs text-muted-foreground">{t("settings.demoMode.effect.debug")}</p>
+                    <p className="mt-1 text-sm font-medium leading-6">{demoModeMessage || t("settings.demoMode.effect.debugDesc")}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.16 }}
-            className="2xl:col-span-7 2xl:h-full"
+            className="xl:col-span-7 xl:h-full"
           >
             <Card className="h-full">
-              <CardHeader className="px-4 py-4 sm:px-5 sm:py-4">
-                <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+              <CardContent className={sectionContentClass}>
+                <div className="flex items-center gap-2 text-sm font-semibold sm:text-base">
                   <Ticket className="h-4 w-4 text-primary" />
                   {locale === "en" ? "12306 Account" : "12306 账户登录"}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
+                </div>
                 <p className="text-xs leading-relaxed text-muted-foreground">{t("settings.railAccount.desc")}</p>
 
                 {rail12306?.logged_in ? (
@@ -543,16 +588,14 @@ export default function SettingsPage() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.18 }}
-            className="2xl:col-span-5 2xl:h-full"
+            className="xl:col-span-5 xl:h-full"
           >
             <Card className="h-full">
-              <CardHeader className="px-4 py-4 sm:px-5 sm:py-4">
-                <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+              <CardContent className={sectionContentClass}>
+                <div className="flex items-center gap-2 text-sm font-semibold sm:text-base">
                   <Bot className="h-4 w-4 text-primary" />
                   {locale === "en" ? "AI Configuration" : "AI 模型配置"}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
+                </div>
                 <div className="rounded-xl border border-border/70 bg-card/55 px-3 py-2.5">
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     <span className="text-muted-foreground">{locale === "en" ? "Status:" : "状态："}</span>

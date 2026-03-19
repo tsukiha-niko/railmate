@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from "react";
 
 export type ThemeMode = "system" | "light" | "dark";
 
@@ -12,6 +12,7 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 const STORAGE_KEY = "railmate.theme";
+const themeListeners = new Set<() => void>();
 
 function getSystemPrefersDark() {
   if (typeof window === "undefined") return false;
@@ -32,21 +33,40 @@ function readStoredTheme(): ThemeMode | null {
   return v === "system" || v === "light" || v === "dark" ? v : null;
 }
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Always start with "system" so SSR and first client render match
-  const [theme, setThemeState] = useState<ThemeMode>("system");
+function subscribeTheme(callback: () => void) {
+  themeListeners.add(callback);
 
-  // After mount, sync from localStorage if different
-  useEffect(() => {
-    const stored = readStoredTheme();
-    if (stored && stored !== "system") setThemeState(stored);
-    // Apply theme class immediately on mount (even for "system")
-    applyThemeClass(stored ?? "system");
-  }, []);
+  if (typeof window === "undefined") {
+    return () => {
+      themeListeners.delete(callback);
+    };
+  }
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === STORAGE_KEY) callback();
+  };
+
+  window.addEventListener("storage", handleStorage);
+
+  return () => {
+    themeListeners.delete(callback);
+    window.removeEventListener("storage", handleStorage);
+  };
+}
+
+function emitThemeChange() {
+  themeListeners.forEach((listener) => listener());
+}
+
+function getThemeSnapshot(): ThemeMode {
+  return readStoredTheme() ?? "system";
+}
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const theme = useSyncExternalStore<ThemeMode>(subscribeTheme, getThemeSnapshot, () => "system");
 
   useEffect(() => {
     applyThemeClass(theme);
-    window.localStorage.setItem(STORAGE_KEY, theme);
   }, [theme]);
 
   useEffect(() => {
@@ -59,7 +79,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => mql.removeEventListener?.("change", handler);
   }, [theme]);
 
-  const setTheme = useCallback((t: ThemeMode) => setThemeState(t), []);
+  const setTheme = useCallback((nextTheme: ThemeMode) => {
+    if (typeof window === "undefined") return;
+    if (window.localStorage.getItem(STORAGE_KEY) === nextTheme) return;
+    window.localStorage.setItem(STORAGE_KEY, nextTheme);
+    emitThemeChange();
+  }, []);
 
   const value = useMemo(() => ({ theme, setTheme }), [theme, setTheme]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

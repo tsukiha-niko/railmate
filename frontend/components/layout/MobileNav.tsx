@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageSquare, Search, Settings } from "lucide-react";
+import { MessageSquare, Search, Settings, Ticket } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { useI18n } from "@/lib/i18n/i18n";
 
 const TABS = [
   { href: "/", labelKey: "nav.ai", icon: MessageSquare },
   { href: "/search", labelKey: "nav.search", icon: Search },
+  { href: "/trips", labelKey: "nav.trips", icon: Ticket },
   { href: "/settings", labelKey: "nav.settings", icon: Settings },
 ];
 

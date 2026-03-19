@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from "react";
 
 export type Locale = "zh-CN" | "en";
 
@@ -15,6 +15,7 @@ type I18nContextValue = {
 const I18nContext = createContext<I18nContextValue | null>(null);
 
 const STORAGE_KEY = "railmate.locale";
+const localeListeners = new Set<() => void>();
 
 function format(str: string, vars?: Record<string, string | number>) {
   if (!vars) return str;
@@ -27,6 +28,35 @@ function readStoredLocale(): Locale | null {
   return v === "zh-CN" || v === "en" ? v : null;
 }
 
+function subscribeLocale(callback: () => void) {
+  localeListeners.add(callback);
+
+  if (typeof window === "undefined") {
+    return () => {
+      localeListeners.delete(callback);
+    };
+  }
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === STORAGE_KEY) callback();
+  };
+
+  window.addEventListener("storage", handleStorage);
+
+  return () => {
+    localeListeners.delete(callback);
+    window.removeEventListener("storage", handleStorage);
+  };
+}
+
+function emitLocaleChange() {
+  localeListeners.forEach((listener) => listener());
+}
+
+function getLocaleSnapshot(defaultLocale: Locale): Locale {
+  return readStoredLocale() ?? defaultLocale;
+}
+
 export function I18nProvider({
   children,
   messages,
@@ -36,22 +66,23 @@ export function I18nProvider({
   messages: Record<Locale, Messages>;
   defaultLocale?: Locale;
 }) {
-  // Always start with defaultLocale so SSR and first client render match
-  const [locale, setLocaleState] = useState<Locale>(defaultLocale);
-
-  // After mount, sync from localStorage if different
-  useEffect(() => {
-    const stored = readStoredLocale();
-    if (stored && stored !== defaultLocale) setLocaleState(stored);
-  }, [defaultLocale]);
+  const locale = useSyncExternalStore<Locale>(
+    subscribeLocale,
+    () => getLocaleSnapshot(defaultLocale),
+    () => defaultLocale,
+  );
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, locale);
     document.documentElement.lang = locale;
     document.documentElement.dataset.locale = locale;
   }, [locale]);
 
-  const setLocale = useCallback((l: Locale) => setLocaleState(l), []);
+  const setLocale = useCallback((nextLocale: Locale) => {
+    if (typeof window === "undefined") return;
+    if (window.localStorage.getItem(STORAGE_KEY) === nextLocale) return;
+    window.localStorage.setItem(STORAGE_KEY, nextLocale);
+    emitLocaleChange();
+  }, []);
 
   const t = useCallback(
     (key: string, vars?: Record<string, string | number>) => {

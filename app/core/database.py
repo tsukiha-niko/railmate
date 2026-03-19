@@ -5,7 +5,7 @@
 
 from typing import Generator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel
 
@@ -34,9 +34,118 @@ def init_db() -> None:
     创建所有表结构
     """
     # 导入所有模型以确保它们被注册
-    from app.models import station, train  # noqa: F401
+    from app.models import station, ticketing, train  # noqa: F401
     
     SQLModel.metadata.create_all(engine)
+    _run_schema_migrations()
+
+
+def _run_schema_migrations() -> None:
+    """
+    轻量级数据库迁移。
+
+    当前仅处理 ticket_orders 历史表结构与新结构不兼容的问题：
+    - 旧表字段：order_id / travel_date / price / provider / note / booked_at
+    - 新表字段：order_no / booking_reference / run_date / fare_amount / order_source / order_note ...
+    """
+    if not settings.database_url.startswith("sqlite"):
+        return
+
+    inspector = inspect(engine)
+    if "ticket_orders" not in inspector.get_table_names():
+        return
+
+    columns = {col["name"] for col in inspector.get_columns("ticket_orders")}
+    expected_columns = {
+        "order_no",
+        "booking_reference",
+        "demo_mode",
+        "run_date",
+        "seat_label",
+        "fare_amount",
+        "order_source",
+    }
+    if expected_columns.issubset(columns):
+        return
+
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE ticket_orders RENAME TO ticket_orders_legacy"))
+        SQLModel.metadata.create_all(bind=conn)
+
+        legacy_columns = {
+            row[1]
+            for row in conn.execute(text("PRAGMA table_info(ticket_orders_legacy)")).fetchall()
+        }
+        if "order_id" in legacy_columns:
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO ticket_orders (
+                        id,
+                        order_no,
+                        booking_reference,
+                        user_id,
+                        account_username,
+                        passenger_name,
+                        demo_mode,
+                        status,
+                        train_no,
+                        train_type,
+                        run_date,
+                        from_station,
+                        to_station,
+                        departure_time,
+                        arrival_time,
+                        duration_minutes,
+                        seat_type,
+                        seat_label,
+                        seat_code,
+                        coach_no,
+                        seat_no,
+                        fare_amount,
+                        currency,
+                        order_source,
+                        order_note,
+                        created_at,
+                        updated_at,
+                        refunded_at,
+                        refund_note
+                    )
+                    SELECT
+                        id,
+                        order_id,
+                        order_id,
+                        user_id,
+                        NULL,
+                        passenger_name,
+                        1,
+                        status,
+                        train_no,
+                        NULL,
+                        travel_date,
+                        from_station,
+                        to_station,
+                        departure_time,
+                        arrival_time,
+                        duration_minutes,
+                        seat_type,
+                        seat_type,
+                        seat_type,
+                        NULL,
+                        NULL,
+                        COALESCE(price, 0),
+                        'CNY',
+                        COALESCE(provider, 'offline_demo'),
+                        note,
+                        created_at,
+                        updated_at,
+                        refunded_at,
+                        CASE WHEN status = 'refunded' THEN note ELSE NULL END
+                    FROM ticket_orders_legacy
+                    """
+                )
+            )
+        conn.execute(text("DROP TABLE ticket_orders_legacy"))
 
 
 def get_session() -> Generator[Session, None, None]:

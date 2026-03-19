@@ -4,6 +4,7 @@
 """
 
 from .station import Station
+from .ticketing import TicketOrder
 from .train import Train, TrainStop
 
-__all__ = ["Station", "Train", "TrainStop"]
+__all__ = ["Station", "Train", "TrainStop", "TicketOrder"]

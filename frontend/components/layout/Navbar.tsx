@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageSquare, Search, Settings, Train, Menu, MapPin } from "lucide-react";
+import { MessageSquare, Search, Settings, Train, Menu, MapPin, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUIStore } from "@/store/uiStore";
 import { useUserContextStore } from "@/store/userContextStore";
@@ -12,6 +12,7 @@ import { useI18n } from "@/lib/i18n/i18n";
 const NAV_ITEMS = [
   { href: "/", labelKey: "nav.ai", icon: MessageSquare },
   { href: "/search", labelKey: "nav.search", icon: Search },
+  { href: "/trips", labelKey: "nav.trips", icon: Ticket },
   { href: "/settings", labelKey: "nav.settings", icon: Settings },
 ];
 
