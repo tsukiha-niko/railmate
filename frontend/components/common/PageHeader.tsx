@@ -20,24 +20,26 @@ export function PageHeader({ title, subtitle, badges, action, children }: PageHe
     <Card
       variant="outlined"
       sx={{
-        borderColor: "divider",
+        borderColor: (th) => `${th.palette.divider}70`,
+        borderRadius: 5,
         background: (t) =>
-          `linear-gradient(135deg, ${t.palette.primary.main}14 0%, ${t.palette.background.paper}E8 50%, ${t.palette.background.paper}C0 100%)`,
+          `linear-gradient(135deg, ${t.palette.primary.main}0C 0%, ${t.palette.background.paper}E8 50%, ${t.palette.background.paper}C8 100%)`,
+        boxShadow: "var(--shadow-xs)",
       }}
     >
-      <CardContent sx={{ p: { xs: 2, sm: 2.5 }, "&:last-child": { pb: { xs: 2, sm: 2.5 } } }}>
+      <CardContent sx={{ p: { xs: 2.5, sm: 3 }, "&:last-child": { pb: { xs: 2.5, sm: 3 } } }}>
         <Box sx={{ display: "flex", flexDirection: { xs: "column", lg: "row" }, gap: 2, justifyContent: "space-between", alignItems: { lg: "flex-start" } }}>
           <Box>
-            <Typography variant="h5" fontWeight={800}>{title}</Typography>
+            <Typography variant="h5" fontWeight={800} sx={{ letterSpacing: "-0.01em" }}>{title}</Typography>
             {subtitle && (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
                 {subtitle}
               </Typography>
             )}
             {badges && badges.length > 0 && (
               <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mt: 1.5 }}>
                 {badges.map((b) => (
-                  <Chip key={b} label={b} size="small" variant="outlined" />
+                  <Chip key={b} label={b} size="small" variant="outlined" sx={{ borderRadius: 2.5 }} />
                 ))}
               </Box>
             )}

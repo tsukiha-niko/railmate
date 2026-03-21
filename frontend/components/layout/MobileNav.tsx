@@ -27,8 +27,8 @@ export function MobileNav() {
         zIndex: 40,
         borderTop: 1,
         borderColor: "divider",
-        bgcolor: (th) => `${th.palette.background.paper}DA`,
-        backdropFilter: "blur(16px)",
+        bgcolor: (th) => `${th.palette.background.paper}D8`,
+        backdropFilter: "blur(20px) saturate(1.3)",
         pb: "env(safe-area-inset-bottom)",
       }}
     >
@@ -41,7 +41,12 @@ export function MobileNav() {
           "& .MuiBottomNavigationAction-root": {
             minWidth: 0,
             color: "text.secondary",
+            transition: "color 0.2s ease",
             "&.Mui-selected": { color: "primary.main" },
+            "& .MuiBottomNavigationAction-label": {
+              fontSize: "0.6875rem",
+              "&.Mui-selected": { fontSize: "0.6875rem" },
+            },
           },
         }}
       >

@@ -136,24 +136,24 @@ export default function TrainDetailPage() {
   };
 
   return (
-    <Box sx={{ mx: "auto", width: "100%", maxWidth: "72rem", display: "flex", flexDirection: "column", gap: 2, overflowY: "auto", px: { xs: 2, sm: 3, lg: 4 }, py: 2 }}>
-      <Button variant="outlined" size="small" onClick={handleBack} startIcon={<ArrowLeft size={16} />} sx={{ alignSelf: "flex-start", borderRadius: 5 }}>
+    <Box sx={{ mx: "auto", width: "100%", maxWidth: "72rem", display: "flex", flexDirection: "column", gap: 2.5, overflowY: "auto", px: { xs: 2, sm: 3, lg: 4 }, py: 2.5 }}>
+      <Button variant="outlined" size="small" onClick={handleBack} startIcon={<ArrowLeft size={16} />} sx={{ alignSelf: "flex-start", borderRadius: 999 }}>
         {t("train.backToSearch")}
       </Button>
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <Card variant="outlined">
-          <CardContent sx={{ pt: 2.5, pb: 2 }}>
-            <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5, mb: 2 }}>
-              <span className={cn("inline-flex items-center rounded-lg px-3 py-1.5 text-base font-bold text-white shadow-sm", getTrainTypeColor(trainType))}>{trainNo}</span>
-              <Chip label={trainTypeLabel} variant="outlined" size="small" />
+        <Card variant="outlined" sx={{ borderRadius: 5, borderColor: (th) => `${th.palette.divider}70`, boxShadow: "var(--shadow-xs)" }}>
+          <CardContent sx={{ pt: 3, pb: 2.5 }}>
+            <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5, mb: 2.5 }}>
+              <span className={cn("inline-flex items-center rounded-xl px-3 py-1.5 text-base font-bold text-white shadow-sm", getTrainTypeColor(trainType))}>{trainNo}</span>
+              <Chip label={trainTypeLabel} variant="outlined" size="small" sx={{ borderRadius: 2.5 }} />
               <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 0.75, color: "text.secondary" }}>
                 <Calendar size={14} /><Typography variant="caption">{formatDateLocalized(date, dateLocale)}</Typography>
               </Box>
             </Box>
 
             {(fromStation && toStation) || (originStop && terminalStop) ? (
-              <Box sx={{ display: "grid", gridTemplateColumns: { md: "1fr auto 1fr" }, alignItems: "center", gap: 2, borderRadius: 3, border: 1, borderColor: "divider", bgcolor: "action.hover", px: 2, py: 2 }}>
+              <Box sx={{ display: "grid", gridTemplateColumns: { md: "1fr auto 1fr" }, alignItems: "center", gap: 2, borderRadius: 4, border: 1, borderColor: (th: any) => `${th.palette.divider}50`, bgcolor: (th: any) => `${th.palette.action.hover}40`, px: 3, py: 3 }}>
                 <Box sx={{ textAlign: "center" }}>
                   <Typography variant="h6" fontWeight={700}>{fromStation || originStop?.station_name}</Typography>
                   {originStop && <Typography variant="body2" color="text.secondary" sx={{ fontVariantNumeric: "tabular-nums" }}>{originStop.departure_time !== "--" ? originStop.departure_time : ""}</Typography>}
@@ -178,35 +178,48 @@ export default function TrainDetailPage() {
 
       {fromStation && toStation && (
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
-          <Card variant="outlined">
-            <CardContent sx={{ display: "flex", flexDirection: "column", gap: 1.5, pt: 2 }}>
+          <Card variant="outlined" sx={{ borderRadius: 5, borderColor: (th) => `${th.palette.divider}70`, boxShadow: "var(--shadow-xs)" }}>
+            <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2.5 }}>
               <Typography variant="subtitle2" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <span>¥</span>{t("train.price.title")}
               </Typography>
-              <Alert severity="info" variant="outlined" icon={<Sparkles size={16} />} sx={{ py: 0.5 }}>{t("booking.detailHint")}</Alert>
+              <Alert severity="info" variant="outlined" icon={<Sparkles size={16} />} sx={{ py: 0.5, borderRadius: 3 }}>{t("booking.detailHint")}</Alert>
               {pricesLoading ? (
-                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 1 }}>
-                  {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} variant="rounded" height={84} />)}
+                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 1.5 }}>
+                  {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} variant="rounded" height={96} sx={{ borderRadius: 4 }} />)}
                 </Box>
               ) : prices && Object.values(prices).some((v) => v != null) ? (
-                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 1 }}>
+                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 1.5 }}>
                   {seatCards.map(({ key, label, price }) => (
-                    <Card key={key} variant="outlined" sx={{ "&:hover": { borderColor: "primary.main", boxShadow: "0 16px 36px -28px rgba(37,99,235,0.45)" } }}>
-                      <Button onClick={() => handleSeatSelect({ key, label, price })} sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 0.5, minHeight: 96, width: "100%", textTransform: "none" }}>
+                    <Card
+                      key={key}
+                      variant="outlined"
+                      sx={{
+                        borderRadius: 4,
+                        borderColor: (th) => `${th.palette.divider}60`,
+                        transition: "all 0.2s ease",
+                        "&:hover": {
+                          borderColor: "primary.main",
+                          boxShadow: "var(--shadow-md)",
+                          transform: "translateY(-2px)",
+                        },
+                      }}
+                    >
+                      <Button onClick={() => handleSeatSelect({ key, label, price })} sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 0.75, minHeight: 100, width: "100%", textTransform: "none", borderRadius: 4 }}>
                         <Typography variant="caption" color="text.secondary" noWrap>{label}</Typography>
                         <Typography variant="h6" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums" }}>{formatPrice(price)}</Typography>
-                        <Typography variant="caption" color="primary">{t("booking.selectSeat")}</Typography>
+                        <Typography variant="caption" color="primary" fontWeight={600}>{t("booking.selectSeat")}</Typography>
                       </Button>
                     </Card>
                   ))}
                 </Box>
               ) : (
-                <Box sx={{ textAlign: "center", py: 2 }}>
+                <Box sx={{ textAlign: "center", py: 3 }}>
                   <Typography variant="body2" color="text.secondary">{t("train.price.unavailable")}</Typography>
                   <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>{priceMeta?.requires_login ? t("train.price.needLogin") : t("train.price.partial")}</Typography>
-                  <Box sx={{ display: "flex", justifyContent: "center", gap: 1, mt: 1.5 }}>
-                    {priceMeta?.requires_login && <Button variant="contained" size="small" onClick={() => router.push("/settings")}>{t("train.price.goLogin")}</Button>}
-                    <Button variant="outlined" size="small" onClick={() => window.location.reload()}>{t("train.price.retry")}</Button>
+                  <Box sx={{ display: "flex", justifyContent: "center", gap: 1, mt: 2 }}>
+                    {priceMeta?.requires_login && <Button variant="contained" size="small" onClick={() => router.push("/settings")} sx={{ borderRadius: 3 }}>{t("train.price.goLogin")}</Button>}
+                    <Button variant="outlined" size="small" onClick={() => window.location.reload()} sx={{ borderRadius: 3 }}>{t("train.price.retry")}</Button>
                   </Box>
                 </Box>
               )}
@@ -216,7 +229,7 @@ export default function TrainDetailPage() {
       )}
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-        <Card variant="outlined">
+        <Card variant="outlined" sx={{ borderRadius: 5, borderColor: (th) => `${th.palette.divider}70`, boxShadow: "var(--shadow-xs)" }}>
           <CardHeader title={<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><Clock size={16} style={{ color: "var(--primary)" }} /><Typography variant="subtitle2">{t("train.schedule")}</Typography></Box>} />
           <CardContent>
             {loading ? (
@@ -224,7 +237,7 @@ export default function TrainDetailPage() {
             ) : error ? (
               <Box sx={{ textAlign: "center", py: 4 }}>
                 <Typography variant="body2" color="error">{error}</Typography>
-                <Button variant="outlined" size="small" onClick={() => window.location.reload()} sx={{ mt: 1 }}>{t("common.retry")}</Button>
+                <Button variant="outlined" size="small" onClick={() => window.location.reload()} sx={{ mt: 1.5, borderRadius: 3 }}>{t("common.retry")}</Button>
               </Box>
             ) : stops.length > 0 ? (
               <TrainTimeline stops={stops} highlightFrom={fromStation} highlightTo={toStation} />

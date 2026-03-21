@@ -69,7 +69,7 @@ export function TransferPlanCard({ plan, index, fallbackDate, returnTo }: Transf
 
   return (
     <motion.div initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2, delay: index * 0.08 }}>
-      <Card variant="outlined" sx={{ bgcolor: "background.paper", p: { xs: 1.5, sm: 2 } }}>
+      <Card variant="outlined" sx={{ bgcolor: "background.paper", p: { xs: 2, sm: 2.5 }, borderRadius: 5, borderColor: (th: any) => `${th.palette.divider}60`, boxShadow: "var(--shadow-xs)" }}>
         {/* Header */}
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 2, mb: 1 }}>
           <Box sx={{ display: "flex", alignItems: "baseline", gap: 1 }}>
@@ -109,7 +109,7 @@ export function TransferPlanCard({ plan, index, fallbackDate, returnTo }: Transf
 
             return (
               <Box key={`${leg.train_no}:${leg.departure_time}:${i}`}>
-                <Card variant="outlined" sx={{ bgcolor: "action.hover", "&:hover": { borderColor: "primary.main" } }}>
+                <Card variant="outlined" sx={{ bgcolor: "action.hover", borderRadius: 4, borderColor: (th: any) => `${th.palette.divider}60`, transition: "all 0.2s ease", "&:hover": { borderColor: "primary.main" } }}>
                   <CardActionArea component={Link} href={legHref} sx={{ px: 1.5, py: 1 }}>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
                       <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0.5, width: 72 }}>

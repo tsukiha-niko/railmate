@@ -27,8 +27,8 @@ export function Navbar() {
       sx={{
         borderBottom: 1,
         borderColor: "divider",
-        bgcolor: (t) => `${t.palette.background.paper}B3`,
-        backdropFilter: "blur(16px)",
+        bgcolor: (th) => `${th.palette.background.paper}C8`,
+        backdropFilter: "blur(20px) saturate(1.3)",
         zIndex: 40,
       }}
     >
@@ -36,17 +36,21 @@ export function Navbar() {
         <Button
           onClick={() => setMobileSidebarOpen(true)}
           aria-label={pathname === "/" ? t("chat.sidebar.open") : `${t("nav.ai")} · ${t("chat.sidebar.open")}`}
-          startIcon={<Train size={18} />}
+          startIcon={<Train size={17} />}
           size="small"
           variant="outlined"
           sx={{
-            borderColor: "primary.main",
+            borderColor: (th) => `${th.palette.primary.main}40`,
             borderRadius: 3,
             fontWeight: 700,
             px: 1.5,
             color: "primary.main",
-            bgcolor: (th) => `${th.palette.primary.main}0D`,
-            "&:hover": { bgcolor: (th) => `${th.palette.primary.main}1A` },
+            bgcolor: (th) => `${th.palette.primary.main}0A`,
+            "&:hover": {
+              bgcolor: (th) => `${th.palette.primary.main}18`,
+              borderColor: "primary.main",
+            },
+            transition: "all 0.2s ease",
           }}
         >
           <Box component="span" sx={{ display: { xs: "none", sm: "inline" }, fontSize: "0.875rem" }}>
@@ -62,13 +66,13 @@ export function Navbar() {
                 display: "inline-flex",
                 gap: 0.5,
                 alignItems: "center",
-                borderRadius: 5,
+                borderRadius: 4,
                 border: 1,
-                borderColor: "divider",
-                bgcolor: (th) => `${th.palette.background.paper}B8`,
-                px: 1,
-                py: 0.75,
-                boxShadow: "0 18px 36px -28px rgba(15,23,42,0.55)",
+                borderColor: (th) => `${th.palette.divider}80`,
+                bgcolor: (th) => `${th.palette.background.paper}90`,
+                px: 0.75,
+                py: 0.5,
+                boxShadow: "var(--shadow-sm)",
                 overflowX: "auto",
                 "&::-webkit-scrollbar": { display: "none" },
                 scrollbarWidth: "none",
@@ -81,10 +85,10 @@ export function Navbar() {
                     key={item.href}
                     component={Link}
                     href={item.href}
-                    startIcon={<item.icon size={16} />}
+                    startIcon={<item.icon size={15} />}
                     size="small"
                     sx={{
-                      borderRadius: 4,
+                      borderRadius: 3,
                       px: 2,
                       py: 0.75,
                       fontWeight: 600,
@@ -92,10 +96,11 @@ export function Navbar() {
                       whiteSpace: "nowrap",
                       minWidth: "fit-content",
                       color: active ? "primary.main" : "text.secondary",
-                      bgcolor: active ? (th) => `${th.palette.primary.main}1A` : "transparent",
+                      bgcolor: active ? (th) => `${th.palette.primary.main}14` : "transparent",
                       "&:hover": {
                         bgcolor: active ? (th) => `${th.palette.primary.main}1A` : "action.hover",
                       },
+                      transition: "all 0.2s ease",
                     }}
                   >
                     {t(item.labelKey)}
@@ -110,17 +115,19 @@ export function Navbar() {
           <Chip
             component={Link}
             href="/settings"
-            icon={<MapPin size={14} />}
+            icon={<MapPin size={13} />}
             label={location.city}
             variant="outlined"
             size="small"
             clickable
             sx={{
               maxWidth: showTopbarNav ? "18vw" : "58vw",
-              borderColor: "divider",
+              borderColor: (th) => `${th.palette.divider}80`,
+              borderRadius: 3,
               color: "text.secondary",
               "& .MuiChip-icon": { color: "primary.main" },
-              "&:hover": { borderColor: "primary.main" },
+              "&:hover": { borderColor: "primary.main", bgcolor: (th) => `${th.palette.primary.main}0A` },
+              transition: "all 0.2s ease",
             }}
           />
         )}

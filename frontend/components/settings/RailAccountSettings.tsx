@@ -100,7 +100,7 @@ export function RailAccountSettings() {
   }, []);
 
   return (
-    <Card variant="outlined">
+    <Card variant="outlined" sx={{ borderRadius: 5 }}>
       <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2, p: { xs: 2, sm: 2.5 } }}>
         <SectionHeader icon={<Ticket />} title={locale === "en" ? "12306 Account" : "12306 账户登录"} />
         <Typography variant="caption" color="text.secondary">{t("settings.railAccount.desc")}</Typography>
@@ -132,7 +132,7 @@ export function RailAccountSettings() {
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {(qrStatus === "waiting" || qrStatus === "scanned") && qrImage && (
               <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1.5 }}>
-                <Box sx={{ position: "relative", borderRadius: 3, overflow: "hidden", border: 2, borderColor: qrStatus === "scanned" ? "warning.main" : "divider" }}>
+                <Box sx={{ position: "relative", borderRadius: 3.5, overflow: "hidden", border: 2, borderColor: qrStatus === "scanned" ? "warning.main" : "divider" }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={`data:image/png;base64,${qrImage}`} alt="12306 QR" style={{ display: "block", width: 180, height: 180, objectFit: "contain" }} />
                   {qrStatus === "scanned" && (

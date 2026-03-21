@@ -38,25 +38,37 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
   const seatAssignment = `${order.coach_no || "--"} ${t("booking.success.coach")} ${order.seat_no || "--"}`;
 
   return (
-    <Card variant="outlined" sx={{ position: "relative", overflow: "hidden", borderRadius: 6, opacity: isRefunded ? 0.92 : 1, transition: "opacity 0.3s" }}>
+    <Card
+      variant="outlined"
+      sx={{
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: 5,
+        borderColor: (th) => `${th.palette.divider}70`,
+        opacity: isRefunded ? 0.92 : 1,
+        transition: "all 0.3s ease",
+        boxShadow: "var(--shadow-xs)",
+        "&:hover": { boxShadow: "var(--shadow-sm)" },
+      }}
+    >
       {isRefunded && (
-        <Box sx={{ position: "absolute", right: -44, top: 18, zIndex: 10, transform: "rotate(34deg)", bgcolor: "action.disabledBackground", border: 1, borderColor: "divider", px: 5, py: 0.5 }}>
+        <Box sx={{ position: "absolute", right: -44, top: 20, zIndex: 10, transform: "rotate(34deg)", bgcolor: "action.disabledBackground", border: 1, borderColor: "divider", px: 5, py: 0.5, borderRadius: 1 }}>
           <Typography variant="caption" sx={{ fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "text.secondary" }}>
             {locale === "en" ? "Completed" : "已完成"}
           </Typography>
         </Box>
       )}
 
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: 1, borderColor: "divider", px: { xs: 2, sm: 2.5 }, height: 40 }}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: 1, borderColor: "divider", px: { xs: 2.5, sm: 3 }, height: 44 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
-          <Chip label={order.train_no} color="primary" size="small" sx={{ fontWeight: 700 }} />
-          {order.train_type && <Chip label={getTrainTypeLabel(order.train_type, fmtLocale)} size="small" variant="outlined" />}
-          <Chip label={isRefunded ? t("trips.status.refunded") : t("trips.status.booked")} size="small" color={isRefunded ? "warning" : "success"} />
+          <Chip label={order.train_no} color="primary" size="small" sx={{ fontWeight: 700, borderRadius: 999 }} />
+          {order.train_type && <Chip label={getTrainTypeLabel(order.train_type, fmtLocale)} size="small" variant="outlined" sx={{ borderRadius: 999 }} />}
+          <Chip label={isRefunded ? t("trips.status.refunded") : t("trips.status.booked")} size="small" color={isRefunded ? "warning" : "success"} sx={{ borderRadius: 999 }} />
         </Box>
-        {order.demo_mode && <Chip label={t("booking.demo.badge")} size="small" variant="outlined" />}
+        {order.demo_mode && <Chip label={t("booking.demo.badge")} size="small" variant="outlined" sx={{ borderRadius: 999 }} />}
       </Box>
 
-      <CardContent sx={{ px: { xs: 2, sm: 2.5 }, py: { xs: 2, sm: 2.5 } }}>
+      <CardContent sx={{ px: { xs: 2.5, sm: 3 }, py: { xs: 2.5, sm: 3 } }}>
         <Box sx={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: { xs: 2, lg: 3 } }}>
           <Box>
             <Typography variant="h4" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{order.departure_time || "--:--"}</Typography>
@@ -78,7 +90,7 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
           </Box>
         </Box>
 
-        <Divider sx={{ my: 2 }} />
+        <Divider sx={{ my: 2.5 }} />
 
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: { xs: 1.5, sm: 3 } }}>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
@@ -89,14 +101,14 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
             <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
               <Typography variant="body2" color="text.secondary" sx={{ width: 80, flexShrink: 0 }}>{t("trips.card.amount")}</Typography>
               <Typography variant="h6" fontWeight={800} color="warning.main">{formatPrice(order.fare_amount)}</Typography>
-              {isRefunded && <Chip label={locale === "en" ? "Refunded" : "已退回"} size="small" color="warning" />}
+              {isRefunded && <Chip label={locale === "en" ? "Refunded" : "已退回"} size="small" color="warning" sx={{ borderRadius: 999 }} />}
             </Box>
             <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}>
               <Typography variant="body2" color="text.secondary" sx={{ width: 80, flexShrink: 0, pt: 0.25 }}>{t("booking.orderNo")}</Typography>
               <Box>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                   <Typography variant="body2" fontWeight={600}>{order.order_no}</Typography>
-                  <IconButton size="small" onClick={() => copyValue(order.order_no, "order")} title={t("common.copy")}>
+                  <IconButton size="small" onClick={() => copyValue(order.order_no, "order")} title={t("common.copy")} sx={{ borderRadius: 2 }}>
                     {copied === "order" ? <Check size={14} style={{ color: "#10B981" }} /> : <Copy size={14} />}
                   </IconButton>
                 </Box>
@@ -107,8 +119,8 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
         </Box>
 
         {!isRefunded && (
-          <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2.5 }}>
-            <Button variant="outlined" onClick={() => onRefund(order)} disabled={refunding} startIcon={<Undo2 size={16} />} sx={{ minWidth: { sm: 160 } }}>
+          <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 3 }}>
+            <Button variant="outlined" onClick={() => onRefund(order)} disabled={refunding} startIcon={<Undo2 size={16} />} sx={{ minWidth: { sm: 160 }, borderRadius: 999 }}>
               {refunding ? t("trips.refund.processing") : t("trips.refund.action")}
             </Button>
           </Box>

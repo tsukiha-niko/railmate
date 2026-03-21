@@ -55,12 +55,21 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, delay: Math.min(index * 0.05, 0.3) }}
+      transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.25), ease: [0.22, 1, 0.36, 1] }}
     >
       <Box sx={{ display: "flex", width: "100%", gap: 1.5, flexDirection: isUser ? "row-reverse" : "row" }}>
-        <Avatar sx={{ width: 32, height: 32, bgcolor: isUser ? "primary.main" : undefined, background: isUser ? undefined : "linear-gradient(135deg, #3B82F6, #06B6D4)" }}>
+        <Avatar
+          sx={{
+            width: 34,
+            height: 34,
+            borderRadius: 3,
+            bgcolor: isUser ? "primary.main" : undefined,
+            background: isUser ? undefined : "linear-gradient(135deg, #3B82F6, #06B6D4)",
+            fontSize: "0.875rem",
+          }}
+        >
           {isUser ? <User size={16} /> : <Bot size={16} />}
         </Avatar>
 
@@ -68,7 +77,7 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
           {!isUser && message.tool_calls && message.tool_calls.length > 0 && (
             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mb: 0.5 }}>
               {message.tool_calls.map((tc, i) => (
-                <Chip key={i} icon={<Wrench size={10} />} label={tc.tool_name} size="small" variant="outlined" />
+                <Chip key={i} icon={<Wrench size={10} />} label={tc.tool_name} size="small" variant="outlined" sx={{ borderRadius: 2.5 }} />
               ))}
             </Box>
           )}
@@ -78,10 +87,10 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
               fontSize: "0.875rem",
               lineHeight: 1.7,
               ...(isUser
-                ? { maxWidth: "min(840px,100%)", borderRadius: "16px 16px 4px 16px", bgcolor: "primary.main", color: "primary.contrastText", px: 2, py: 1.5, whiteSpace: "pre-wrap" }
+                ? { maxWidth: "min(840px,100%)", borderRadius: "20px 20px 6px 20px", bgcolor: "primary.main", color: "primary.contrastText", px: 2.5, py: 1.5, whiteSpace: "pre-wrap" }
                 : isProgressOnly
                   ? { width: "100%" }
-                  : { width: "100%", borderRadius: "16px 16px 16px 4px", border: 1, borderColor: "divider", bgcolor: "background.paper", px: 2, py: 1.5 }),
+                  : { width: "100%", borderRadius: "20px 20px 20px 6px", border: 1, borderColor: (th: any) => `${th.palette.divider}80`, bgcolor: "background.paper", px: 2.5, py: 1.5, boxShadow: "var(--shadow-xs)" }),
             }}
           >
             {isUser ? (
@@ -90,11 +99,11 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
               <Box sx={{ width: "100%" }}>
                 <ButtonBase
                   onClick={() => setProgressExpanded(message.id, !progressExpanded)}
-                  sx={{ width: "100%", borderRadius: 4, border: 1, borderColor: "divider", bgcolor: "background.default", p: 1.5, textAlign: "left", display: "block" }}
+                  sx={{ width: "100%", borderRadius: 5, border: 1, borderColor: "divider", bgcolor: "background.default", p: 2, textAlign: "left", display: "block" }}
                 >
                   <Box sx={{ display: "flex", gap: 1.5 }}>
                     <Box sx={{ mt: 0.5, flexShrink: 0 }}>
-                      <CircularProgress size={24} />
+                      <CircularProgress size={22} />
                     </Box>
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 1 }}>
@@ -107,7 +116,7 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
                           <ChevronDown size={16} style={{ transform: progressExpanded ? "rotate(180deg)" : undefined, transition: "transform 0.2s" }} />
                         </Box>
                       </Box>
-                      <LinearProgress variant="determinate" value={message.progress?.percent ?? 0} sx={{ mt: 1, borderRadius: 1, height: 6 }} />
+                      <LinearProgress variant="determinate" value={message.progress?.percent ?? 0} sx={{ mt: 1, borderRadius: 1, height: 5 }} />
                       <Box sx={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 0.75, mt: 1.5 }}>
                         {stageDefs.map((stage, si) => {
                           const state = si < currentStageIndex ? "done" : si === currentStageIndex ? "active" : "idle";
@@ -119,7 +128,7 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
                               icon={state === "done" ? <Check size={12} /> : undefined}
                               color={state === "done" ? "success" : state === "active" ? "primary" : "default"}
                               variant={state === "idle" ? "outlined" : "filled"}
-                              sx={{ fontSize: "0.625rem", justifyContent: "center" }}
+                              sx={{ fontSize: "0.625rem", justifyContent: "center", borderRadius: 2 }}
                             />
                           );
                         })}
@@ -132,10 +141,10 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
                 <AnimatePresence initial={false}>
                   {progressExpanded && recentEvents.length > 0 && (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} style={{ overflow: "hidden" }}>
-                      <Box sx={{ mt: 1, display: "flex", flexDirection: "column", gap: 1, borderRadius: 4, border: 1, borderColor: "divider", bgcolor: "background.default", p: 1.5 }}>
+                      <Box sx={{ mt: 1, display: "flex", flexDirection: "column", gap: 0.75, borderRadius: 4, border: 1, borderColor: "divider", bgcolor: "background.default", p: 1.5 }}>
                         {recentEvents.map((event: ProgressEvent, ei) => (
                           <Box key={`${event.timestamp || ei}-${ei}`} sx={{ display: "flex", gap: 1, borderRadius: 3, bgcolor: "background.paper", px: 1.5, py: 1 }}>
-                            <Box sx={{ mt: 0.75, width: 8, height: 8, borderRadius: "50%", flexShrink: 0, bgcolor: ei === recentEvents.length - 1 ? "primary.main" : "text.disabled" }} />
+                            <Box sx={{ mt: 0.75, width: 7, height: 7, borderRadius: "50%", flexShrink: 0, bgcolor: ei === recentEvents.length - 1 ? "primary.main" : "text.disabled" }} />
                             <Box sx={{ minWidth: 0 }}>
                               <Typography variant="caption" fontWeight={600}>{event.message}</Typography>
                               {event.detail && <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>{event.detail}</Typography>}
@@ -148,7 +157,7 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
                 </AnimatePresence>
               </Box>
             ) : (
-              <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-p:leading-7 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-foreground prose-code:text-xs prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-muted prose-pre:p-2 prose-pre:rounded-lg">
+              <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-p:leading-7 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-foreground prose-code:text-xs prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded-md prose-pre:bg-muted prose-pre:p-3 prose-pre:rounded-xl">
                 <ReactMarkdown>{message.content}</ReactMarkdown>
               </div>
             )}

@@ -43,21 +43,21 @@ export default function SettingsPage() {
         flex: 1,
         overflowY: "auto",
         px: { xs: 1.5, sm: 2.5, lg: 3.5 },
-        pt: { xs: 1, sm: 2 },
+        pt: { xs: 1.5, sm: 2.5 },
         pb: showBottomNav ? 12 : 3,
         display: "flex",
         flexDirection: "column",
-        gap: 2,
+        gap: 2.5,
       }}
     >
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xl: "1.5fr 1fr" } }}>
+        <Box sx={{ display: "grid", gap: 2.5, gridTemplateColumns: { xl: "1.5fr 1fr" } }}>
           <PageHeader
             title={t("settings.title")}
             subtitle={t("settings.subtitle")}
             badges={[t("settings.currentLocation"), t("settings.preference"), t("settings.tripMode")]}
           />
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr 1fr", sm: "1fr 1fr 1fr", xl: "1fr" }, gap: 1 }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr 1fr", sm: "1fr 1fr 1fr", xl: "1fr" }, gap: 1.5 }}>
             <InfoCell label={t("settings.currentLocation")} value={location ? location.city : t("settings.location.unset")} />
             <InfoCell label={t("settings.preference")} value={prefLabels[preference] ?? ""} />
             <InfoCell label={t("settings.tripMode")} value={modeLabels[planningMode] ?? ""} />
@@ -65,7 +65,7 @@ export default function SettingsPage() {
         </Box>
       </motion.div>
 
-      <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xl: "7fr 5fr" } }}>
+      <Box sx={{ display: "grid", gap: 2.5, gridTemplateColumns: { xl: "7fr 5fr" } }}>
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
           <LocationSettings />
         </motion.div>
@@ -74,7 +74,7 @@ export default function SettingsPage() {
         </motion.div>
       </Box>
 
-      <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xl: "1fr 1fr" } }}>
+      <Box sx={{ display: "grid", gap: 2.5, gridTemplateColumns: { xl: "1fr 1fr" } }}>
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
           <PreferenceSettings />
         </motion.div>
@@ -89,7 +89,7 @@ export default function SettingsPage() {
         <DemoModeCard />
       </motion.div>
 
-      <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xl: "7fr 5fr" } }}>
+      <Box sx={{ display: "grid", gap: 2.5, gridTemplateColumns: { xl: "7fr 5fr" } }}>
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}>
           <RailAccountSettings />
         </motion.div>
@@ -103,9 +103,21 @@ export default function SettingsPage() {
 
 function InfoCell({ label, value }: { label: string; value: string }) {
   return (
-    <Box sx={{ borderRadius: 3, border: 1, borderColor: "divider", bgcolor: "background.paper", px: 2, py: 1.5 }}>
-      <Box component="span" sx={{ display: "block", fontSize: "0.6875rem", color: "text.secondary" }}>{label}</Box>
-      <Box component="span" sx={{ display: "block", fontSize: "0.875rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</Box>
+    <Box
+      sx={{
+        borderRadius: 4,
+        border: 1,
+        borderColor: (th) => `${th.palette.divider}70`,
+        bgcolor: "background.paper",
+        px: 2.5,
+        py: 2,
+        boxShadow: "var(--shadow-xs)",
+        transition: "all 0.2s ease",
+        "&:hover": { boxShadow: "var(--shadow-sm)" },
+      }}
+    >
+      <Box component="span" sx={{ display: "block", fontSize: "0.6875rem", color: "text.secondary", mb: 0.5 }}>{label}</Box>
+      <Box component="span" sx={{ display: "block", fontSize: "0.9375rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</Box>
     </Box>
   );
 }

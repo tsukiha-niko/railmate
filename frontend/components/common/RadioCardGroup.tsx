@@ -35,9 +35,13 @@ export function RadioCardGroup<T extends string = string>({
             key={opt.value}
             variant="outlined"
             sx={{
-              borderColor: selected ? "primary.main" : "divider",
-              bgcolor: selected ? "action.selected" : "transparent",
-              transition: "all 0.2s",
+              borderRadius: 4,
+              borderColor: selected ? "primary.main" : (th) => `${th.palette.divider}80`,
+              bgcolor: selected ? (th) => `${th.palette.primary.main}08` : "transparent",
+              transition: "all 0.2s ease",
+              "&:hover": {
+                borderColor: selected ? "primary.main" : "primary.light",
+              },
             }}
           >
             <CardActionArea

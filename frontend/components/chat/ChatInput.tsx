@@ -75,8 +75,22 @@ export function ChatInput({ onSend, loading, conversationId }: Props) {
   }, [conversationId, setDraft]);
 
   return (
-    <Card variant="outlined" sx={{ p: 1, borderRadius: 4, bgcolor: "background.paper" }}>
-      <Box sx={{ display: "flex", alignItems: "flex-end", gap: 1 }}>
+    <Card
+      variant="outlined"
+      sx={{
+        p: 1,
+        borderRadius: 5,
+        bgcolor: "background.paper",
+        boxShadow: "var(--shadow-sm)",
+        borderColor: (th) => `${th.palette.divider}80`,
+        transition: "box-shadow 0.2s ease, border-color 0.2s ease",
+        "&:focus-within": {
+          borderColor: "primary.main",
+          boxShadow: (th) => `0 0 0 3px ${th.palette.primary.main}18`,
+        },
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "flex-end", gap: 0.75 }}>
         <textarea
           ref={textareaRef}
           value={text}
@@ -99,7 +113,7 @@ export function ChatInput({ onSend, loading, conversationId }: Props) {
             background: "transparent",
             padding: "10px 16px",
             fontSize: "0.875rem",
-            lineHeight: 1.5,
+            lineHeight: 1.6,
             maxHeight: 160,
             overflowY: "hidden",
             fontFamily: "inherit",
@@ -111,7 +125,16 @@ export function ChatInput({ onSend, loading, conversationId }: Props) {
           onClick={handleSend}
           disabled={!text.trim() || loading}
           color="primary"
-          sx={{ width: 40, height: 40, borderRadius: 3, bgcolor: "primary.main", color: "primary.contrastText", "&:hover": { bgcolor: "primary.dark" }, "&.Mui-disabled": { bgcolor: "action.disabledBackground" } }}
+          sx={{
+            width: 40,
+            height: 40,
+            borderRadius: 3,
+            bgcolor: "primary.main",
+            color: "primary.contrastText",
+            "&:hover": { bgcolor: "primary.dark", transform: "scale(1.04)" },
+            "&.Mui-disabled": { bgcolor: "action.disabledBackground" },
+            transition: "all 0.2s ease",
+          }}
         >
           {loading ? <CircularProgress size={18} color="inherit" /> : <Send size={18} />}
         </IconButton>

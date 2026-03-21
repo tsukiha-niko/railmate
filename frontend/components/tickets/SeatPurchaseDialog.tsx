@@ -59,7 +59,7 @@ export function SeatPurchaseDialog({
           </Box>
         ) : (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Box sx={{ borderRadius: 4, border: 1, borderColor: "divider", p: 2 }}>
+            <Box sx={{ borderRadius: 4, border: 1, borderColor: (th: any) => `${th.palette.divider}70`, p: 2 }}>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
                 <Chip label={trainTypeLabel} size="small" variant="outlined" />
                 <Chip label={trainNo} color="primary" size="small" sx={{ fontWeight: 700 }} />
@@ -75,7 +75,7 @@ export function SeatPurchaseDialog({
               <InfoBlock label={t("booking.seat")} value={seat.label} />
               <InfoBlock label={t("booking.fare")} value={formatPrice(seat.price)} />
             </Box>
-            <Box sx={{ borderRadius: 3, border: 1, borderColor: "divider", p: 1.5 }}>
+            <Box sx={{ borderRadius: 4, border: 1, borderColor: (th: any) => `${th.palette.divider}70`, p: 2 }}>
               <Typography variant="body2" fontWeight={600}>{t("booking.account")}</Typography>
               <Typography variant="caption" color="text.secondary">
                 {loginBound ? t("booking.account.bound", { username: accountUsername || "--" }) : t("booking.account.unbound")}
@@ -106,7 +106,7 @@ export function SeatPurchaseDialog({
 
 function InfoBlock({ label, value }: { label: string; value: string }) {
   return (
-    <Box sx={{ borderRadius: 3, border: 1, borderColor: "divider", bgcolor: "action.hover", p: 1.5 }}>
+    <Box sx={{ borderRadius: 4, border: 1, borderColor: (th: any) => `${th.palette.divider}70`, bgcolor: "action.hover", p: 1.5 }}>
       <Typography variant="caption" color="text.secondary">{label}</Typography>
       <Typography variant="body2" fontWeight={600} sx={{ mt: 0.25 }}>{value}</Typography>
     </Box>

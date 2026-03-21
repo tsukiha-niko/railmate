@@ -24,11 +24,20 @@ type FilterKey = "all" | TicketOrderStatus;
 
 function SummaryCard({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string | number }) {
   return (
-    <Card variant="outlined" sx={{ minHeight: 104 }}>
-      <CardContent sx={{ display: "flex", flexDirection: "column", justifyContent: "space-between", height: "100%", p: 2, "&:last-child": { pb: 2 } }}>
+    <Card
+      variant="outlined"
+      sx={{
+        minHeight: 104,
+        borderRadius: 4,
+        borderColor: (th) => `${th.palette.divider}60`,
+        transition: "all 0.2s ease",
+        "&:hover": { boxShadow: "var(--shadow-sm)", transform: "translateY(-1px)" },
+      }}
+    >
+      <CardContent sx={{ display: "flex", flexDirection: "column", justifyContent: "space-between", height: "100%", p: 2.5, "&:last-child": { pb: 2.5 } }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <Typography variant="caption" color="text.secondary">{label}</Typography>
-          <Box sx={{ width: 32, height: 32, borderRadius: 3, bgcolor: "action.hover", display: "flex", alignItems: "center", justifyContent: "center", color: "text.secondary" }}>
+          <Box sx={{ width: 34, height: 34, borderRadius: 3, bgcolor: (th) => `${th.palette.primary.main}0A`, display: "flex", alignItems: "center", justifyContent: "center", color: "text.secondary" }}>
             <Icon className="h-[18px] w-[18px]" />
           </Box>
         </Box>
@@ -66,19 +75,19 @@ export default function TripsPage() {
   const summary = data?.summary;
 
   return (
-    <Box sx={{ mx: "auto", width: "100%", maxWidth: 1440, flex: 1, overflowY: "auto", px: { xs: 2, sm: 3, lg: 3.5 }, pt: { xs: 1.5, sm: 2.5 }, pb: showBottomNav ? 12 : 3, display: "flex", flexDirection: "column", gap: 2 }}>
+    <Box sx={{ mx: "auto", width: "100%", maxWidth: 1440, flex: 1, overflowY: "auto", px: { xs: 2, sm: 3, lg: 3.5 }, pt: { xs: 2, sm: 2.5 }, pb: showBottomNav ? 12 : 3, display: "flex", flexDirection: "column", gap: 2.5 }}>
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <PageHeader
           title={t("trips.title")}
           subtitle={t("trips.subtitle")}
           badges={data?.demo_mode ? [t("booking.demo.badge")] : undefined}
           action={
-            <Button variant="outlined" onClick={loadTrips} disabled={loading} startIcon={loading ? <CircularProgress size={16} /> : <RefreshCw size={16} />} sx={{ alignSelf: "flex-start" }}>
+            <Button variant="outlined" onClick={loadTrips} disabled={loading} startIcon={loading ? <CircularProgress size={16} /> : <RefreshCw size={16} />} sx={{ alignSelf: "flex-start", borderRadius: 3 }}>
               {t("trips.refresh")}
             </Button>
           }
         >
-          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 1, mt: 2 }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 1.5, mt: 2.5 }}>
             <SummaryCard icon={Ticket} label={t("trips.summary.total")} value={summary?.total_orders ?? 0} />
             <SummaryCard icon={TrainFront} label={t("trips.summary.active")} value={summary?.active_orders ?? 0} />
             <SummaryCard icon={Wallet} label={t("trips.summary.spent")} value={formatPrice(summary?.total_spent ?? 0)} />
@@ -91,15 +100,15 @@ export default function TripsPage() {
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
           {(["all", "booked", "refunded"] as FilterKey[]).map((item) => (
             <Chip key={item} label={t(`trips.filter.${item}`)} clickable onClick={() => setFilter(item)}
-              color={filter === item ? "primary" : "default"} variant={filter === item ? "filled" : "outlined"} />
+              color={filter === item ? "primary" : "default"} variant={filter === item ? "filled" : "outlined"} sx={{ borderRadius: 3 }} />
           ))}
         </Box>
       </motion.div>
 
-      {error && <Card variant="outlined"><CardContent><Typography variant="body2" color="error">{error}</Typography></CardContent></Card>}
+      {error && <Card variant="outlined" sx={{ borderRadius: 4 }}><CardContent><Typography variant="body2" color="error">{error}</Typography></CardContent></Card>}
 
       {loading ? (
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 280, borderRadius: 6, border: 1, borderColor: "divider", bgcolor: "background.paper" }}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 280, borderRadius: 5, border: 1, borderColor: "divider", bgcolor: "background.paper" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, color: "text.secondary" }}>
             <CircularProgress size={20} />
             <Typography variant="body2">{t("trips.loading")}</Typography>

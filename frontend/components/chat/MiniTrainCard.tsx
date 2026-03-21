@@ -54,11 +54,11 @@ export function MiniTrainCard({ train, index, returnTo }: MiniTrainCardProps) {
 
   return (
     <motion.div initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2, delay: index * 0.05 }}>
-      <Card variant="outlined" sx={{ bgcolor: "background.default", borderColor: "divider", "&:hover": { borderColor: "primary.main" } }}>
+      <Card variant="outlined" sx={{ borderRadius: 4, bgcolor: "background.default", borderColor: (th: any) => `${th.palette.divider}80`, transition: "all 0.2s ease", "&:hover": { borderColor: "primary.main", boxShadow: "0 4px 16px -4px rgba(59,130,246,0.12)" } }}>
         <CardActionArea component={Link} href={href} sx={{ p: 1.5 }}>
           <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-              <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold text-white", getTrainTypeColor(train.train_type))}>{train.train_no}</span>
+              <span className={cn("inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-bold text-white", getTrainTypeColor(train.train_type))}>{train.train_no}</span>
               {dateLabel && <Chip label={dateLabel} size="small" color="warning" variant="outlined" sx={{ fontSize: "0.625rem", height: 20 }} />}
             </Box>
             <Box sx={{ display: "flex", gap: 0.75, alignItems: "center" }}>

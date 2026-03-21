@@ -51,12 +51,12 @@ export function LocationSettings() {
   }, [manualCity, manualStation, userId, setLocationStore]);
 
   return (
-    <Card variant="outlined">
+    <Card variant="outlined" sx={{ borderRadius: 5 }}>
       <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2, p: { xs: 2, sm: 2.5 } }}>
         <SectionHeader icon={<MapPin />} title={t("settings.currentLocation")} />
 
         {location ? (
-          <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5, borderRadius: 3, border: 1, borderColor: "divider", bgcolor: "action.hover", p: 1.5 }}>
+          <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5, borderRadius: 4, border: 1, borderColor: (th: any) => `${th.palette.divider}70`, bgcolor: "action.hover", p: 2 }}>
             <MapPin size={20} style={{ marginTop: 2, flexShrink: 0, color: "var(--primary)" }} />
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="body2" fontWeight={700} noWrap>{location.city}</Typography>
@@ -85,7 +85,7 @@ export function LocationSettings() {
 
         <Divider />
 
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, borderRadius: 3, border: 1, borderColor: "divider", bgcolor: "background.paper", p: 1.5 }}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, borderRadius: 4, border: 1, borderColor: (th: any) => `${th.palette.divider}70`, bgcolor: "background.paper", p: 2 }}>
           <SectionHeader icon={<Edit3 />} title={t("settings.manual")} />
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1.5 }}>
             <TextField label={t("settings.city")} value={manualCity} onChange={(e) => setManualCity(e.target.value)} placeholder={t("settings.cityPlaceholder")} fullWidth />

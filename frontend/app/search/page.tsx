@@ -66,33 +66,43 @@ export default function SearchPage() {
   };
 
   return (
-    <Box sx={{ mx: "auto", width: "100%", maxWidth: 1680, flex: 1, overflowY: "auto", px: { xs: 1.5, sm: 2.5, lg: 3 }, py: { xs: 1.5, sm: 2 } }}>
+    <Box sx={{ mx: "auto", width: "100%", maxWidth: 1680, flex: 1, overflowY: "auto", px: { xs: 1.5, sm: 2.5, lg: 3 }, py: { xs: 2, sm: 2.5 } }}>
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1.5 }}>
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", width: 40, height: 40, borderRadius: 3, bgcolor: (th) => `${th.palette.primary.main}1A` }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 42,
+              height: 42,
+              borderRadius: 3.5,
+              bgcolor: (th) => `${th.palette.primary.main}10`,
+            }}
+          >
             <TrainFront size={20} style={{ color: "var(--primary)" }} />
           </Box>
           <Box>
-            <Typography variant="h6" fontWeight={800}>{t("search.title")}</Typography>
+            <Typography variant="h6" fontWeight={800} sx={{ letterSpacing: "-0.01em" }}>{t("search.title")}</Typography>
             <Typography variant="caption" color="text.secondary">{t("search.subtitle")}</Typography>
           </Box>
         </Box>
       </motion.div>
 
-      <Box sx={{ display: "grid", flex: 1, gap: { xs: 2, lg: 2.5 }, gridTemplateColumns: { lg: "380px 1fr" } }}>
+      <Box sx={{ display: "grid", flex: 1, gap: { xs: 2, lg: 3 }, gridTemplateColumns: { lg: "400px 1fr" } }}>
         <Box sx={{ position: { lg: "sticky" }, top: { lg: 12 }, height: "fit-content" }}>
           <SearchForm onSearch={(params: TrainSearchParams) => search(params)} loading={loading} />
         </Box>
 
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
           {error && (
-            <Alert severity="error" variant="outlined" icon={<AlertCircle size={18} />}>{error}</Alert>
+            <Alert severity="error" variant="outlined" icon={<AlertCircle size={18} />} sx={{ borderRadius: 4 }}>{error}</Alert>
           )}
 
           {searched && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
               {!loading && results.length > 0 && (
-                <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 1, mb: 1.5 }}>
+                <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 1, mb: 2 }}>
                   <Typography variant="body2" fontWeight={700} color="text.secondary">
                     {t("search.found", { count: results.length })}
                   </Typography>
@@ -100,17 +110,17 @@ export default function SearchPage() {
                     {departureTop && (
                       <Chip label={`${departureTop.departure_time}${sortKey === "departure" ? ` ${sortIcon}` : ""}`} size="small"
                         color={sortKey === "departure" ? "primary" : "default"} variant={sortKey === "departure" ? "filled" : "outlined"}
-                        onClick={() => handleSortClick("departure")} clickable />
+                        onClick={() => handleSortClick("departure")} clickable sx={{ borderRadius: 2.5 }} />
                     )}
                     {durationTop && (
                       <Chip label={`${formatDuration(durationTop.duration_minutes, statsLocale)}${sortKey === "duration" ? ` ${sortIcon}` : ""}`} size="small"
                         color={sortKey === "duration" ? "primary" : "default"} variant={sortKey === "duration" ? "filled" : "outlined"}
-                        onClick={() => handleSortClick("duration")} clickable />
+                        onClick={() => handleSortClick("duration")} clickable sx={{ borderRadius: 2.5 }} />
                     )}
                     {priceTopFare && (
                       <Chip label={`${formatPrice(priceTopFare.price)}${sortKey === "price" ? ` ${sortIcon}` : ""}`} size="small"
                         color={sortKey === "price" ? "primary" : "default"} variant={sortKey === "price" ? "filled" : "outlined"}
-                        onClick={() => handleSortClick("price")} clickable />
+                        onClick={() => handleSortClick("price")} clickable sx={{ borderRadius: 2.5 }} />
                     )}
                   </Box>
                 </Box>

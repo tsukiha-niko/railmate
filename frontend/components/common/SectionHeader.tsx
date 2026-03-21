@@ -13,7 +13,19 @@ export function SectionHeader({ icon, title }: SectionHeaderProps) {
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
       {icon && (
-        <Box sx={{ color: "primary.main", display: "flex", alignItems: "center", "& svg": { fontSize: 18 } }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 28,
+            height: 28,
+            borderRadius: 2,
+            bgcolor: (th) => `${th.palette.primary.main}12`,
+            color: "primary.main",
+            "& svg": { width: 16, height: 16 },
+          }}
+        >
           {icon}
         </Box>
       )}

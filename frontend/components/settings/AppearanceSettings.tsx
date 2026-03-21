@@ -16,7 +16,7 @@ export function AppearanceSettings() {
   const { locale, setLocale, t } = useI18n();
 
   return (
-    <Card variant="outlined">
+    <Card variant="outlined" sx={{ borderRadius: 5 }}>
       <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2, p: { xs: 2, sm: 2.5 } }}>
         <SectionHeader icon={<Settings />} title={t("settings.appearance")} />
 

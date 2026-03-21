@@ -82,29 +82,111 @@ export function VoiceButton({ onTranscript, disabled }: Props) {
     <Box sx={{ position: "relative" }}>
       <AnimatePresence>
         {listening && (
-          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }}
-            style={{ position: "absolute", top: -40, left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", zIndex: 10 }}>
-            <Box sx={{ borderRadius: 2, border: 1, borderColor: "divider", bgcolor: "background.paper", px: 1.5, py: 0.5, boxShadow: 2 }}>
-              <Typography variant="caption">{interim || (locale === "en" ? "Listening..." : "正在听...")}</Typography>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0, y: 4 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 4 }}
+            style={{ position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", zIndex: 10 }}
+          >
+            <Box
+              sx={{
+                borderRadius: 3,
+                border: 1,
+                borderColor: "primary.main",
+                bgcolor: "background.paper",
+                px: 2,
+                py: 0.75,
+                boxShadow: "var(--shadow-md)",
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  bgcolor: "error.main",
+                  animation: "pulse 1.5s ease-in-out infinite",
+                  "@keyframes pulse": {
+                    "0%, 100%": { opacity: 1, transform: "scale(1)" },
+                    "50%": { opacity: 0.5, transform: "scale(0.85)" },
+                  },
+                }}
+              />
+              <Typography variant="caption" fontWeight={600}>
+                {interim || (locale === "en" ? "Listening..." : "正在听...")}
+              </Typography>
             </Box>
           </motion.div>
         )}
       </AnimatePresence>
       <AnimatePresence>
         {!listening && errorMsg && (
-          <motion.div initial={{ opacity: 0, y: -3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }}
-            style={{ position: "absolute", top: -40, left: "50%", transform: "translateX(-50%)", maxWidth: 220, zIndex: 10 }}>
-            <Box sx={{ borderRadius: 2, border: 1, borderColor: "error.main", bgcolor: "background.paper", px: 1.5, py: 0.5, boxShadow: 2 }}>
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            style={{ position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)", maxWidth: 240, zIndex: 10 }}
+          >
+            <Box sx={{ borderRadius: 3, border: 1, borderColor: "error.main", bgcolor: "background.paper", px: 2, py: 0.75, boxShadow: "var(--shadow-md)" }}>
               <Typography variant="caption" color="error" noWrap>{errorMsg}</Typography>
             </Box>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {listening && (
+        <>
+          <Box
+            sx={{
+              position: "absolute",
+              inset: -4,
+              borderRadius: 4,
+              border: 2,
+              borderColor: "primary.main",
+              opacity: 0.3,
+              pointerEvents: "none",
+            }}
+            className="voice-wave-ring"
+          />
+          <Box
+            sx={{
+              position: "absolute",
+              inset: -8,
+              borderRadius: 4,
+              border: 1,
+              borderColor: "primary.main",
+              opacity: 0.15,
+              pointerEvents: "none",
+            }}
+            className="voice-wave-ring"
+            style={{ animationDelay: "0.4s" }}
+          />
+        </>
+      )}
+
       <IconButton
         onClick={toggle}
         disabled={disabled}
-        color={listening ? "error" : "default"}
-        sx={{ width: 40, height: 40, borderRadius: 3, border: 1, borderColor: "divider", animation: listening ? "pulse 2s infinite" : "none" }}
+        sx={{
+          width: 40,
+          height: 40,
+          borderRadius: 3,
+          border: 1,
+          borderColor: listening ? "error.main" : (th) => `${th.palette.divider}80`,
+          color: listening ? "error.main" : "text.secondary",
+          bgcolor: listening ? (th) => `${th.palette.error.main}0A` : "transparent",
+          "&:hover": {
+            borderColor: listening ? "error.main" : "primary.main",
+            bgcolor: listening ? (th) => `${th.palette.error.main}14` : (th) => `${th.palette.primary.main}0A`,
+          },
+          transition: "all 0.2s ease",
+          position: "relative",
+          zIndex: 1,
+        }}
+        className={listening ? "voice-listening-pulse" : undefined}
       >
         {listening ? <MicOff size={18} /> : <Mic size={18} />}
       </IconButton>

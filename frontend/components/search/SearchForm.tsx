@@ -52,9 +52,8 @@ export function SearchForm({ onSearch, loading }: Props) {
 
   return (
     <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-      <Card variant="outlined" sx={{ borderRadius: 4 }}>
-        <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2, p: { xs: 2, sm: 2.5 } }}>
-          {/* Station inputs */}
+      <Card variant="outlined" sx={{ borderRadius: 5, borderColor: (th) => `${th.palette.divider}70`, boxShadow: "var(--shadow-xs)" }}>
+        <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2.5, p: { xs: 2.5, sm: 3 } }}>
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "flex-end", gap: { xs: 1, sm: 1.5 } }}>
             <TextField
               label={t("search.from")}
@@ -75,7 +74,19 @@ export function SearchForm({ onSearch, loading }: Props) {
                 },
               }}
             />
-            <IconButton onClick={handleSwap} sx={{ border: 1, borderColor: "divider", width: 40, height: 40, borderRadius: 2.5, alignSelf: "center" }}>
+            <IconButton
+              onClick={handleSwap}
+              sx={{
+                border: 1,
+                borderColor: (th) => `${th.palette.divider}80`,
+                width: 40,
+                height: 40,
+                borderRadius: 3,
+                alignSelf: "center",
+                "&:hover": { borderColor: "primary.main", bgcolor: (th) => `${th.palette.primary.main}0A` },
+                transition: "all 0.2s ease",
+              }}
+            >
               <ArrowLeftRight size={16} />
             </IconButton>
             <TextField
@@ -88,7 +99,6 @@ export function SearchForm({ onSearch, loading }: Props) {
             />
           </Box>
 
-          {/* Date row */}
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr auto", alignItems: "flex-end", gap: { xs: 1, sm: 1.5 } }}>
             <TextField
               label={<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}><CalendarDays size={14} />{t("search.departDate")}</Box>}
@@ -99,12 +109,11 @@ export function SearchForm({ onSearch, loading }: Props) {
               fullWidth
             />
             <Box sx={{ display: "flex", gap: 0.75 }}>
-              <Button variant={date === getToday() ? "contained" : "outlined"} size="small" onClick={() => setDate(getToday())}>{t("search.today")}</Button>
-              <Button variant={date === getTomorrow() ? "contained" : "outlined"} size="small" onClick={() => setDate(getTomorrow())}>{t("search.tomorrow")}</Button>
+              <Button variant={date === getToday() ? "contained" : "outlined"} size="small" onClick={() => setDate(getToday())} sx={{ borderRadius: 3 }}>{t("search.today")}</Button>
+              <Button variant={date === getTomorrow() ? "contained" : "outlined"} size="small" onClick={() => setDate(getTomorrow())} sx={{ borderRadius: 3 }}>{t("search.tomorrow")}</Button>
             </Box>
           </Box>
 
-          {/* Train type filter */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap" }}>
             <Typography variant="caption" color="text.secondary">{t("search.trainType")}</Typography>
             {TRAIN_TYPES.map((tt) => (
@@ -116,11 +125,11 @@ export function SearchForm({ onSearch, loading }: Props) {
                 color={trainType === tt.value ? "primary" : "default"}
                 onClick={() => setTrainType(tt.value)}
                 clickable
+                sx={{ borderRadius: 2.5 }}
               />
             ))}
           </Box>
 
-          {/* Search button */}
           <Button
             variant="contained"
             size="large"
@@ -128,7 +137,7 @@ export function SearchForm({ onSearch, loading }: Props) {
             disabled={!from.trim() || !to.trim() || loading}
             startIcon={<Search size={18} />}
             fullWidth
-            sx={{ height: { xs: 44, sm: 48 }, borderRadius: 3, fontSize: "1rem" }}
+            sx={{ height: { xs: 48, sm: 52 }, borderRadius: 4, fontSize: "0.9375rem", fontWeight: 700 }}
           >
             {loading ? t("search.searching") : t("search.btn.search")}
           </Button>
