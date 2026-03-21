@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 export type ResponsiveNavMode = {
   showTopbarNav: boolean;
@@ -63,9 +63,15 @@ function subscribeResponsiveNavMode(callback: () => void) {
 }
 
 export function useResponsiveNavMode() {
-  return useSyncExternalStore(
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const snapshot = useSyncExternalStore(
     subscribeResponsiveNavMode,
     getResponsiveNavModeSnapshot,
     () => FALLBACK_MODE,
   );
+
+  if (!mounted) return FALLBACK_MODE;
+  return snapshot;
 }

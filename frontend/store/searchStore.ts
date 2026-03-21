@@ -2,6 +2,15 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { TrainSearchResult } from "@/types/trains";
 
+export interface RecentSearch {
+  from: string;
+  to: string;
+  date: string;
+  timestamp: number;
+}
+
+const MAX_RECENT = 10;
+
 interface SearchState {
   results: TrainSearchResult[];
   loading: boolean;
@@ -10,6 +19,7 @@ interface SearchState {
   searchDate: string;
   fromStation: string;
   toStation: string;
+  recentSearches: RecentSearch[];
 
   setResults: (results: TrainSearchResult[]) => void;
   setLoading: (loading: boolean) => void;
@@ -18,6 +28,8 @@ interface SearchState {
   setSearchDate: (date: string) => void;
   setFromStation: (station: string) => void;
   setToStation: (station: string) => void;
+  addRecentSearch: (entry: Omit<RecentSearch, "timestamp">) => void;
+  clearRecentSearches: () => void;
   clear: () => void;
 }
 
@@ -31,6 +43,7 @@ export const useSearchStore = create<SearchState>()(
       searchDate: "",
       fromStation: "",
       toStation: "",
+      recentSearches: [],
 
       setResults: (results) => set({ results }),
       setLoading: (loading) => set({ loading }),
@@ -39,12 +52,21 @@ export const useSearchStore = create<SearchState>()(
       setSearchDate: (searchDate) => set({ searchDate }),
       setFromStation: (fromStation) => set({ fromStation }),
       setToStation: (toStation) => set({ toStation }),
+      addRecentSearch: (entry) =>
+        set((s) => {
+          const deduped = s.recentSearches.filter(
+            (r) => !(r.from === entry.from && r.to === entry.to),
+          );
+          return {
+            recentSearches: [{ ...entry, timestamp: Date.now() }, ...deduped].slice(0, MAX_RECENT),
+          };
+        }),
+      clearRecentSearches: () => set({ recentSearches: [] }),
       clear: () =>
         set({ results: [], searched: false, error: null, fromStation: "", toStation: "" }),
     }),
     {
       name: "railmate-search",
-      // sessionStorage：刷新后清空，同一会话内跨页面导航保留
       storage: createJSONStorage(() =>
         typeof window !== "undefined"
           ? sessionStorage
@@ -60,7 +82,7 @@ export const useSearchStore = create<SearchState>()(
         searchDate: state.searchDate,
         fromStation: state.fromStation,
         toStation: state.toStation,
-        // loading/error 不持久化：刷新后应重置
+        recentSearches: state.recentSearches,
       }),
     },
   ),

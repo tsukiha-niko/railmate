@@ -25,6 +25,7 @@ export function DemoModeCard() {
     <Card
       variant="outlined"
       sx={{
+        borderRadius: 5,
         background: (th) =>
           `linear-gradient(135deg, ${th.palette.primary.main}14 0%, ${th.palette.background.paper}EA 50%, ${th.palette.background.paper}CC 100%)`,
       }}

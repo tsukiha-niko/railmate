@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Copy, Undo2, Check, ArrowRight, ScanLine, X, RefreshCw } from "lucide-react";
+import { Copy, Undo2, Check, ArrowRight, ScanLine, X, RefreshCw, Bell, BellOff } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import Card from "@mui/material/Card";
 import Box from "@mui/material/Box";
@@ -15,6 +15,7 @@ import type { TicketOrder } from "@/types/ticketing";
 import { formatDateLocalized } from "@/utils/date";
 import { formatPrice, getTrainTypeLabel } from "@/utils/format";
 import { useI18n } from "@/lib/i18n/i18n";
+import { useReminderStore } from "@/store/reminderStore";
 
 function InfoRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
@@ -35,6 +36,26 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
   const [gateOpen, setGateOpen] = useState(false);
   const [qrSuffix, setQrSuffix] = useState("");
   const timerRef = useRef<number | null>(null);
+  const existingReminder = useReminderStore((s) => s.getReminderByOrder(order.id));
+  const addReminder = useReminderStore((s) => s.addReminder);
+  const removeReminder = useReminderStore((s) => s.removeReminder);
+
+  const handleToggleReminder = () => {
+    if (existingReminder) {
+      removeReminder(existingReminder.id);
+    } else {
+      addReminder({
+        orderId: order.id,
+        trainNo: order.train_no,
+        fromStation: order.from_station,
+        toStation: order.to_station,
+        departureTime: order.departure_time || "00:00",
+        runDate: order.run_date,
+        minutesBefore: 30,
+        enabled: true,
+      });
+    }
+  };
 
   useEffect(() => () => { if (timerRef.current) window.clearTimeout(timerRef.current); }, []);
 
@@ -110,7 +131,22 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
           </Box>
         </Box>
         {!isRefunded && (
-          <Box sx={{ display: "flex", gap: 0.75, flexShrink: 0 }}>
+          <Box sx={{ display: "flex", gap: 0.75, flexShrink: 0, flexWrap: "wrap" }}>
+            <IconButton
+              size="small"
+              onClick={handleToggleReminder}
+              sx={{
+                borderRadius: "8px",
+                border: 1,
+                borderColor: existingReminder ? "primary.main" : "divider",
+                bgcolor: existingReminder ? (th) => `${th.palette.primary.main}0A` : "transparent",
+                width: 28,
+                height: 28,
+              }}
+              title={existingReminder ? t("trips.reminder.off") : t("trips.reminder.on")}
+            >
+              {existingReminder ? <Bell size={13} style={{ color: "var(--primary)" }} /> : <BellOff size={13} />}
+            </IconButton>
             <Button variant="outlined" size="small" onClick={() => onRefund(order)} disabled={refunding} startIcon={<Undo2 size={13} />}
               sx={{ borderRadius: "8px", fontSize: "0.75rem", py: 0.25, px: 1.5, minHeight: 28 }}>
               {refunding ? t("trips.refund.processing") : t("trips.refund.action")}

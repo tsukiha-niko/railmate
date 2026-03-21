@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Clock, Calendar, Sparkles } from "lucide-react";
@@ -15,12 +15,10 @@ import Skeleton from "@mui/material/Skeleton";
 import Alert from "@mui/material/Alert";
 import { TrainTimeline } from "@/components/tickets/TrainTimeline";
 import { SeatPurchaseDialog } from "@/components/tickets/SeatPurchaseDialog";
-import { getTrainSchedule, getTrainPrices } from "@/services/trains";
-import type { TrainPrices } from "@/services/trains";
-import { getTicketingCapabilities, purchaseTicket } from "@/services/ticketing";
-import type { TrainScheduleStop } from "@/types/trains";
+import { purchaseTicket } from "@/services/ticketing";
 import type { TicketOrder } from "@/types/ticketing";
 import { useChatStore } from "@/store/chatStore";
+import { useTrainSchedule, useTrainPrices, useTicketingCapabilities } from "@/hooks/queries/useTrainDetail";
 import { formatPrice, getFareLabel, getTrainTypeLabel, getTrainTypeColor } from "@/utils/format";
 import { formatDateLocalized, getToday } from "@/utils/date";
 import { cn } from "@/utils/cn";
@@ -39,60 +37,28 @@ export default function TrainDetailPage() {
   const dateLocale = locale === "en" ? "en" : "zh-CN";
   const userId = useChatStore((s) => s.userId);
 
-  const [stops, setStops] = useState<TrainScheduleStop[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [prices, setPrices] = useState<TrainPrices | null>(null);
-  const [pricesLoading, setPricesLoading] = useState(false);
-  const [priceMeta, setPriceMeta] = useState<{ logged_in?: boolean; requires_login?: boolean; source?: string } | null>(null);
-  const [demoMode, setDemoMode] = useState(true);
-  const [boundAccount, setBoundAccount] = useState<string | null>(null);
+  const scheduleQuery = useTrainSchedule(trainNo, date, fromStation, toStation);
+  const pricesQuery = useTrainPrices(trainNo, date, fromStation, toStation);
+  const capQuery = useTicketingCapabilities();
+
+  const stops = scheduleQuery.data?.stops ?? [];
+  const loading = scheduleQuery.isLoading;
+  const scheduleError = scheduleQuery.error
+    ? (scheduleQuery.error instanceof Error ? scheduleQuery.error.message : t("common.loadFailed"))
+    : null;
+  const prices = pricesQuery.data?.prices ?? null;
+  const pricesLoading = pricesQuery.isLoading;
+  const priceMeta = pricesQuery.data
+    ? { logged_in: pricesQuery.data.logged_in, requires_login: pricesQuery.data.requires_login, source: pricesQuery.data.source }
+    : null;
+  const demoMode = capQuery.data?.demo_mode ?? true;
+  const boundAccount = capQuery.data?.bound_account_username ?? null;
+
   const [selectedSeat, setSelectedSeat] = useState<{ key: string; label: string; price: number } | null>(null);
   const [purchaseOpen, setPurchaseOpen] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [purchasedOrder, setPurchasedOrder] = useState<TicketOrder | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      setLoading(true); setError(null);
-      try {
-        const data = await getTrainSchedule(trainNo, date, fromStation || undefined, toStation || undefined);
-        if (!cancelled) setStops(data.stops || []);
-      } catch (err) {
-        if (!cancelled) {
-          const msg = err instanceof Error ? err.message : t("common.loadFailed");
-          if (msg.includes("未找到") || msg.includes("404") || msg.includes("Not Found")) setStops([]);
-          else setError(msg);
-        }
-      } finally { if (!cancelled) setLoading(false); }
-    }
-    load();
-    return () => { cancelled = true; };
-  }, [trainNo, date, fromStation, toStation, t]);
-
-  useEffect(() => {
-    if (!fromStation || !toStation) return;
-    let cancelled = false;
-    async function loadPrices() {
-      setPricesLoading(true);
-      try {
-        const res = await getTrainPrices(trainNo, date, fromStation!, toStation!);
-        if (!cancelled) { setPrices(res.prices); setPriceMeta({ logged_in: res.logged_in, requires_login: res.requires_login, source: res.source }); }
-      } catch { /* best-effort */ } finally { if (!cancelled) setPricesLoading(false); }
-    }
-    loadPrices();
-    return () => { cancelled = true; };
-  }, [trainNo, date, fromStation, toStation]);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function loadCap() {
-      try { const res = await getTicketingCapabilities(); if (!cancelled) { setDemoMode(res.demo_mode); setBoundAccount(res.bound_account_username || null); } } catch {}
-    }
-    loadCap();
-    return () => { cancelled = true; };
-  }, []);
+  const [error, setError] = useState<string | null>(null);
 
   const trainType = trainNo.charAt(0);
   const trainTypeLabel = getTrainTypeLabel(trainType, dateLocale);
@@ -134,6 +100,8 @@ export default function TrainDetailPage() {
       setPurchasedOrder(order);
     } catch (err) { setError(err instanceof Error ? err.message : t("errors.requestFailed")); } finally { setPurchasing(false); }
   };
+
+  const displayError = error || scheduleError;
 
   return (
     <Box sx={{ mx: "auto", width: "100%", maxWidth: "72rem", display: "flex", flexDirection: "column", gap: 2.5, overflowY: "auto", px: { xs: 2, sm: 3, lg: 4 }, py: 2.5 }}>
@@ -234,10 +202,10 @@ export default function TrainDetailPage() {
           <CardContent>
             {loading ? (
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} variant="text" />)}</Box>
-            ) : error ? (
+            ) : displayError ? (
               <Box sx={{ textAlign: "center", py: 4 }}>
-                <Typography variant="body2" color="error">{error}</Typography>
-                <Button variant="outlined" size="small" onClick={() => window.location.reload()} sx={{ mt: 1.5, borderRadius: "8px" }}>{t("common.retry")}</Button>
+                <Typography variant="body2" color="error">{displayError}</Typography>
+                <Button variant="outlined" size="small" onClick={() => scheduleQuery.refetch()} sx={{ mt: 1.5, borderRadius: "8px" }}>{t("common.retry")}</Button>
               </Box>
             ) : stops.length > 0 ? (
               <TrainTimeline stops={stops} highlightFrom={fromStation} highlightTo={toStation} />
@@ -252,7 +220,7 @@ export default function TrainDetailPage() {
         open={purchaseOpen} seat={selectedSeat} trainNo={trainNo} trainTypeLabel={trainTypeLabel} runDate={date}
         fromStation={fromStation || originStop?.station_name || ""} toStation={toStation || terminalStop?.station_name || ""}
         departureTime={originStop?.departure_time} arrivalTime={terminalStop?.arrival_time} durationMinutes={null}
-        demoMode={demoMode} loginBound={Boolean(priceMeta?.logged_in || boundAccount)} accountUsername={boundAccount}
+        demoMode={demoMode} loginBound={Boolean(pricesQuery.data?.logged_in || boundAccount)} accountUsername={boundAccount}
         purchasing={purchasing} purchasedOrder={purchasedOrder} onConfirm={handleConfirmPurchase}
         onClose={() => { if (!purchasing) { setPurchaseOpen(false); setSelectedSeat(null); setPurchasedOrder(null); } }}
         onViewTrips={() => router.push("/trips")}

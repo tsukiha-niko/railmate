@@ -3,9 +3,14 @@ AI 对话接口
 支持位置感知的智能查票
 """
 
+import asyncio
+import json
+import threading
+import uuid
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.core.exceptions import AIAgentError
@@ -114,6 +119,67 @@ async def get_chat_job(job_id: str):
     if not job:
         raise HTTPException(status_code=404, detail="聊天任务不存在")
     return job
+
+
+@router.post("/stream")
+async def stream_chat(request: ChatRequest):
+    """SSE streaming endpoint -- pushes progress events and final answer."""
+    import queue as queue_mod
+
+    event_queue: queue_mod.Queue = queue_mod.Queue()
+    conversation_id = request.conversation_id or str(uuid.uuid4())[:8]
+
+    def on_progress(*, status: str, percent: int, message: str, detail: Optional[str] = None, append_event: bool = True):
+        event_queue.put(("progress", {
+            "status": status,
+            "percent": percent,
+            "message": message,
+            "detail": detail,
+        }))
+
+    def worker():
+        try:
+            user_id = request.user_id or "default"
+            agent = get_agent(user_id)
+            if request.location:
+                agent.set_location(city=request.location.city, station=request.location.station)
+            if agent.client is None:
+                event_queue.put(("error", {"message": "AI 服务未配置"}))
+                return
+            response = agent.chat(
+                message=request.message,
+                conversation_id=conversation_id,
+                planning_mode=request.planning_mode,
+                on_progress=on_progress,
+            )
+            event_queue.put(("done", {
+                "answer": response.answer,
+                "conversation_id": response.conversation_id,
+                "tool_calls": [tc.model_dump() for tc in response.tool_calls],
+            }))
+        except Exception as exc:
+            logger.error(f"SSE chat failed: {exc}")
+            event_queue.put(("error", {"message": str(exc)}))
+
+    thread = threading.Thread(target=worker, daemon=True)
+    thread.start()
+
+    async def event_generator():
+        yield f"data: {json.dumps({'event': 'start', 'conversation_id': conversation_id})}\n\n"
+        while True:
+            try:
+                event_type, payload = await asyncio.to_thread(event_queue.get, timeout=120)
+            except Exception:
+                yield f"event: error\ndata: {json.dumps({'message': 'timeout'})}\n\n"
+                break
+            yield f"event: {event_type}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
+            if event_type in ("done", "error"):
+                break
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream", headers={
+        "Cache-Control": "no-cache",
+        "X-Accel-Buffering": "no",
+    })
 
 
 @router.delete("/{conversation_id}")

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Search, ArrowLeftRight, MapPin, CalendarDays } from "lucide-react";
-import { motion } from "framer-motion";
+import { Search, ArrowLeftRight, MapPin, CalendarDays, Clock, Trash2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import TextField from "@mui/material/TextField";
@@ -11,9 +11,10 @@ import IconButton from "@mui/material/IconButton";
 import Chip from "@mui/material/Chip";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import InputAdornment from "@mui/material/InputAdornment";
+import ButtonBase from "@mui/material/ButtonBase";
+import { StationAutocomplete } from "./StationAutocomplete";
 import { useUserContextStore } from "@/store/userContextStore";
-import { useSearchStore } from "@/store/searchStore";
+import { useSearchStore, type RecentSearch } from "@/store/searchStore";
 import { getToday, getTomorrow, formatDateLocalized } from "@/utils/date";
 import type { TrainSearchParams } from "@/types/trains";
 import { useI18n } from "@/lib/i18n/i18n";
@@ -25,11 +26,20 @@ export function SearchForm({ onSearch, loading }: Props) {
   const prevFrom = useSearchStore((s) => s.fromStation);
   const prevTo = useSearchStore((s) => s.toStation);
   const prevDate = useSearchStore((s) => s.searchDate);
+  const recentSearches = useSearchStore((s) => s.recentSearches);
+  const clearRecentSearches = useSearchStore((s) => s.clearRecentSearches);
   const [from, setFrom] = useState(prevFrom || location?.station || "");
   const [to, setTo] = useState(prevTo || "");
   const [date, setDate] = useState(prevDate || getToday());
   const [trainType, setTrainType] = useState("");
   const { t, locale } = useI18n();
+
+  const handleRecentClick = useCallback((entry: RecentSearch) => {
+    setFrom(entry.from);
+    setTo(entry.to);
+    setDate(entry.date);
+    onSearch({ from_station: entry.from, to_station: entry.to, travel_date: entry.date });
+  }, [onSearch]);
 
   const TRAIN_TYPES = [
     { value: "", label: t("search.type.all") },
@@ -55,24 +65,19 @@ export function SearchForm({ onSearch, loading }: Props) {
       <Card variant="outlined" sx={{ borderRadius: "16px", borderColor: (th) => `${th.palette.divider}70`, boxShadow: "var(--shadow-card)" }}>
         <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2.5, p: { xs: 2.5, sm: 3 } }}>
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "flex-end", gap: { xs: 1, sm: 1.5 } }}>
-            <TextField
+            <StationAutocomplete
               label={t("search.from")}
               value={from}
-              onChange={(e) => setFrom(e.target.value)}
+              onChange={setFrom}
               placeholder={t("search.stationPlaceholder")}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              fullWidth
-              slotProps={{
-                input: {
-                  endAdornment: location ? (
-                    <InputAdornment position="end">
-                      <IconButton onClick={useMyLocation} size="small" title={t("search.useMyLocation")} color="primary">
-                        <MapPin size={16} />
-                      </IconButton>
-                    </InputAdornment>
-                  ) : undefined,
-                },
-              }}
+              onEnter={handleSearch}
+              endAdornment={
+                location ? (
+                  <IconButton onClick={useMyLocation} size="small" title={t("search.useMyLocation")} color="primary">
+                    <MapPin size={16} />
+                  </IconButton>
+                ) : undefined
+              }
             />
             <IconButton
               onClick={handleSwap}
@@ -89,13 +94,12 @@ export function SearchForm({ onSearch, loading }: Props) {
             >
               <ArrowLeftRight size={16} />
             </IconButton>
-            <TextField
+            <StationAutocomplete
               label={t("search.to")}
               value={to}
-              onChange={(e) => setTo(e.target.value)}
+              onChange={setTo}
               placeholder={t("search.stationPlaceholder")}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              fullWidth
+              onEnter={handleSearch}
             />
           </Box>
 
@@ -129,6 +133,32 @@ export function SearchForm({ onSearch, loading }: Props) {
               />
             ))}
           </Box>
+
+          {recentSearches.length > 0 && (
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  <Clock size={12} />{t("search.recentSearches")}
+                </Typography>
+                <IconButton size="small" onClick={clearRecentSearches} sx={{ opacity: 0.5 }}>
+                  <Trash2 size={12} />
+                </IconButton>
+              </Box>
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                {recentSearches.slice(0, 5).map((entry, i) => (
+                  <Chip
+                    key={i}
+                    label={`${entry.from} → ${entry.to}`}
+                    size="small"
+                    variant="outlined"
+                    clickable
+                    onClick={() => handleRecentClick(entry)}
+                    sx={{ borderRadius: "6px", fontSize: "0.75rem" }}
+                  />
+                ))}
+              </Box>
+            </Box>
+          )}
 
           <Button
             variant="contained"

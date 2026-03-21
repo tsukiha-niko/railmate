@@ -51,7 +51,7 @@ export function LocationSettings() {
   }, [manualCity, manualStation, userId, setLocationStore]);
 
   return (
-    <Card variant="outlined">
+    <Card variant="outlined" sx={{ borderRadius: 5 }}>
       <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2, p: { xs: 2, sm: 2.5 } }}>
         <SectionHeader icon={<MapPin />} title={t("settings.currentLocation")} />
 

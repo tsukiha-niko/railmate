@@ -16,6 +16,8 @@ export function useTicketSearch() {
   const { setResults, setLoading, setError, setSearched, setSearchDate, setFromStation, setToStation, clear } =
     useSearchStore();
 
+  const addRecentSearch = useSearchStore((s) => s.addRecentSearch);
+
   const search = useCallback(
     async (params: TrainSearchParams) => {
       setLoading(true);
@@ -24,6 +26,7 @@ export function useTicketSearch() {
       setSearchDate(params.travel_date);
       setFromStation(params.from_station);
       setToStation(params.to_station);
+      addRecentSearch({ from: params.from_station, to: params.to_station, date: params.travel_date });
       try {
         const data = await searchTickets(params);
         setResults(data);
@@ -34,7 +37,7 @@ export function useTicketSearch() {
         setLoading(false);
       }
     },
-    [t, setLoading, setError, setSearched, setSearchDate, setFromStation, setToStation, setResults],
+    [t, setLoading, setError, setSearched, setSearchDate, setFromStation, setToStation, setResults, addRecentSearch],
   );
 
   return { results, loading, error, searched, searchDate, search, clear };

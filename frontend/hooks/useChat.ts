@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useChatStore } from "@/store/chatStore";
 import { useUserContextStore } from "@/store/userContextStore";
-import { createChatJob, getChatJob } from "@/services/chat";
+import { streamChat, createChatJob, getChatJob } from "@/services/chat";
 import type { ChatMessage } from "@/types/chat";
 import { useI18n } from "@/lib/i18n/i18n";
 
@@ -17,12 +17,118 @@ export function useChat() {
   const store = useChatStore();
   const location = useUserContextStore((s) => s.location);
   const planningMode = useUserContextStore((s) => s.planningMode);
-
-  // loading 状态存入 store，跨页面导航不丢失
   const pendingConvId = useChatStore((s) => s.pendingConvId);
   const setPendingConvId = useChatStore((s) => s.setPendingConvId);
   const activeId = useChatStore((s) => s.activeConversationId);
   const loading = pendingConvId !== null && pendingConvId === activeId;
+  const abortRef = useRef<AbortController | null>(null);
+
+  const sendViaSSE = useCallback(
+    async (text: string, convId: string, pendingMessageId: string) => {
+      let resolvedConvId = convId;
+
+      await streamChat(
+        {
+          message: text,
+          conversation_id: resolvedConvId,
+          user_id: store.userId,
+          location: location ? { city: location.city, station: location.station } : undefined,
+          planning_mode: planningMode,
+        },
+        {
+          onStart: (data) => {
+            if (data.conversation_id !== resolvedConvId) {
+              store.updateConversationId(resolvedConvId, data.conversation_id);
+              resolvedConvId = data.conversation_id;
+            }
+          },
+          onProgress: (data) => {
+            store.updateMessage(resolvedConvId, pendingMessageId, {
+              status: "pending",
+              progress: {
+                percent: data.percent,
+                current_message: data.message,
+                events: [],
+              },
+            });
+          },
+          onDone: (data) => {
+            if (data.conversation_id !== resolvedConvId) {
+              store.updateConversationId(resolvedConvId, data.conversation_id);
+              resolvedConvId = data.conversation_id;
+            }
+            store.updateMessage(resolvedConvId, pendingMessageId, {
+              content: data.answer,
+              tool_calls: data.tool_calls,
+              timestamp: Date.now(),
+              status: "complete",
+              progress: null,
+            });
+          },
+          onError: (data) => {
+            throw new Error(data.message || t("errors.requestFailed"));
+          },
+        },
+      );
+    },
+    [store, location, planningMode, t],
+  );
+
+  const sendViaPolling = useCallback(
+    async (text: string, convId: string, pendingMessageId: string) => {
+      let resolvedConvId = convId;
+
+      const job = await createChatJob({
+        message: text,
+        conversation_id: resolvedConvId,
+        user_id: store.userId,
+        location: location ? { city: location.city, station: location.station } : undefined,
+        planning_mode: planningMode,
+      });
+
+      if (job.conversation_id !== resolvedConvId) {
+        store.updateConversationId(resolvedConvId, job.conversation_id);
+        resolvedConvId = job.conversation_id;
+      }
+
+      let finished = false;
+      while (!finished) {
+        const snapshot = await getChatJob(job.job_id);
+        if (snapshot.conversation_id !== resolvedConvId) {
+          store.updateConversationId(resolvedConvId, snapshot.conversation_id);
+          resolvedConvId = snapshot.conversation_id;
+        }
+
+        store.updateMessage(resolvedConvId, pendingMessageId, {
+          status: snapshot.status === "failed" ? "error" : snapshot.status === "completed" ? "complete" : "pending",
+          progress: {
+            percent: snapshot.progress_percent,
+            current_message: snapshot.current_message,
+            events: snapshot.events,
+          },
+        });
+
+        if (snapshot.status === "completed" && snapshot.result) {
+          store.updateMessage(resolvedConvId, pendingMessageId, {
+            content: snapshot.result.answer,
+            tool_calls: snapshot.result.tool_calls,
+            timestamp: Date.now(),
+            status: "complete",
+            progress: null,
+          });
+          finished = true;
+          break;
+        }
+
+        if (snapshot.status === "failed") {
+          throw new Error(snapshot.error || t("errors.requestFailed"));
+        }
+
+        await sleep(1200);
+      }
+    },
+    [store, location, planningMode, t],
+  );
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -53,54 +159,13 @@ export function useChat() {
         },
       };
       store.addMessage(convId, pendingMessage);
+
       try {
-        const job = await createChatJob({
-          message: text,
-          conversation_id: convId,
-          user_id: store.userId,
-          location: location ? { city: location.city, station: location.station } : undefined,
-          planning_mode: planningMode,
-        });
-
-        if (job.conversation_id !== convId) {
-          store.updateConversationId(convId, job.conversation_id);
-          convId = job.conversation_id;
-        }
-
-        let finished = false;
-        while (!finished) {
-          const snapshot = await getChatJob(job.job_id);
-          if (snapshot.conversation_id !== convId) {
-            store.updateConversationId(convId, snapshot.conversation_id);
-            convId = snapshot.conversation_id;
-          }
-
-          store.updateMessage(convId, pendingMessageId, {
-            status: snapshot.status === "failed" ? "error" : snapshot.status === "completed" ? "complete" : "pending",
-            progress: {
-              percent: snapshot.progress_percent,
-              current_message: snapshot.current_message,
-              events: snapshot.events,
-            },
-          });
-
-          if (snapshot.status === "completed" && snapshot.result) {
-            store.updateMessage(convId, pendingMessageId, {
-              content: snapshot.result.answer,
-              tool_calls: snapshot.result.tool_calls,
-              timestamp: Date.now(),
-              status: "complete",
-              progress: null,
-            });
-            finished = true;
-            break;
-          }
-
-          if (snapshot.status === "failed") {
-            throw new Error(snapshot.error || t("errors.requestFailed"));
-          }
-
-          await sleep(1200);
+        try {
+          await sendViaSSE(text, convId, pendingMessageId);
+        } catch (sseErr) {
+          console.warn("[useChat] SSE failed, falling back to polling:", sseErr);
+          await sendViaPolling(text, convId, pendingMessageId);
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : t("errors.requestFailed");
@@ -115,7 +180,7 @@ export function useChat() {
         setPendingConvId(null);
       }
     },
-    [pendingConvId, store, location, planningMode, t, setPendingConvId],
+    [pendingConvId, store, t, setPendingConvId, sendViaSSE, sendViaPolling],
   );
 
   return { sendMessage, loading, error };

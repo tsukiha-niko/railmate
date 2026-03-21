@@ -166,6 +166,8 @@ async def list_stations(
                 "code": s.code,
                 "name": s.name,
                 "city": s.city_name,
+                "pinyin": s.pinyin or "",
+                "initial": s.initial or "",
                 "is_hub": s.is_hub,
             }
             for s in stations

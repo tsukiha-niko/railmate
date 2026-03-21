@@ -49,5 +49,7 @@ export interface Station {
   code: string;
   name: string;
   city: string;
+  pinyin?: string;
+  initial?: string;
   is_hub: boolean;
 }
