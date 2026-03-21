@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Copy, Undo2, Check, ArrowRight, ScanLine, X, RefreshCw, Bell, BellOff } from "lucide-react";
+import { Copy, Undo2, Check, ArrowRight, ScanLine, X, Bell, BellOff } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import Card from "@mui/material/Card";
 import Box from "@mui/material/Box";
@@ -12,16 +12,14 @@ import IconButton from "@mui/material/IconButton";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import Alert from "@mui/material/Alert";
-import Link from "@mui/material/Link";
-import { alpha } from "@mui/material/styles";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCheckInTicketDirect } from "@/hooks/queries/useTrips";
 import type { TicketOrder, TravelPhase } from "@/types/ticketing";
 import { resolveTravelPhase } from "@/utils/tripPhase";
 import { formatDateLocalized } from "@/utils/date";
 import { formatPrice, getTrainTypeLabel } from "@/utils/format";
 import { useI18n } from "@/lib/i18n/i18n";
 import { useReminderStore } from "@/store/reminderStore";
-import { useCheckInTicket, useCheckInTicketDirect } from "@/hooks/queries/useTrips";
-import { ApiError } from "@/services/http";
 import { darkDialogHeaderClose, darkElevatedStrip, gateDialogPaper } from "@/lib/theme/muiDarkSurfaces";
 
 function phaseOf(order: TicketOrder): TravelPhase {
@@ -44,14 +42,21 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
   const isRefunded = order.status === "refunded";
   const [copied, setCopied] = useState<"order" | "refund" | null>(null);
   const [gateOpen, setGateOpen] = useState(false);
-  const [qrSuffix, setQrSuffix] = useState("");
-  const [gateError, setGateError] = useState<string | null>(null);
   const timerRef = useRef<number | null>(null);
   const existingReminder = useReminderStore((s) => s.getReminderByOrder(order.id));
   const addReminder = useReminderStore((s) => s.addReminder);
   const removeReminder = useReminderStore((s) => s.removeReminder);
-  const checkInScan = useCheckInTicket();
+  const queryClient = useQueryClient();
   const checkInDirect = useCheckInTicketDirect();
+
+  /** 弹窗打开且仍为待出行：轮询列表，以便他人扫码检票后本页同步为已检票 */
+  useEffect(() => {
+    if (!gateOpen || phase !== "booked") return;
+    const id = window.setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ["trips"] });
+    }, 2500);
+    return () => window.clearInterval(id);
+  }, [gateOpen, phase, queryClient]);
 
   const handleToggleReminder = () => {
     if (existingReminder) {
@@ -71,9 +76,6 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
   };
 
   useEffect(() => () => { if (timerRef.current) window.clearTimeout(timerRef.current); }, []);
-  useEffect(() => {
-    if (gateOpen) setGateError(null);
-  }, [gateOpen]);
 
   const copyValue = async (value: string, field: "order" | "refund") => {
     if (!value || typeof navigator === "undefined" || !navigator.clipboard) return;
@@ -86,32 +88,12 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
   const departureDate = formatDateLocalized(order.run_date, fmtLocale);
   const seatInfo = `${order.coach_no || "--"}${t("booking.success.coach")} ${order.seat_no || "--"}`;
 
-  const qrPayload = useMemo(
+  const checkInUrl = useMemo(
     () =>
-      JSON.stringify({
-        order_no: order.order_no,
-        train_no: order.train_no,
-        from: order.from_station,
-        to: order.to_station,
-        date: order.run_date,
-        departure: order.departure_time,
-        arrival: order.arrival_time,
-        passenger: order.passenger_name,
-        seat: seatInfo,
-        v: qrSuffix,
-      }),
-    [
-      order.order_no,
-      order.train_no,
-      order.from_station,
-      order.to_station,
-      order.run_date,
-      order.departure_time,
-      order.arrival_time,
-      order.passenger_name,
-      seatInfo,
-      qrSuffix,
-    ],
+      typeof window === "undefined"
+        ? ""
+        : `${window.location.origin}/api/v1/tickets/check-in/public/${encodeURIComponent(order.order_no)}`,
+    [order.order_no],
   );
 
   const borderLeftColor =
@@ -136,32 +118,8 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
     }).format(new Date(order.checked_in_at))
     : null;
 
-  const simulateScan = async () => {
-    setGateError(null);
-    try {
-      await checkInScan.mutateAsync({ qrPayload });
-      setGateOpen(false);
-    } catch (e) {
-      const raw = e instanceof ApiError ? e.detail : t("trips.gate.scanFail");
-      const msg = Array.isArray(raw) ? raw.map((x: unknown) => (typeof x === "object" && x && "msg" in x ? String((x as { msg: string }).msg) : String(x))).join("; ") : String(raw);
-      setGateError(msg || t("trips.gate.scanFail"));
-    }
-  };
-
-  const directCheckIn = async () => {
-    setGateError(null);
-    try {
-      await checkInDirect.mutateAsync(order.id);
-      setGateOpen(false);
-    } catch (e) {
-      const raw = e instanceof ApiError ? e.detail : t("trips.gate.scanFail");
-      const msg = Array.isArray(raw) ? raw.map((x: unknown) => (typeof x === "object" && x && "msg" in x ? String((x as { msg: string }).msg) : String(x))).join("; ") : String(raw);
-      setGateError(msg || t("trips.gate.scanFail"));
-    }
-  };
-
   const canOpenVoucher = !isRefunded && phase !== "refunded";
-  const checkBusy = checkInScan.isPending || checkInDirect.isPending;
+  const canRefund = !isRefunded && phase !== "checked_in";
 
   return (
     <Card
@@ -239,10 +197,12 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
             >
               {existingReminder ? <Bell size={14} style={{ color: "var(--primary)" }} /> : <BellOff size={14} />}
             </IconButton>
-            <Button variant="outlined" size="small" onClick={() => onRefund(order)} disabled={refunding} startIcon={<Undo2 size={13} />}
-              sx={{ borderRadius: "10px", fontSize: "0.75rem", py: 0.25, px: 1.5, minHeight: 30 }}>
-              {refunding ? t("trips.refund.processing") : t("trips.refund.action")}
-            </Button>
+            {canRefund ? (
+              <Button variant="outlined" size="small" onClick={() => onRefund(order)} disabled={refunding} startIcon={<Undo2 size={13} />}
+                sx={{ borderRadius: "10px", fontSize: "0.75rem", py: 0.25, px: 1.5, minHeight: 30 }}>
+                {refunding ? t("trips.refund.processing") : t("trips.refund.action")}
+              </Button>
+            ) : null}
             {canOpenVoucher ? (
               <Button
                 variant={phase === "booked" ? "contained" : "outlined"}
@@ -258,20 +218,14 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
         )}
       </Box>
 
-      <Dialog open={gateOpen} onClose={checkBusy ? undefined : () => setGateOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: (th) => gateDialogPaper(th) }}>
+      <Dialog open={gateOpen} onClose={() => setGateOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: (th) => gateDialogPaper(th) }}>
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2.5, pt: 2, pb: 0.5 }}>
           <Typography variant="subtitle1" fontWeight={700}>{t("trips.gate.title")}</Typography>
-          <IconButton size="small" onClick={() => setGateOpen(false)} disabled={checkBusy} sx={(th) => darkDialogHeaderClose(th)}>
+          <IconButton size="small" onClick={() => setGateOpen(false)} sx={(th) => darkDialogHeaderClose(th)}>
             <X size={16} />
           </IconButton>
         </Box>
         <DialogContent sx={{ px: 2.5, pb: 2.5, pt: 1 }}>
-          {gateError ? (
-            <Alert severity="error" variant="outlined" sx={{ mb: 2, borderRadius: "12px" }} onClose={() => setGateError(null)}>
-              {gateError}
-            </Alert>
-          ) : null}
-
           {phase === "checked_in" && order.checked_in_at && checkedInFmt ? (
             <Alert severity="success" variant="outlined" sx={(th) => ({
               mb: 2,
@@ -305,31 +259,8 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
                     display: "inline-flex",
                     boxShadow: (th) => `0 4px 24px -4px ${th.palette.primary.main}20`,
                   }}>
-                    <QRCodeSVG value={qrPayload} size={220} level="M" />
+                    <QRCodeSVG value={checkInUrl || order.order_no} size={220} level="M" />
                   </Box>
-                  <IconButton
-                    size="small"
-                    onClick={() => setQrSuffix((s) => s + "1")}
-                    sx={(th) => ({
-                      position: "absolute",
-                      bottom: -6,
-                      right: -6,
-                      bgcolor: "background.paper",
-                      border: 1,
-                      borderColor: "divider",
-                      borderRadius: "8px",
-                      width: 28,
-                      height: 28,
-                      boxShadow: "var(--shadow-card)",
-                      "&:hover": { bgcolor: "action.hover" },
-                      ...(th.palette.mode === "dark" ? {
-                        bgcolor: th.palette.grey[900],
-                        borderColor: `${th.palette.divider}99`,
-                      } : {}),
-                    })}
-                  >
-                    <RefreshCw size={13} />
-                  </IconButton>
                 </Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5, fontFamily: "monospace", letterSpacing: 1.5, fontWeight: 600 }}>
                   {order.order_no}
@@ -367,19 +298,15 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
 
               {phase === "booked" ? (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 2 }}>
-                  <Button variant="contained" fullWidth disabled={checkBusy} onClick={() => void simulateScan()} sx={{ borderRadius: "10px" }}>
-                    {checkBusy ? t("trips.gate.scanBusy") : t("trips.gate.scanSimulate")}
-                  </Button>
-                  <Link
-                    component="button"
-                    type="button"
-                    variant="body2"
-                    onClick={() => void directCheckIn()}
-                    disabled={checkBusy}
-                    sx={{ textAlign: "center", cursor: checkBusy ? "default" : "pointer" }}
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    disabled={checkInDirect.isPending}
+                    onClick={() => void checkInDirect.mutateAsync(order.id)}
+                    sx={{ borderRadius: "10px" }}
                   >
-                    {t("trips.gate.direct")}
-                  </Link>
+                    {checkInDirect.isPending ? t("trips.gate.scanBusy") : t("trips.gate.checkInNow")}
+                  </Button>
                 </Box>
               ) : null}
             </>

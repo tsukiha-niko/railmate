@@ -70,7 +70,7 @@ export default function TripsPage() {
   const { showBottomNav } = useResponsiveNavMode();
   const [filter, setFilter] = useState<FilterKey>("all");
 
-  const { data, isLoading: loading, error: queryError, refetch } = useTrips();
+  const { data, isLoading: loading, error: queryError, refetch } = useTrips({ refetchIntervalMs: 4_000 });
   const refundMutation = useRefundTicket();
 
   const error = queryError ? (queryError instanceof Error ? queryError.message : t("common.loadFailed")) : null;

@@ -209,6 +209,15 @@ class TicketingService:
             raise ValueError("未找到对应订单")
         return self._perform_check_in(order)
 
+    def check_in_by_order_no(self, order_no: str) -> TicketOrderResponse:
+        if not order_no or not order_no.strip():
+            raise ValueError("缺少有效订单号")
+        stmt = select(TicketOrder).where(TicketOrder.order_no == order_no.strip())
+        order = self.session.exec(stmt).first()
+        if not order:
+            raise ValueError("未找到对应订单")
+        return self._perform_check_in(order)
+
     def scan_check_in(self, raw: str, user_id: Optional[str] = None) -> TicketOrderResponse:
         try:
             data = json.loads(raw)

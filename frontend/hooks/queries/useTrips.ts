@@ -4,13 +4,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { checkInTicketOrder, checkInTicketScan, listTicketOrders, refundTicket } from "@/services/ticketing";
 import { useChatStore } from "@/store/chatStore";
 
-export function useTrips() {
+export function useTrips(options?: { refetchIntervalMs?: number | false }) {
   const userId = useChatStore((s) => s.userId);
+  const interval = options?.refetchIntervalMs ?? 60_000;
 
   return useQuery({
     queryKey: ["trips", userId],
     queryFn: () => listTicketOrders(userId),
-    refetchInterval: 60_000,
+    refetchInterval: interval === false ? false : interval,
   });
 }
 
