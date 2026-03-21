@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 export type Locale = "zh-CN" | "en";
 
@@ -66,11 +66,16 @@ export function I18nProvider({
   messages: Record<Locale, Messages>;
   defaultLocale?: Locale;
 }) {
-  const locale = useSyncExternalStore<Locale>(
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const storedLocale = useSyncExternalStore<Locale>(
     subscribeLocale,
     () => getLocaleSnapshot(defaultLocale),
     () => defaultLocale,
   );
+  /** 首帧与 SSR 一致，避免部分运行时下 localStorage 与 getServerSnapshot 不同步的 hydration 警告 */
+  const locale = mounted ? storedLocale : defaultLocale;
 
   useEffect(() => {
     document.documentElement.lang = locale;

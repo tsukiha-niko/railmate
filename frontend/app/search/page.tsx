@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -10,11 +11,11 @@ import { AlertCircle, TrainFront } from "lucide-react";
 import { SearchForm } from "@/components/search/SearchForm";
 import { TrainCardList } from "@/components/tickets/TrainCardList";
 import { useTicketSearch } from "@/hooks/useTicketSearch";
-import { useSearchStore } from "@/store/searchStore";
+import { listStations } from "@/services/trains";
 import type { TrainSearchParams, TrainSearchResult } from "@/types/trains";
 import { useI18n } from "@/lib/i18n/i18n";
 import { formatDuration } from "@/utils/date";
-import { formatPrice, getLowestFare } from "@/utils/format";
+import { formatPrice, getLowestFare, maxLowestFareInList } from "@/utils/format";
 
 type SortKey = "departure" | "duration" | "price";
 type SortDirection = "asc" | "desc";
@@ -35,26 +36,82 @@ function compareBySortKey(a: TrainSearchResult, b: TrainSearchResult, sortKey: S
   return aPrice - bPrice || aDep - bDep || a.duration_minutes - b.duration_minutes;
 }
 
+const STATIONS_STALE_MS = 30 * 60_000;
+
 export default function SearchPage() {
+  const queryClient = useQueryClient();
   const { results, filteredResults, trainTypeFilter, loading, error, searched, searchDate, search } = useTicketSearch();
   const { t, locale } = useI18n();
   const [sortKey, setSortKey] = useState<SortKey>("departure");
+  const [budgetMin, setBudgetMin] = useState(0);
+  const [budgetMax, setBudgetMax] = useState(0);
+
+  const fareUpperBound = useMemo(() => {
+    const raw = maxLowestFareInList(results);
+    return raw > 0 ? Math.ceil(raw) : 0;
+  }, [results]);
+
+  const prevLoading = useRef(false);
+
+  useEffect(() => {
+    if (fareUpperBound <= 0) {
+      setBudgetMin(0);
+      setBudgetMax(0);
+      return;
+    }
+    setBudgetMin(0);
+    setBudgetMax(fareUpperBound);
+  }, [fareUpperBound]);
+
+  useEffect(() => {
+    if (prevLoading.current && !loading && searched) {
+      const raw = maxLowestFareInList(results);
+      const ub = raw > 0 ? Math.ceil(raw) : 0;
+      if (ub <= 0) {
+        setBudgetMin(0);
+        setBudgetMax(0);
+      } else {
+        setBudgetMin(0);
+        setBudgetMax(ub);
+      }
+    }
+    prevLoading.current = loading;
+  }, [loading, searched, results]);
+
+  useEffect(() => {
+    void queryClient.prefetchQuery({
+      queryKey: ["stations"],
+      queryFn: () => listStations(),
+      staleTime: STATIONS_STALE_MS,
+    });
+  }, [queryClient]);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const statsLocale = locale === "en" ? "en" : "zh-CN";
 
+  const budgetFilteredResults = useMemo(() => {
+    if (fareUpperBound <= 0) return filteredResults;
+    return filteredResults.filter((tr) => {
+      const p = getLowestFare(tr)?.price;
+      if (p == null || !Number.isFinite(p)) return true;
+      return p >= budgetMin && p <= budgetMax;
+    });
+  }, [filteredResults, budgetMin, budgetMax, fareUpperBound]);
+
+  const budgetActive = fareUpperBound > 0 && (budgetMin > 0 || budgetMax < fareUpperBound);
+
   const sortedResults = useMemo(() => {
-    const list = [...filteredResults];
+    const list = [...budgetFilteredResults];
     list.sort((a, b) => { const v = compareBySortKey(a, b, sortKey); return sortDirection === "asc" ? v : -v; });
     return list;
-  }, [filteredResults, sortDirection, sortKey]);
+  }, [budgetFilteredResults, sortDirection, sortKey]);
 
   const getTopBySort = useMemo(() => (key: SortKey, dir: SortDirection) => {
-    if (filteredResults.length === 0) return null;
-    const list = [...filteredResults];
+    if (budgetFilteredResults.length === 0) return null;
+    const list = [...budgetFilteredResults];
     list.sort((a, b) => { const v = compareBySortKey(a, b, key); return dir === "asc" ? v : -v; });
     return list[0] ?? null;
-  }, [filteredResults]);
+  }, [budgetFilteredResults]);
 
   const departureTop = getTopBySort("departure", sortKey === "departure" ? sortDirection : "asc");
   const durationTop = getTopBySort("duration", sortKey === "duration" ? sortDirection : "asc");
@@ -93,7 +150,23 @@ export default function SearchPage() {
 
       <Box sx={{ display: "grid", flex: 1, gap: { xs: 2.5, lg: 3 }, gridTemplateColumns: { lg: "400px 1fr" } }}>
         <Box sx={{ position: { lg: "sticky" }, top: { lg: 12 }, height: "fit-content" }}>
-          <SearchForm onSearch={(params: TrainSearchParams) => search(params)} loading={loading} />
+          <SearchForm
+            onSearch={(params: TrainSearchParams) => search(params)}
+            loading={loading}
+            budgetSlider={
+              searched && fareUpperBound > 0
+                ? {
+                    maxBound: fareUpperBound,
+                    minValue: budgetMin,
+                    maxValue: budgetMax,
+                    onChange: (a, b) => {
+                      setBudgetMin(a);
+                      setBudgetMax(b);
+                    },
+                  }
+                : undefined
+            }
+          />
         </Box>
 
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -107,11 +180,16 @@ export default function SearchPage() {
                 <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 1, mb: 2 }}>
                   <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
                     <Typography variant="body2" fontWeight={700} color="text.secondary">
-                      {t("search.found", { count: filteredResults.length })}
+                      {t("search.found", { count: budgetFilteredResults.length })}
                     </Typography>
                     {trainTypeFilter ? (
                       <Typography variant="caption" color="text.disabled">
                         {t("search.queryTotal", { total: results.length })}
+                      </Typography>
+                    ) : null}
+                    {budgetActive ? (
+                      <Typography variant="caption" color="text.disabled">
+                        {t("search.budgetApplied", { shown: budgetFilteredResults.length, eligible: filteredResults.length })}
                       </Typography>
                     ) : null}
                   </Box>

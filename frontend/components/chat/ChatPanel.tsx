@@ -120,6 +120,8 @@ export function ChatPanel() {
                 message={msg}
                 index={i}
                 onQueryTransfer={handleQueryTransfer}
+                onSuggestionClick={sendMessage}
+                disableQuickReplies={loading}
               />
             ))}
             <div ref={bottomRef} />

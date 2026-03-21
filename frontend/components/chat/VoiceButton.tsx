@@ -32,7 +32,10 @@ export function VoiceButton({ onTranscript, disabled }: Props) {
   const [errorMsg, setErrorMsg] = useState("");
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const { locale } = useI18n();
-  const supported = typeof window !== "undefined" && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  const [supported, setSupported] = useState(false);
+  useEffect(() => {
+    setSupported(!!(window.SpeechRecognition || window.webkitSpeechRecognition));
+  }, []);
 
   useEffect(() => () => { recognitionRef.current?.abort(); recognitionRef.current = null; }, []);
 

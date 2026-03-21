@@ -60,6 +60,7 @@ export function useChat() {
             store.updateMessage(resolvedConvId, pendingMessageId, {
               content: data.answer,
               tool_calls: data.tool_calls,
+              quick_replies: data.quick_replies?.length ? data.quick_replies : undefined,
               timestamp: Date.now(),
               status: "complete",
               progress: null,
@@ -112,6 +113,7 @@ export function useChat() {
           store.updateMessage(resolvedConvId, pendingMessageId, {
             content: snapshot.result.answer,
             tool_calls: snapshot.result.tool_calls,
+            quick_replies: snapshot.result.quick_replies?.length ? snapshot.result.quick_replies : undefined,
             timestamp: Date.now(),
             status: "complete",
             progress: null,

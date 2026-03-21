@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import { lightTheme, darkTheme } from "./muiTheme";
@@ -69,19 +69,32 @@ function getThemeSnapshot(): ThemeMode {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const theme = useSyncExternalStore<ThemeMode>(subscribeTheme, getThemeSnapshot, () => "system");
-  const resolved = resolveMode(theme);
+  /** 首帧与服务端一致：避免 system 主题下 matchMedia 与 SSR 恒为浅色不一致导致 hydration 报错 */
+  const resolved = mounted ? resolveMode(theme) : "light";
   const muiTheme = resolved === "dark" ? darkTheme : lightTheme;
 
-  useEffect(() => { applyThemeClass(theme); }, [theme]);
+  useEffect(() => {
+    if (!mounted) return;
+    applyThemeClass(theme);
+  }, [mounted, theme]);
 
   useEffect(() => {
+    if (!mounted) return;
     const mql = window.matchMedia?.("(prefers-color-scheme: dark)");
     if (!mql) return;
-    const handler = () => { if (theme === "system") { applyThemeClass("system"); emitThemeChange(); } };
+    const handler = () => {
+      if (theme === "system") {
+        applyThemeClass("system");
+        emitThemeChange();
+      }
+    };
     mql.addEventListener?.("change", handler);
     return () => mql.removeEventListener?.("change", handler);
-  }, [theme]);
+  }, [mounted, theme]);
 
   const setTheme = useCallback((nextTheme: ThemeMode) => {
     if (typeof window === "undefined") return;

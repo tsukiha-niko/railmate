@@ -11,6 +11,7 @@ import CardContent from "@mui/material/CardContent";
 import CardHeader from "@mui/material/CardHeader";
 import Chip from "@mui/material/Chip";
 import Typography from "@mui/material/Typography";
+import { alpha, type Theme } from "@mui/material/styles";
 import Skeleton from "@mui/material/Skeleton";
 import Alert from "@mui/material/Alert";
 import { TrainTimeline } from "@/components/tickets/TrainTimeline";
@@ -21,8 +22,45 @@ import { useChatStore } from "@/store/chatStore";
 import { useTrainSchedule, useTrainPrices, useTicketingCapabilities } from "@/hooks/queries/useTrainDetail";
 import { formatPrice, getFareLabel, getTrainTypeLabel, getTrainTypeColor } from "@/utils/format";
 import { formatDateLocalized, getToday } from "@/utils/date";
+import { arrivalCalendarDayOffset, segmentDurationByStops } from "@/utils/trainCrossDay";
 import { cn } from "@/utils/cn";
 import { useI18n } from "@/lib/i18n/i18n";
+
+function seatCardAccent(key: string, th: Theme) {
+  const p = th.palette;
+  const edge = alpha(p.text.primary, p.mode === "dark" ? 0.14 : 0.1);
+  const subtle = (tint: string) => ({
+    bg: alpha(tint, p.mode === "dark" ? 0.05 : 0.035),
+    border: edge,
+    bar: alpha(tint, 0.28),
+    price: p.text.primary,
+  });
+  switch (key) {
+    case "business_seat":
+      return subtle(p.warning.main);
+    case "first_seat":
+      return subtle(p.primary.main);
+    case "second_seat":
+      return subtle(p.success.main);
+    case "soft_sleeper":
+      return subtle(p.secondary.main);
+    case "hard_sleeper":
+      return subtle(p.error.main);
+    case "hard_seat":
+      return subtle(p.info.main);
+    case "no_seat": {
+      const g = p.text.secondary;
+      return {
+        bg: alpha(p.text.primary, p.mode === "dark" ? 0.035 : 0.025),
+        border: edge,
+        bar: alpha(g, 0.22),
+        price: p.text.primary,
+      };
+    }
+    default:
+      return subtle(p.primary.main);
+  }
+}
 
 export default function TrainDetailPage() {
   const router = useRouter();
@@ -65,6 +103,31 @@ export default function TrainDetailPage() {
   const originStop = stops.length > 0 ? stops[0] : null;
   const terminalStop = stops.length > 1 ? stops[stops.length - 1] : null;
   const totalStops = stops.length;
+
+  const routeFromName = fromStation || originStop?.station_name || "";
+  const routeToName = toStation || terminalStop?.station_name || "";
+  const fromStopDetail = routeFromName ? stops.find((s) => s.station_name === routeFromName) : undefined;
+  const toStopDetail = routeToName ? stops.find((s) => s.station_name === routeToName) : undefined;
+  const routeDepTime =
+    fromStopDetail?.departure_time && fromStopDetail.departure_time !== "--"
+      ? fromStopDetail.departure_time
+      : fromStopDetail?.arrival_time ?? null;
+  const routeArrTime =
+    toStopDetail?.arrival_time && toStopDetail.arrival_time !== "--"
+      ? toStopDetail.arrival_time
+      : toStopDetail?.departure_time ?? null;
+  const segmentMinutes =
+    routeFromName && routeToName ? segmentDurationByStops(stops, routeFromName, routeToName) : null;
+  const arrivalDayOffset =
+    routeFromName && routeToName
+      ? arrivalCalendarDayOffset(routeDepTime, routeArrTime, segmentMinutes)
+      : 0;
+  const displayArrivalTime =
+    routeArrTime && routeArrTime !== "--"
+      ? routeArrTime
+      : terminalStop?.arrival_time && terminalStop.arrival_time !== "--"
+        ? terminalStop.arrival_time
+        : "";
 
   const seatCards = [
     { key: "business_seat", label: locale === "en" ? "Business" : "商务/特等座" },
@@ -121,22 +184,142 @@ export default function TrainDetailPage() {
             </Box>
 
             {(fromStation && toStation) || (originStop && terminalStop) ? (
-              <Box sx={{ display: "grid", gridTemplateColumns: { md: "1fr auto 1fr" }, alignItems: "center", gap: 2, borderRadius: "12px", bgcolor: (th: any) => `${th.palette.action.hover}60`, px: 3, py: 3 }}>
-                <Box sx={{ textAlign: "center" }}>
-                  <Typography variant="h6" fontWeight={700}>{fromStation || originStop?.station_name}</Typography>
-                  {originStop && <Typography variant="body2" color="text.secondary" sx={{ fontVariantNumeric: "tabular-nums" }}>{originStop.departure_time !== "--" ? originStop.departure_time : ""}</Typography>}
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)",
+                  alignItems: "center",
+                  gap: { xs: 0.75, sm: 1.75, md: 2.25 },
+                  borderRadius: "12px",
+                  bgcolor: (th: any) => `${th.palette.action.hover}60`,
+                  px: { xs: 1.25, sm: 3 },
+                  py: { xs: 2.25, sm: 3.25 },
+                }}
+              >
+                <Box sx={{ textAlign: "center", minWidth: 0 }}>
+                  <Typography
+                    variant="h5"
+                    fontWeight={800}
+                    sx={{
+                      fontSize: { xs: "1.05rem", sm: "1.55rem" },
+                      letterSpacing: "-0.03em",
+                      lineHeight: 1.25,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {fromStation || originStop?.station_name}
+                  </Typography>
+                  {originStop ? (
+                    <Typography
+                      component="div"
+                      color="text.secondary"
+                      sx={{
+                        mt: 0.75,
+                        fontVariantNumeric: "tabular-nums",
+                        fontWeight: 700,
+                        fontSize: { xs: "1.05rem", sm: "1.35rem" },
+                        letterSpacing: "-0.02em",
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {originStop.departure_time !== "--" ? originStop.departure_time : ""}
+                    </Typography>
+                  ) : null}
                 </Box>
-                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5 }}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, width: "100%" }}>
-                    <Box sx={{ height: "1px", flex: 1, bgcolor: "divider" }} />
-                    <ArrowRight size={14} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
-                    <Box sx={{ height: "1px", flex: 1, bgcolor: "divider" }} />
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 0.5,
+                    flexShrink: 0,
+                    width: { xs: 88, sm: 120 },
+                    maxWidth: { xs: 88, sm: 140 },
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 0.35, sm: 0.75 }, width: "100%" }}>
+                    <Box sx={{ height: 2, flex: 1, borderRadius: 1, bgcolor: "divider", minWidth: 0 }} />
+                    <ArrowRight size={20} strokeWidth={2.25} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
+                    <Box sx={{ height: 2, flex: 1, borderRadius: 1, bgcolor: "divider", minWidth: 0 }} />
                   </Box>
-                  {totalStops > 0 && <Typography variant="caption" color="text.secondary">{locale === "en" ? `${totalStops} stops` : `共${totalStops}站`}</Typography>}
+                  {totalStops > 0 ? (
+                    <Typography
+                      variant="body1"
+                      color="text.secondary"
+                      sx={{
+                        fontWeight: 700,
+                        fontSize: { xs: "0.78rem", sm: "1.05rem" },
+                        letterSpacing: "0.02em",
+                        whiteSpace: "nowrap",
+                        maxWidth: "100%",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {locale === "en" ? `${totalStops} stops` : `共${totalStops}站`}
+                    </Typography>
+                  ) : null}
                 </Box>
-                <Box sx={{ textAlign: "center" }}>
-                  <Typography variant="h6" fontWeight={700}>{toStation || terminalStop?.station_name}</Typography>
-                  {terminalStop && <Typography variant="body2" color="text.secondary" sx={{ fontVariantNumeric: "tabular-nums" }}>{terminalStop.arrival_time !== "--" ? terminalStop.arrival_time : ""}</Typography>}
+                <Box sx={{ textAlign: "center", minWidth: 0 }}>
+                  <Typography
+                    variant="h5"
+                    fontWeight={800}
+                    sx={{
+                      fontSize: { xs: "1.05rem", sm: "1.55rem" },
+                      letterSpacing: "-0.03em",
+                      lineHeight: 1.25,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {toStation || terminalStop?.station_name}
+                  </Typography>
+                  {displayArrivalTime ? (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: { xs: 0.5, sm: 0.75 },
+                        flexWrap: "nowrap",
+                        mt: 0.75,
+                        minWidth: 0,
+                      }}
+                    >
+                      <Typography
+                        component="span"
+                        color="text.secondary"
+                        sx={{
+                          fontVariantNumeric: "tabular-nums",
+                          fontWeight: 700,
+                          fontSize: { xs: "1.05rem", sm: "1.35rem" },
+                          letterSpacing: "-0.02em",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {displayArrivalTime}
+                      </Typography>
+                      {arrivalDayOffset >= 1 ? (
+                        <Chip
+                          size="small"
+                          label={arrivalDayOffset === 1 ? t("train.arrivalNextDay") : t("train.arrivalPlusDays", { n: arrivalDayOffset })}
+                          sx={(th) => ({
+                            height: 24,
+                            maxWidth: "100%",
+                            fontWeight: 700,
+                            fontSize: { xs: "0.65rem", sm: "0.78rem" },
+                            borderRadius: "8px",
+                            bgcolor: alpha(th.palette.primary.main, 0.14),
+                            color: "primary.main",
+                            border: `1px solid ${alpha(th.palette.primary.main, 0.28)}`,
+                          })}
+                        />
+                      ) : null}
+                    </Box>
+                  ) : null}
                 </Box>
               </Box>
             ) : null}
@@ -148,10 +331,42 @@ export default function TrainDetailPage() {
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
           <Card variant="outlined" sx={{ borderRadius: "12px", borderColor: (th) => `${th.palette.divider}70`, boxShadow: "var(--shadow-card)", "&:hover": { boxShadow: "var(--shadow-card-hover)" } }}>
             <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2.5 }}>
-              <Typography variant="subtitle2" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <span>¥</span>{t("train.price.title")}
-              </Typography>
-              <Alert severity="info" variant="outlined" icon={<Sparkles size={16} />} sx={{ py: 0.5, borderRadius: "12px" }}>{t("booking.detailHint")}</Alert>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 36,
+                    height: 36,
+                    borderRadius: "10px",
+                    bgcolor: (th) => alpha(th.palette.primary.main, 0.12),
+                    color: "primary.main",
+                    fontWeight: 800,
+                    fontSize: "0.95rem",
+                  }}
+                >
+                  ¥
+                </Box>
+                <Typography variant="subtitle1" fontWeight={800} sx={{ letterSpacing: "-0.02em", color: "text.primary" }}>
+                  {t("train.price.title")}
+                </Typography>
+              </Box>
+              <Alert
+                severity="info"
+                variant="outlined"
+                icon={<Sparkles size={17} strokeWidth={2.25} />}
+                sx={(th) => ({
+                  py: 1,
+                  borderRadius: "12px",
+                  borderColor: alpha(th.palette.info.main, 0.45),
+                  bgcolor: alpha(th.palette.info.main, 0.08),
+                  color: "text.primary",
+                  "& .MuiAlert-icon": { color: "info.main" },
+                })}
+              >
+                {t("booking.detailHint")}
+              </Alert>
               {pricesLoading ? (
                 <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 1.5 }}>
                   {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} variant="rounded" height={96} sx={{ borderRadius: "12px" }} />)}
@@ -162,20 +377,74 @@ export default function TrainDetailPage() {
                     <Card
                       key={key}
                       variant="outlined"
-                      sx={{
-                        borderRadius: "12px",
-                        borderColor: (th) => `${th.palette.divider}60`,
-                        transition: "all 0.2s ease",
-                        "&:hover": {
-                          borderColor: "primary.main",
-                          boxShadow: "var(--shadow-card-hover)",
-                          transform: "translateY(-2px)",
-                        },
+                      sx={(th) => {
+                        const a = seatCardAccent(key, th);
+                        const hoverShadow = `0 2px 10px ${alpha(a.bar, th.palette.mode === "dark" ? 0.12 : 0.08)}`;
+                        return {
+                          borderRadius: "12px",
+                          overflow: "hidden",
+                          borderColor: a.border,
+                          bgcolor: a.bg,
+                          transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+                          boxShadow: "none",
+                          "&:hover": {
+                            borderColor: alpha(a.bar, 0.45),
+                            boxShadow: hoverShadow,
+                          },
+                        };
                       }}
                     >
-                      <Button onClick={() => handleSeatSelect({ key, label, price })} sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 0.5, minHeight: 80, width: "100%", textTransform: "none", borderRadius: "12px" }}>
-                        <Typography variant="caption" color="text.secondary" noWrap>{label}</Typography>
-                        <Typography variant="h6" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums" }}>{formatPrice(price)}</Typography>
+                      <Button
+                        onClick={() => handleSeatSelect({ key, label, price })}
+                        sx={(th) => {
+                          const a = seatCardAccent(key, th);
+                          return {
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 0.75,
+                            minHeight: 96,
+                            width: "100%",
+                            textTransform: "none",
+                            borderRadius: "12px",
+                            position: "relative",
+                            px: 1.75,
+                            py: 1.35,
+                            "&::before": {
+                              content: '""',
+                              position: "absolute",
+                              left: 0,
+                              top: 14,
+                              bottom: 14,
+                              width: 3,
+                              borderRadius: "0 3px 3px 0",
+                              bgcolor: a.bar,
+                            },
+                          };
+                        }}
+                      >
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          noWrap
+                          sx={{ fontWeight: 650, maxWidth: "100%", fontSize: { xs: "0.9rem", sm: "0.95rem" } }}
+                        >
+                          {label}
+                        </Typography>
+                        <Typography
+                          variant="h5"
+                          fontWeight={800}
+                          sx={{
+                            fontVariantNumeric: "tabular-nums",
+                            color: "text.primary",
+                            letterSpacing: "-0.03em",
+                            fontSize: { xs: "1.35rem", sm: "1.5rem" },
+                            lineHeight: 1.15,
+                          }}
+                        >
+                          {formatPrice(price)}
+                        </Typography>
                       </Button>
                     </Card>
                   ))}
@@ -197,10 +466,37 @@ export default function TrainDetailPage() {
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
         <Card variant="outlined" sx={{ borderRadius: "12px", borderColor: (th) => `${th.palette.divider}70`, boxShadow: "var(--shadow-card)", "&:hover": { boxShadow: "var(--shadow-card-hover)" } }}>
-          <CardHeader title={<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><Clock size={16} style={{ color: "var(--primary)" }} /><Typography variant="subtitle2">{t("train.schedule")}</Typography></Box>} />
-          <CardContent>
+          <CardHeader
+            title={
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 36,
+                    height: 36,
+                    borderRadius: "10px",
+                    bgcolor: (th) => `${th.palette.primary.main}14`,
+                    color: "primary.main",
+                  }}
+                >
+                  <Clock size={18} strokeWidth={2.25} />
+                </Box>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ letterSpacing: "-0.02em" }}>
+                  {t("train.schedule")}
+                </Typography>
+              </Box>
+            }
+            sx={{ pb: 0, "& .MuiCardHeader-content": { overflow: "visible" } }}
+          />
+          <CardContent sx={{ pt: 2 }}>
             {loading ? (
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} variant="text" />)}</Box>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} variant="rounded" height={72} sx={{ borderRadius: "12px" }} />
+                ))}
+              </Box>
             ) : displayError ? (
               <Box sx={{ textAlign: "center", py: 4 }}>
                 <Typography variant="body2" color="error">{displayError}</Typography>

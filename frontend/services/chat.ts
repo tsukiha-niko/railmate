@@ -25,6 +25,7 @@ export interface SSEDoneEvent {
   answer: string;
   conversation_id: string;
   tool_calls: Array<{ tool_name: string; arguments: Record<string, unknown>; result?: unknown }>;
+  quick_replies?: string[];
 }
 
 export type SSEHandler = {

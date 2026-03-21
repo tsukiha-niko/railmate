@@ -156,6 +156,7 @@ async def stream_chat(request: ChatRequest):
                 "answer": response.answer,
                 "conversation_id": response.conversation_id,
                 "tool_calls": [tc.model_dump() for tc in response.tool_calls],
+                "quick_replies": response.quick_replies,
             }))
         except Exception as exc:
             logger.error(f"SSE chat failed: {exc}")

@@ -12,16 +12,32 @@ import Chip from "@mui/material/Chip";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import ButtonBase from "@mui/material/ButtonBase";
+import Slider from "@mui/material/Slider";
 import { StationAutocomplete } from "./StationAutocomplete";
 import { useUserContextStore } from "@/store/userContextStore";
 import { useSearchStore, type RecentSearch } from "@/store/searchStore";
 import { getToday, getTomorrow, formatDateLocalized } from "@/utils/date";
 import type { TrainSearchParams } from "@/types/trains";
 import { useI18n } from "@/lib/i18n/i18n";
+import { useSortedStationsForSearch } from "@/hooks/queries/useStations";
+import { formatPrice } from "@/utils/format";
 
-interface Props { onSearch: (params: TrainSearchParams) => void; loading?: boolean; }
+export interface BudgetSliderValue {
+  maxBound: number;
+  minValue: number;
+  maxValue: number;
+  onChange: (min: number, max: number) => void;
+}
 
-export function SearchForm({ onSearch, loading }: Props) {
+interface Props {
+  onSearch: (params: TrainSearchParams) => void;
+  loading?: boolean;
+  budgetSlider?: BudgetSliderValue | null;
+}
+
+export function SearchForm({ onSearch, loading, budgetSlider }: Props) {
+  const favoriteStations = useUserContextStore((s) => s.favoriteStations);
+  const { sortedStations } = useSortedStationsForSearch(favoriteStations);
   const location = useUserContextStore((s) => s.location);
   const prevFrom = useSearchStore((s) => s.fromStation);
   const prevTo = useSearchStore((s) => s.toStation);
@@ -70,6 +86,7 @@ export function SearchForm({ onSearch, loading }: Props) {
               label={t("search.from")}
               value={from}
               onChange={setFrom}
+              stations={sortedStations}
               placeholder={t("search.stationPlaceholder")}
               onEnter={handleSearch}
               endAdornment={
@@ -99,6 +116,7 @@ export function SearchForm({ onSearch, loading }: Props) {
               label={t("search.to")}
               value={to}
               onChange={setTo}
+              stations={sortedStations}
               placeholder={t("search.stationPlaceholder")}
               onEnter={handleSearch}
             />
@@ -134,6 +152,46 @@ export function SearchForm({ onSearch, loading }: Props) {
               />
             ))}
           </Box>
+
+          {budgetSlider && budgetSlider.maxBound > 0 ? (
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75, pt: 0.25 }}>
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  {t("search.budget")}
+                </Typography>
+                <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.25, lineHeight: 1.45 }}>
+                  {t("search.budgetHint")}
+                </Typography>
+              </Box>
+              <Slider
+                size="small"
+                value={[budgetSlider.minValue, budgetSlider.maxValue]}
+                min={0}
+                max={budgetSlider.maxBound}
+                step={Math.max(1, Math.round(budgetSlider.maxBound / 80))}
+                onChange={(_, v) => {
+                  const [a, b] = v as number[];
+                  budgetSlider.onChange(Math.min(a, b), Math.max(a, b));
+                }}
+                valueLabelDisplay="auto"
+                valueLabelFormat={(x) => formatPrice(x)}
+                sx={{
+                  mt: 0.5,
+                  mx: 0.75,
+                  "& .MuiSlider-thumb": { width: 18, height: 18 },
+                  "& .MuiSlider-valueLabel": { fontSize: "0.7rem" },
+                }}
+              />
+              <Box sx={{ display: "flex", justifyContent: "space-between", px: 0.5 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontVariantNumeric: "tabular-nums" }}>
+                  {formatPrice(budgetSlider.minValue)}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ fontVariantNumeric: "tabular-nums" }}>
+                  {formatPrice(budgetSlider.maxValue)}
+                </Typography>
+              </Box>
+            </Box>
+          ) : null}
 
           {recentSearches.length > 0 && (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>

@@ -22,7 +22,16 @@ from app.core.config import settings
 from app.core.exceptions import AIAgentError
 from app.core.logger import logger
 from app.schemas.chat import ChatResponse, ToolCall
+from app.utils.quick_replies import split_answer_and_quick_replies
 from app.services.train_service import TrainService
+
+# 这些工具的返回会在前端解析为车次/中转卡片；与快捷按钮二选一，避免重复交互
+_QUICK_REPLY_EXCLUDE_TOOLS = frozenset({
+    "search_tickets",
+    "find_fastest_train",
+    "search_transfer_tickets",
+    "search_stopover_itineraries",
+})
 from app.services.user_context import UserContext, get_user_context
 
 
@@ -37,6 +46,12 @@ SYSTEM_PROMPT = """你是RailMate智轨伴行，中国铁路出行AI助手。
 4. 日期推断：今天={today}，明天={tomorrow}，后天={day_after_tomorrow}
 5. 没指定日期时：{current_hour}点前18点查今天，否则查明天
 6. **不要传 train_type 参数**，除非用户明确说只要高铁/动车等。不过滤能展示更多选择
+
+## 车次卡片（界面能力，必须遵守）
+- 用户界面**只会**根据你**本轮对话里实际调用**的 `search_tickets`、`find_fastest_train`、`search_transfer_tickets`、`search_stopover_itineraries` 等工具的**返回 JSON** 自动生成可点击车次/方案卡片。
+- **只要你用自然语言列出或对比具体车次**（含车次号、发到站、时刻、票价、席别），就必须**先调用工具拿到对应数据再写回复**；禁止仅凭臆测或脱离工具结果“空口”报车次——否则用户**看不到卡片**。
+- 做「最省钱 / 最快 / 时间价格均衡」等多角度推荐时：应用 **search_tickets**（或 `find_fastest_train` 等）拿到完整候选，再在正文里归纳；你重点推荐的几趟车应**出现在该次工具返回的结果中**。
+- 用户点击卡片依赖工具结果里的车站与日期字段，务必与工具参数一致。
 
 ## 日期查询纪律（极其重要！）
 - **默认只查一个日期**：根据规则5推断的那一天。不要主动查多天的票
@@ -85,7 +100,22 @@ SYSTEM_PROMPT = """你是RailMate智轨伴行，中国铁路出行AI助手。
 
 ## 回复风格
 简洁专业，适当用emoji，给推荐时说明理由。先行动后确认。
-**铁律：你的每一句话都必须有依据。如果你说"我来帮你查"，就必须紧接着调用工具。如果工具返回了hint字段，必须按hint的指示继续调用工具，不能忽略。**"""
+**铁律：你的每一句话都必须有依据。如果你说"我来帮你查"，就必须紧接着调用工具。如果工具返回了hint字段，必须按hint的指示继续调用工具，不能忽略。**
+
+## 工具结果展示（极其重要！）
+- 前端会**自动从工具返回数据生成视觉卡片**（车次卡片、中转方案卡片）
+- 你**不需要也不应该**在文字中重新列出车次详情（车号、时间、价格等）
+- 你的文字回复只需要：简要总结（如"查到8趟直达车"）+ 重点推荐（如"最快的是G637，7小时4分"）+ 建议
+- 错误示范：❌"G637，07:25出发，14:29到达，二等座782元；G3075，07:31出发..."
+- 正确示范：✅"查到8趟直达车，最快的G637只要7小时出头，二等座782元起。卡片里可以看到所有车次详情 👆"
+
+## 快捷确认按钮（可选）
+当且仅当需要用户点选 1～3 个短选项时，在**整段回复最后**另起一行输出（不要在正文里解释这一行）：
+::actions::["选项1","选项2"]
+- 最多 3 项，每项不超过 20 个字；用户点击后会把该文字当作下一句话发给你。
+- **本轮已调用 search_tickets / search_transfer_tickets / find_fastest_train 等并会在界面展示车次卡片时，不要输出 ::actions::**（卡片已承载选择，避免按钮重复）。
+- 不需要点选时不要输出；JSON 必须是合法 UTF-8 字符串数组。
+- 纯展示查票结果、无需再选时，不要输出此行。"""
 
 
 def get_system_prompt(
@@ -1119,13 +1149,15 @@ class RailMateAgent:
         
         try:
             if self._needs_stopover_duration_clarification(message):
-                clarification = (
+                clarification_raw = (
                     "你这类“顺路游玩”我可以按分段行程来规划 👍\n"
                     "先确认两个关键信息：\n"
                     "1) 你想在中途城市玩多久（几小时/几天）？\n"
-                    "2) 你希望大概几点继续出发去下一站？"
+                    "2) 你希望大概几点继续出发去下一站？\n"
+                    '::actions::["停留几小时内","停留一天以上","我还没想好"]'
                 )
-                self.memory.add_message(conv_id, "assistant", clarification)
+                clar_answer, clar_replies = split_answer_and_quick_replies(clarification_raw)
+                self.memory.add_message(conv_id, "assistant", clar_answer)
                 self._report_progress(
                     on_progress,
                     status="completed",
@@ -1134,9 +1166,10 @@ class RailMateAgent:
                     detail="已向用户追问沿途游玩时长与继续出发时间",
                 )
                 return ChatResponse(
-                    answer=clarification,
+                    answer=clar_answer,
                     conversation_id=conv_id,
                     tool_calls=[],
+                    quick_replies=clar_replies,
                 )
 
             # 调用 LLM
@@ -1249,16 +1282,23 @@ class RailMateAgent:
                 message="正在生成最终回复",
                 detail="准备输出推荐与说明",
             )
-            final_answer = assistant_message.content or "抱歉，我无法生成回复。"
-            
-            self.memory.add_message(conv_id, "assistant", final_answer)
-            
+            final_raw = assistant_message.content or "抱歉，我无法生成回复。"
+            answer_clean, quick_replies = split_answer_and_quick_replies(final_raw)
+
+            self.memory.add_message(conv_id, "assistant", answer_clean)
+
             logger.info(f"✅ 对话完成 (conv_id: {conv_id})")
-            
+
+            if tool_calls_made and quick_replies and any(
+                tc.tool_name in _QUICK_REPLY_EXCLUDE_TOOLS for tc in tool_calls_made
+            ):
+                quick_replies = []
+
             return ChatResponse(
-                answer=final_answer,
+                answer=answer_clean,
                 conversation_id=conv_id,
                 tool_calls=tool_calls_made,
+                quick_replies=quick_replies,
             )
             
         except AIAgentError:

@@ -25,6 +25,7 @@ export interface ChatResponse {
   answer: string;
   conversation_id: string;
   tool_calls: ToolCall[];
+  quick_replies?: string[];
   timestamp?: string;
 }
 
@@ -59,6 +60,8 @@ export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  /** 后端解析 ::actions:: 后的快捷按钮；旧数据可由正文解析 */
+  quick_replies?: string[];
   tool_calls?: ToolCall[];
   timestamp: number;
   status?: "pending" | "complete" | "error";

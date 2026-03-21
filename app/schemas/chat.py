@@ -59,12 +59,17 @@ class ChatResponse(BaseModel):
     answer: str = Field(..., description="AI 回复")
     conversation_id: str = Field(..., description="会话 ID")
     tool_calls: List[ToolCall] = Field(default_factory=list, description="本次调用的工具列表")
+    quick_replies: List[str] = Field(
+        default_factory=list,
+        description="可选 1～3 条快捷回复按钮文案（由正文末 ::actions:: 解析或结构化生成）",
+    )
     timestamp: datetime = Field(default_factory=datetime.now)
     
     class Config:
         json_schema_extra = {
             "example": {
                 "answer": "明天（2月2日）从广州南到长沙南的高铁有以下班次...",
+                "quick_replies": ["查更快车次", "看中转方案"],
                 "conversation_id": "conv_123456",
                 "tool_calls": [
                     {

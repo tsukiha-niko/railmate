@@ -110,11 +110,14 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    
+
+    # 长耗时请求（如 LLM）会拖住连接；默认优雅关闭较久，Ctrl+C 像「没反应」。
+    # 缩短等待后强制收尾；--reload 为父子双进程，有时需连按两次 Ctrl+C。
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=8000,
         reload=True,
         log_level="info",
+        timeout_graceful_shutdown=3,
     )

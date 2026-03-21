@@ -15,6 +15,8 @@ interface Props {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  /** 由父级统一拉取并排序，避免多实例重复计算阻塞主线程 */
+  stations: Station[];
   placeholder?: string;
   onEnter?: () => void;
   endAdornment?: React.ReactNode;
@@ -30,29 +32,16 @@ function matchStation(station: Station, input: string): boolean {
   return false;
 }
 
-export function StationAutocomplete({ label, value, onChange, placeholder, onEnter, endAdornment }: Props) {
-  const { data: stations = [] } = useStations();
+export function StationAutocomplete({ label, value, onChange, stations, placeholder, onEnter, endAdornment }: Props) {
   const favorites = useUserContextStore((s) => s.favoriteStations);
   const addFavorite = useUserContextStore((s) => s.addFavoriteStation);
   const removeFavorite = useUserContextStore((s) => s.removeFavoriteStation);
   const favSet = useMemo(() => new Set(favorites), [favorites]);
 
-  const sortedStations = useMemo(() => {
-    const favs: Station[] = [];
-    const hubs: Station[] = [];
-    const rest: Station[] = [];
-    for (const s of stations) {
-      if (favSet.has(s.name)) favs.push(s);
-      else if (s.is_hub) hubs.push(s);
-      else rest.push(s);
-    }
-    return [...favs, ...hubs, ...rest];
-  }, [stations, favSet]);
-
   return (
     <Autocomplete
       freeSolo
-      options={sortedStations}
+      options={stations}
       inputValue={value}
       onInputChange={(_e, newValue) => onChange(newValue)}
       getOptionLabel={(option) => typeof option === "string" ? option : option.name}

@@ -83,6 +83,16 @@ export function getLowestFare(train: FareCarrier) {
   return fares.reduce((min, item) => (item.price < min.price ? item : min));
 }
 
+/** 列表中各车次最低价的最高值（用于预算滑块上限） */
+export function maxLowestFareInList(trains: FareCarrier[]): number {
+  let m = 0;
+  for (const tr of trains) {
+    const p = getLowestFare(tr)?.price;
+    if (p != null && Number.isFinite(p)) m = Math.max(m, p);
+  }
+  return m;
+}
+
 export function formatRemaining(count: number | null | undefined, locale: FormatLocale = "zh-CN"): string {
   if (count == null) return locale === "en" ? "Checking" : "查询中";
   if (count === 0) return locale === "en" ? "Sold out" : "无票";

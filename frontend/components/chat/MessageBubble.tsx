@@ -12,22 +12,50 @@ import LinearProgress from "@mui/material/LinearProgress";
 import CircularProgress from "@mui/material/CircularProgress";
 import ButtonBase from "@mui/material/ButtonBase";
 import type { ChatMessage, ProgressEvent } from "@/types/chat";
-import { cn } from "@/utils/cn";
 import { extractCards } from "@/utils/parseToolCards";
+import { parseQuickRepliesFromContent } from "@/utils/parseQuickReplies";
 import { TrainResultCards } from "./TrainResultCards";
+import { AssistantQuickReplies } from "./AssistantQuickReplies";
 import { useI18n } from "@/lib/i18n/i18n";
 import { useChatViewStore } from "@/store/chatViewStore";
+
+const SUGGESTION_RE = /\[\[([^\]]+)\]\]\s*$/;
+
+function parseSuggestions(content: string | undefined): { text: string; suggestions: string[] } {
+  if (!content) return { text: "", suggestions: [] };
+  const match = content.match(SUGGESTION_RE);
+  if (!match) return { text: content, suggestions: [] };
+  const suggestions = match[1].split("|").map((s) => s.trim()).filter(Boolean).slice(0, 3);
+  return { text: content.replace(SUGGESTION_RE, "").trimEnd(), suggestions };
+}
 
 interface Props {
   message: ChatMessage;
   index: number;
   onQueryTransfer?: (from: string, to: string) => void;
+  onSuggestionClick?: (text: string) => void;
+  disableQuickReplies?: boolean;
 }
 
-export function MessageBubble({ message, index, onQueryTransfer }: Props) {
+export function MessageBubble({ message, index, onQueryTransfer, onSuggestionClick, disableQuickReplies }: Props) {
   const isUser = message.role === "user";
   const { t } = useI18n();
   const cards = useMemo(() => (isUser ? [] : extractCards(message.tool_calls)), [isUser, message.tool_calls]);
+  const { bodyForMarkdown, replyChips } = useMemo(() => {
+    if (isUser) return { bodyForMarkdown: message.content, replyChips: [] as string[] };
+    if (message.quick_replies?.length) {
+      return { bodyForMarkdown: message.content, replyChips: message.quick_replies };
+    }
+    const fromActions = parseQuickRepliesFromContent(message.content);
+    if (fromActions.replies.length > 0) {
+      return { bodyForMarkdown: fromActions.text, replyChips: fromActions.replies };
+    }
+    const legacy = parseSuggestions(message.content);
+    return { bodyForMarkdown: legacy.text, replyChips: legacy.suggestions };
+  }, [isUser, message.content, message.quick_replies]);
+  /** 已有工具卡片（车次/中转）时不再展示快捷按钮，避免与卡片操作重复 */
+  const showQuickReplies =
+    !isUser && replyChips.length > 0 && !!onSuggestionClick && cards.length === 0;
   const progressExpanded = useChatViewStore((s) => s.progressExpandedByMessage[message.id] ?? false);
   const setProgressExpanded = useChatViewStore((s) => s.setProgressExpanded);
   const recentEvents = message.progress?.events?.slice(-6) ?? [];
@@ -158,7 +186,14 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
               </Box>
             ) : (
               <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-p:leading-7 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-foreground prose-code:text-xs prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded-md prose-pre:bg-muted prose-pre:p-3 prose-pre:rounded-xl">
-                <ReactMarkdown>{message.content}</ReactMarkdown>
+                <ReactMarkdown>{bodyForMarkdown}</ReactMarkdown>
+                {showQuickReplies ? (
+                  <AssistantQuickReplies
+                    options={replyChips}
+                    onSelect={onSuggestionClick!}
+                    disabled={disableQuickReplies}
+                  />
+                ) : null}
               </div>
             )}
           </Box>
