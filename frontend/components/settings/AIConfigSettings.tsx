@@ -58,11 +58,11 @@ export function AIConfigSettings() {
   }, [aiKey, aiBaseUrl, aiModel, locale]);
 
   return (
-    <Card variant="outlined" sx={{ borderRadius: 5 }}>
+    <Card variant="outlined" sx={{ borderRadius: "16px" }}>
       <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2, p: { xs: 2, sm: 2.5 } }}>
         <SectionHeader icon={<Bot />} title={locale === "en" ? "AI Configuration" : "AI 模型配置"} />
 
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", borderRadius: 3.5, border: 1, borderColor: "divider", bgcolor: "background.paper", px: 1.5, py: 1 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", borderRadius: "16px", border: 1, borderColor: "divider", bgcolor: "background.paper", px: 1.5, py: 1 }}>
           <Typography variant="caption" color="text.secondary">{locale === "en" ? "Status:" : "状态："}</Typography>
           <Chip
             label={aiConfigured ? (locale === "en" ? "Configured" : "已配置") : (locale === "en" ? "Not configured" : "未配置")}

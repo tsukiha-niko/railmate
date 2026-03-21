@@ -35,7 +35,7 @@ export function RadioCardGroup<T extends string = string>({
             key={opt.value}
             variant="outlined"
             sx={{
-              borderRadius: selected ? "0 12px 12px 0" : "12px",
+              borderRadius: selected ? "0 14px 14px 0" : "14px",
               borderColor: selected ? "primary.main" : (th) => `${th.palette.divider}80`,
               ...(selected && { borderLeft: 3, borderLeftColor: "primary.main" }),
               bgcolor: selected ? (th) => `${th.palette.primary.main}08` : "transparent",

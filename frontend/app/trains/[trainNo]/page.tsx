@@ -110,7 +110,7 @@ export default function TrainDetailPage() {
       </Button>
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <Card variant="outlined" sx={{ borderRadius: "16px", borderColor: (th) => `${th.palette.divider}70`, boxShadow: "var(--shadow-card)", "&:hover": { boxShadow: "var(--shadow-card-hover)" } }}>
+        <Card variant="outlined" sx={{ borderRadius: "12px", borderColor: (th) => `${th.palette.divider}70`, boxShadow: "var(--shadow-card)", "&:hover": { boxShadow: "var(--shadow-card-hover)" } }}>
           <CardContent sx={{ pt: 3, pb: 2.5 }}>
             <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5, mb: 2.5 }}>
               <span className={cn("inline-flex items-center rounded-lg px-3 py-1.5 text-base font-bold text-white shadow-sm", getTrainTypeColor(trainType))}>{trainNo}</span>
@@ -146,7 +146,7 @@ export default function TrainDetailPage() {
 
       {fromStation && toStation && (
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
-          <Card variant="outlined" sx={{ borderRadius: "16px", borderColor: (th) => `${th.palette.divider}70`, boxShadow: "var(--shadow-card)", "&:hover": { boxShadow: "var(--shadow-card-hover)" } }}>
+          <Card variant="outlined" sx={{ borderRadius: "12px", borderColor: (th) => `${th.palette.divider}70`, boxShadow: "var(--shadow-card)", "&:hover": { boxShadow: "var(--shadow-card-hover)" } }}>
             <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2.5 }}>
               <Typography variant="subtitle2" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <span>¥</span>{t("train.price.title")}
@@ -173,10 +173,9 @@ export default function TrainDetailPage() {
                         },
                       }}
                     >
-                      <Button onClick={() => handleSeatSelect({ key, label, price })} sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 0.75, minHeight: 100, width: "100%", textTransform: "none", borderRadius: "12px" }}>
+                      <Button onClick={() => handleSeatSelect({ key, label, price })} sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 0.5, minHeight: 80, width: "100%", textTransform: "none", borderRadius: "12px" }}>
                         <Typography variant="caption" color="text.secondary" noWrap>{label}</Typography>
                         <Typography variant="h6" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums" }}>{formatPrice(price)}</Typography>
-                        <Typography variant="caption" color="primary" fontWeight={600}>{t("booking.selectSeat")}</Typography>
                       </Button>
                     </Card>
                   ))}
@@ -197,7 +196,7 @@ export default function TrainDetailPage() {
       )}
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-        <Card variant="outlined" sx={{ borderRadius: "16px", borderColor: (th) => `${th.palette.divider}70`, boxShadow: "var(--shadow-card)", "&:hover": { boxShadow: "var(--shadow-card-hover)" } }}>
+        <Card variant="outlined" sx={{ borderRadius: "12px", borderColor: (th) => `${th.palette.divider}70`, boxShadow: "var(--shadow-card)", "&:hover": { boxShadow: "var(--shadow-card-hover)" } }}>
           <CardHeader title={<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><Clock size={16} style={{ color: "var(--primary)" }} /><Typography variant="subtitle2">{t("train.schedule")}</Typography></Box>} />
           <CardContent>
             {loading ? (

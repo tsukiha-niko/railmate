@@ -49,7 +49,7 @@ export function ConversationList({ onAction }: Props) {
       <Box sx={{ borderBottom: 1, borderColor: "divider", px: 2, py: 1.5 }}>
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.25, px: 0.25 }}>
           <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ letterSpacing: 0.5 }}>{t("chat.sidebar.subtitle")}</Typography>
-          <Chip label={conversations.length} size="small" variant="outlined" sx={{ borderRadius: "6px", height: 22 }} />
+          <Chip label={conversations.length} size="small" variant="outlined" sx={{ height: 22 }} />
         </Box>
         <Button
           variant="outlined"
@@ -57,7 +57,7 @@ export function ConversationList({ onAction }: Props) {
           fullWidth
           startIcon={<Plus size={15} />}
           onClick={() => { create(); nav(); onAction?.(); }}
-          sx={{ justifyContent: "flex-start", borderRadius: "10px", borderColor: (th) => `${th.palette.divider}90`, mb: 1 }}
+          sx={{ justifyContent: "flex-start", borderRadius: "12px", borderColor: (th) => `${th.palette.divider}80`, mb: 1 }}
         >
           {t("chat.newConversation")}
         </Button>
@@ -77,7 +77,7 @@ export function ConversationList({ onAction }: Props) {
                 ),
               },
             }}
-            sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px", height: 32 } }}
+            sx={{ "& .MuiOutlinedInput-root": { borderRadius: "10px", height: 32 } }}
           />
         )}
       </Box>
@@ -89,7 +89,7 @@ export function ConversationList({ onAction }: Props) {
               <ListItemButton
                 selected={activeId === conv.id}
                 onClick={() => { setActive(conv.id); nav(); onAction?.(); }}
-                sx={{ borderRadius: "10px", mb: 0.5, pr: 1 }}
+                sx={{ borderRadius: "12px", mb: 0.5, pr: 1 }}
               >
                 <ListItemIcon sx={{ minWidth: 32 }}><MessageSquare size={15} /></ListItemIcon>
                 <ListItemText primary={conv.title} primaryTypographyProps={{ noWrap: true, variant: "body2" }} />

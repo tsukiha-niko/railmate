@@ -27,52 +27,51 @@ export function TrainCard({ train, date, index = 0, tags = [] }: Props) {
       <Card
         variant="outlined"
         sx={{
-          borderRadius: "14px",
+          borderRadius: "12px",
           boxShadow: "var(--shadow-card)",
-          transition: "all 0.2s ease",
-          borderLeft: "3px solid transparent",
+          transition: "all 0.22s ease",
+          borderColor: (th: any) => `${th.palette.divider}90`,
           "&:hover": {
-            borderLeftColor: "primary.main",
+            borderColor: "primary.main",
             boxShadow: "var(--shadow-card-hover)",
+            transform: "translateY(-1px)",
           },
         }}
       >
-        <CardActionArea component={Link} href={href} sx={{ px: 1.5, py: 1.25 }}>
-          {/* Header: badge + price/tickets */}
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, mb: 0.75 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap" }}>
-              <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold text-white leading-none", getTrainTypeColor(train.train_type))}>{train.train_no}</span>
+        <CardActionArea component={Link} href={href} sx={{ px: 2, py: 1.5 }}>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, mb: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+              <span className={cn("inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-bold text-white leading-none", getTrainTypeColor(train.train_type))}>{train.train_no}</span>
               <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.7rem" }}>{getTrainTypeLabel(train.train_type, fmtLocale)}</Typography>
-              {tags.map((tag) => <Chip key={tag} label={tag} size="small" color="warning" sx={{ fontSize: "0.55rem", height: 18, borderRadius: "4px" }} />)}
+              {tags.map((tag) => <Chip key={tag} label={tag} size="small" color="warning" sx={{ fontSize: "0.6rem", height: 20 }} />)}
             </Box>
             <Box sx={{ display: "flex", gap: 0.5, alignItems: "center", flexShrink: 0 }}>
-              {lowestFare && <Chip label={`${t("tickets.fare.from")} ${formatPrice(lowestFare.price)}`} size="small" color="primary" variant="outlined" sx={{ fontWeight: 700, fontSize: "0.7rem", height: 22, borderRadius: "6px" }} />}
+              {lowestFare && <Chip label={`${t("tickets.fare.from")} ${formatPrice(lowestFare.price)}`} size="small" color="primary" variant="outlined" sx={{ fontWeight: 700, fontSize: "0.7rem", height: 24 }} />}
               <Chip label={formatRemaining(train.remaining_tickets, fmtLocale)} size="small" sx={{
-                fontWeight: 700, fontSize: "0.65rem", height: 20, borderRadius: "6px",
+                fontWeight: 700, fontSize: "0.65rem", height: 22,
                 bgcolor: train.remaining_tickets === 0 ? "error.main" : train.remaining_tickets != null && train.remaining_tickets < 10 ? "warning.main" : "success.main",
                 color: "white",
               }} />
             </Box>
           </Box>
-          {/* Route */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Box sx={{ minWidth: 0 }}>
-              <Typography variant="subtitle1" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums", lineHeight: 1.1 }}>{train.departure_time}</Typography>
-              <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: "0.7rem" }}>{train.from_station}</Typography>
+          <Box sx={{ display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 1.5 }}>
+            <Box sx={{ minWidth: 56 }}>
+              <Typography variant="subtitle1" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums", lineHeight: 1.15, letterSpacing: "-0.01em" }}>{train.departure_time}</Typography>
+              <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: "0.7rem", mt: 0.25, display: "block" }}>{train.from_station}</Typography>
             </Box>
-            <Box sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 0, minWidth: 40 }}>
+            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.25 }}>
               <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "text.secondary" }}>
                 <Clock size={10} />
-                <Typography variant="caption" sx={{ fontSize: "0.65rem" }}>{formatDuration(train.duration_minutes, fmtLocale)}</Typography>
+                <Typography variant="caption" sx={{ fontSize: "0.65rem", fontVariantNumeric: "tabular-nums" }}>{formatDuration(train.duration_minutes, fmtLocale)}</Typography>
               </Box>
               <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
-                <Box sx={{ flex: 1, height: "1px", bgcolor: "divider" }} />
-                <ArrowRight size={12} style={{ opacity: 0.35 }} />
+                <Box sx={{ flex: 1, height: "1px", bgcolor: "divider", borderRadius: 1 }} />
+                <ArrowRight size={12} style={{ opacity: 0.35, flexShrink: 0 }} />
               </Box>
             </Box>
-            <Box sx={{ minWidth: 0, textAlign: "right" }}>
-              <Typography variant="subtitle1" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums", lineHeight: 1.1 }}>{train.arrival_time}</Typography>
-              <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: "0.7rem" }}>{train.to_station}</Typography>
+            <Box sx={{ minWidth: 56, textAlign: "right" }}>
+              <Typography variant="subtitle1" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums", lineHeight: 1.15, letterSpacing: "-0.01em" }}>{train.arrival_time}</Typography>
+              <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: "0.7rem", mt: 0.25, display: "block" }}>{train.to_station}</Typography>
             </Box>
           </Box>
         </CardActionArea>

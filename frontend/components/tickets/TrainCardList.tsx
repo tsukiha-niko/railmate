@@ -42,7 +42,7 @@ export function TrainCardList({ trains, date, loading, emptyMessage }: Props) {
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, py: 6, borderRadius: 5, border: 1, borderColor: (th: any) => `${th.palette.divider}70`, bgcolor: "background.paper" }}>
+      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, py: 6, borderRadius: "12px", border: 1, borderColor: (th: any) => `${th.palette.divider}70`, bgcolor: "background.paper" }}>
         <Box sx={{ position: "relative" }}>
           <CircularProgress size={48} />
           <Box sx={{ position: "absolute", top: -4, right: -4, width: 20, height: 20, borderRadius: "50%", bgcolor: "primary.main", opacity: 0.2, display: "flex", alignItems: "center", justifyContent: "center" }}>

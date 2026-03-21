@@ -769,136 +769,137 @@ class TrainService:
     ) -> TransferSearchResult:
         """
         Live 模式：通过 12306 API 并发搜索中转方案
-        优化：地理优先选择中转站 + 并发查询 + 统一时间计算
+        优化：并行查两段 + 延迟查价 + 早停
         """
         from concurrent.futures import ThreadPoolExecutor, as_completed
-        
+
         if on_progress:
             on_progress(f"正在查询 {from_station}→{to_station} 直达...")
-        
+
         direct_trains = self.search_tickets(from_station, to_station, travel_date)
         direct_count = len(direct_trains)
-        
-        hubs = self._prioritize_hubs(from_station, to_station, preferred_via=preferred_via)
+
+        hubs = self._prioritize_hubs(from_station, to_station, max_hubs=5, preferred_via=preferred_via)
         logger.info(f"🔄 智能选择中转站（按优先级）: {hubs}")
-        
+
         plans: List[TransferPlan] = []
         seen_signatures: Set[tuple] = set()
 
-        def query_hub(hub: str):
+        route_cache: Dict[tuple, List[TrainSearchResult]] = {}
+
+        def _query_route(origin: str, destination: str) -> tuple:
+            """Query a single route with a per-thread TrainService."""
             svc = TrainService()
             try:
-                leg1 = svc.search_tickets(from_station, hub, travel_date)
-                if not leg1:
-                    return hub, [], []
-                leg2 = svc.search_tickets(hub, to_station, travel_date)
-                return hub, leg1, leg2
+                result = svc.search_tickets(origin, destination, travel_date)
+                return (origin, destination), result
             except Exception as e:
-                logger.debug(f"中转站 {hub} 查询失败: {e}")
-                return hub, [], []
+                logger.debug(f"路段查询失败 {origin}→{destination}: {e}")
+                return (origin, destination), []
             finally:
                 svc.close()
 
-        def ensure_second_seat_price(ticket: TrainSearchResult) -> None:
-            if (
-                ticket.price_second_seat is not None
-                or not getattr(ticket, "train_code", None)
-                or not getattr(ticket, "from_station_no", None)
-                or not getattr(ticket, "to_station_no", None)
-            ):
-                return
-            try:
-                from app.services.railway_api import get_railway_api
-                api = get_railway_api()
-                prices = api.query_ticket_price(
-                    train_no=ticket.train_code or "",
-                    from_station_no=ticket.from_station_no or "",
-                    to_station_no=ticket.to_station_no or "",
-                    seat_types="O",
-                    travel_date=travel_date,
-                )
-                if prices:
-                    ticket.price_second_seat = prices.get("second_seat")
-            except Exception:
-                pass
-        
-        with ThreadPoolExecutor(max_workers=3) as executor:
-            futures = {executor.submit(query_hub, hub): hub for hub in hubs}
-            
-            for future in as_completed(futures):
-                hub, leg1_trains, leg2_trains = future.result()
-                if not leg1_trains or not leg2_trains:
-                    continue
-                
-                if on_progress:
-                    on_progress(f"匹配经 {hub} 中转方案...")
-                
-                leg2_sorted = sorted(leg2_trains, key=lambda x: x.departure_time)
-                
-                for t1 in leg1_trains:
-                    if len(plans) >= max_plans * 2:
-                        break
-                    for t2 in leg2_sorted:
-                        wait = self._calc_wait_minutes(t1.arrival_time, t2.departure_time)
-                        if wait < min_transfer_minutes:
-                            continue
-                        if wait > max_transfer_minutes:
-                            break
-                        
-                        total_min = t1.duration_minutes + wait + t2.duration_minutes
-                        ensure_second_seat_price(t1)
-                        ensure_second_seat_price(t2)
+        def _make_leg(ticket: TrainSearchResult) -> TransferLeg:
+            return TransferLeg(
+                train_no=ticket.train_no, train_type=ticket.train_type,
+                from_station=ticket.from_station, to_station=ticket.to_station,
+                departure_time=ticket.departure_time, arrival_time=ticket.arrival_time,
+                duration_minutes=ticket.duration_minutes,
+                price_second_seat=_lowest_price(ticket) or ticket.price_second_seat,
+            )
 
-                        p1 = t1.price_second_seat or 0
-                        p2 = t2.price_second_seat or 0
-                        
-                        plan = TransferPlan(
-                            legs=[
-                                TransferLeg(
-                                    train_no=t1.train_no, train_type=t1.train_type,
-                                    from_station=t1.from_station, to_station=t1.to_station,
-                                    departure_time=t1.departure_time, arrival_time=t1.arrival_time,
-                                    duration_minutes=t1.duration_minutes,
-                                    price_second_seat=t1.price_second_seat,
-                                ),
-                                TransferLeg(
-                                    train_no=t2.train_no, train_type=t2.train_type,
-                                    from_station=t2.from_station, to_station=t2.to_station,
-                                    departure_time=t2.departure_time, arrival_time=t2.arrival_time,
-                                    duration_minutes=t2.duration_minutes,
-                                    price_second_seat=t2.price_second_seat,
-                                ),
-                            ],
-                            transfer_count=1,
-                            transfer_stations=[hub],
-                            total_duration_minutes=total_min,
-                            total_price=round(p1 + p2, 1) if (p1 or p2) else None,
-                            wait_times=[wait],
-                        )
-                        plan.score = self._score_transfer_plan(plan)
-                        if preferred_via and hub == preferred_via:
-                            plan.score += 12
-                        signature = tuple(leg.train_no for leg in plan.legs)
-                        if signature in seen_signatures:
-                            continue
-                        seen_signatures.add(signature)
-                        plans.append(plan)
+        def _lowest_price(ticket: TrainSearchResult) -> float:
+            prices = [
+                getattr(ticket, "price_no_seat", None),
+                getattr(ticket, "price_hard_seat", None),
+                getattr(ticket, "price_hard_sleeper", None),
+                getattr(ticket, "price_soft_sleeper", None),
+                ticket.price_second_seat,
+                ticket.price_first_seat,
+                ticket.price_business_seat,
+            ]
+            valid = [p for p in prices if p is not None and p > 0]
+            return min(valid) if valid else 0
+
+        # Phase 1: parallel route queries — each hub needs 2 routes; submit all at once
+        route_keys = set()
+        for hub in hubs:
+            route_keys.add((from_station, hub))
+            route_keys.add((hub, to_station))
+
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            route_futures = [executor.submit(_query_route, orig, dest) for orig, dest in route_keys]
+            for future in as_completed(route_futures):
+                key, result = future.result()
+                route_cache[key] = result
+
+        # Phase 2: match plans from cached route results
+        for hub in hubs:
+            leg1_trains = route_cache.get((from_station, hub), [])
+            leg2_trains = route_cache.get((hub, to_station), [])
+            if not leg1_trains or not leg2_trains:
+                continue
+
+            if on_progress:
+                on_progress(f"匹配经 {hub} 中转方案...")
+
+            leg2_sorted = sorted(leg2_trains, key=lambda x: x.departure_time)
+
+            for t1 in leg1_trains:
+                if len(plans) >= max_plans * 2:
+                    break
+                for t2 in leg2_sorted:
+                    wait = self._calc_wait_minutes(t1.arrival_time, t2.departure_time)
+                    if wait < min_transfer_minutes:
+                        continue
+                    if wait > max_transfer_minutes:
                         break
 
+                    total_min = t1.duration_minutes + wait + t2.duration_minutes
+                    p1 = _lowest_price(t1)
+                    p2 = _lowest_price(t2)
+
+                    plan = TransferPlan(
+                        legs=[_make_leg(t1), _make_leg(t2)],
+                        transfer_count=1,
+                        transfer_stations=[hub],
+                        total_duration_minutes=total_min,
+                        total_price=round(p1 + p2, 1) if (p1 or p2) else None,
+                        wait_times=[wait],
+                    )
+                    plan.score = self._score_transfer_plan(plan)
+                    if preferred_via and hub == preferred_via:
+                        plan.score += 12
+                    signature = tuple(leg.train_no for leg in plan.legs)
+                    if signature in seen_signatures:
+                        continue
+                    seen_signatures.add(signature)
+                    plans.append(plan)
+                    break
+
+        # Phase 3: double-transfer (only if needed and enabled)
         if max_transfers >= 2 and len(plans) < max_plans:
             hub_pair_limit = 4
             first_hubs = hubs[:hub_pair_limit]
-            second_hubs = hubs[: hub_pair_limit + 1]
-            route_cache: Dict[tuple, List[TrainSearchResult]] = {}
+            second_hubs = hubs[:hub_pair_limit + 1]
 
-            def get_leg_results(origin: str, destination: str) -> List[TrainSearchResult]:
-                key = (origin, destination)
-                if key not in route_cache:
-                    route_cache[key] = self.search_tickets(origin, destination, travel_date)
-                return route_cache[key]
+            extra_route_keys = set()
+            for h1 in first_hubs:
+                extra_route_keys.add((from_station, h1))
+                for h2 in second_hubs:
+                    if h2 != h1 and h2 != from_station and h2 != to_station:
+                        extra_route_keys.add((h1, h2))
+                        extra_route_keys.add((h2, to_station))
+            uncached = extra_route_keys - set(route_cache.keys())
+            if uncached:
+                with ThreadPoolExecutor(max_workers=5) as executor:
+                    futs = [executor.submit(_query_route, o, d) for o, d in uncached]
+                    for f in as_completed(futs):
+                        key, result = f.result()
+                        route_cache[key] = result
 
             for first_hub in first_hubs:
-                leg1_trains = get_leg_results(from_station, first_hub)[:4]
+                leg1_trains = route_cache.get((from_station, first_hub), [])[:4]
                 if not leg1_trains:
                     continue
 
@@ -906,8 +907,8 @@ class TrainService:
                     if second_hub in {first_hub, from_station, to_station}:
                         continue
 
-                    leg2_trains = get_leg_results(first_hub, second_hub)[:4]
-                    leg3_trains = get_leg_results(second_hub, to_station)[:4]
+                    leg2_trains = route_cache.get((first_hub, second_hub), [])[:4]
+                    leg3_trains = route_cache.get((second_hub, to_station), [])[:4]
                     if not leg2_trains or not leg3_trains:
                         continue
 
@@ -925,55 +926,13 @@ class TrainService:
                                 if wait2 < min_transfer_minutes or wait2 > max_transfer_minutes:
                                     continue
 
-                                ensure_second_seat_price(t1)
-                                ensure_second_seat_price(t2)
-                                ensure_second_seat_price(t3)
-
-                                total_price = None
-                                if any(
-                                    price is not None
-                                    for price in (t1.price_second_seat, t2.price_second_seat, t3.price_second_seat)
-                                ):
-                                    total_price = round(
-                                        (t1.price_second_seat or 0)
-                                        + (t2.price_second_seat or 0)
-                                        + (t3.price_second_seat or 0),
-                                        1,
-                                    )
+                                p1 = _lowest_price(t1)
+                                p2 = _lowest_price(t2)
+                                p3 = _lowest_price(t3)
+                                total_price = round(p1 + p2 + p3, 1) if (p1 or p2 or p3) else None
 
                                 plan = TransferPlan(
-                                    legs=[
-                                        TransferLeg(
-                                            train_no=t1.train_no,
-                                            train_type=t1.train_type,
-                                            from_station=t1.from_station,
-                                            to_station=t1.to_station,
-                                            departure_time=t1.departure_time,
-                                            arrival_time=t1.arrival_time,
-                                            duration_minutes=t1.duration_minutes,
-                                            price_second_seat=t1.price_second_seat,
-                                        ),
-                                        TransferLeg(
-                                            train_no=t2.train_no,
-                                            train_type=t2.train_type,
-                                            from_station=t2.from_station,
-                                            to_station=t2.to_station,
-                                            departure_time=t2.departure_time,
-                                            arrival_time=t2.arrival_time,
-                                            duration_minutes=t2.duration_minutes,
-                                            price_second_seat=t2.price_second_seat,
-                                        ),
-                                        TransferLeg(
-                                            train_no=t3.train_no,
-                                            train_type=t3.train_type,
-                                            from_station=t3.from_station,
-                                            to_station=t3.to_station,
-                                            departure_time=t3.departure_time,
-                                            arrival_time=t3.arrival_time,
-                                            duration_minutes=t3.duration_minutes,
-                                            price_second_seat=t3.price_second_seat,
-                                        ),
-                                    ],
+                                    legs=[_make_leg(t1), _make_leg(t2), _make_leg(t3)],
                                     transfer_count=2,
                                     transfer_stations=[first_hub, second_hub],
                                     total_duration_minutes=t1.duration_minutes + wait1 + t2.duration_minutes + wait2 + t3.duration_minutes,
@@ -998,12 +957,12 @@ class TrainService:
                         break
                 if len(plans) >= max_plans * 3:
                     break
-        
+
         plans.sort(key=lambda x: x.score, reverse=True)
         plans = plans[:max_plans]
-        
+
         logger.info(f"✅ 找到 {len(plans)} 个中转方案（直达 {direct_count} 趟）")
-        
+
         return TransferSearchResult(
             success=True,
             from_station=from_station,

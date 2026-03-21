@@ -19,6 +19,7 @@ interface SearchState {
   searchDate: string;
   fromStation: string;
   toStation: string;
+  trainTypeFilter: string;
   recentSearches: RecentSearch[];
 
   setResults: (results: TrainSearchResult[]) => void;
@@ -28,6 +29,7 @@ interface SearchState {
   setSearchDate: (date: string) => void;
   setFromStation: (station: string) => void;
   setToStation: (station: string) => void;
+  setTrainTypeFilter: (filter: string) => void;
   addRecentSearch: (entry: Omit<RecentSearch, "timestamp">) => void;
   clearRecentSearches: () => void;
   clear: () => void;
@@ -43,6 +45,7 @@ export const useSearchStore = create<SearchState>()(
       searchDate: "",
       fromStation: "",
       toStation: "",
+      trainTypeFilter: "",
       recentSearches: [],
 
       setResults: (results) => set({ results }),
@@ -52,6 +55,7 @@ export const useSearchStore = create<SearchState>()(
       setSearchDate: (searchDate) => set({ searchDate }),
       setFromStation: (fromStation) => set({ fromStation }),
       setToStation: (toStation) => set({ toStation }),
+      setTrainTypeFilter: (trainTypeFilter) => set({ trainTypeFilter }),
       addRecentSearch: (entry) =>
         set((s) => {
           const deduped = s.recentSearches.filter(
@@ -63,7 +67,7 @@ export const useSearchStore = create<SearchState>()(
         }),
       clearRecentSearches: () => set({ recentSearches: [] }),
       clear: () =>
-        set({ results: [], searched: false, error: null, fromStation: "", toStation: "" }),
+        set({ results: [], searched: false, error: null, fromStation: "", toStation: "", trainTypeFilter: "" }),
     }),
     {
       name: "railmate-search",
@@ -78,6 +82,7 @@ export const useSearchStore = create<SearchState>()(
       ),
       partialize: (state) => ({
         results: state.results,
+        trainTypeFilter: state.trainTypeFilter,
         searched: state.searched,
         searchDate: state.searchDate,
         fromStation: state.fromStation,

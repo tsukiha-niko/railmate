@@ -31,7 +31,8 @@ export function SearchForm({ onSearch, loading }: Props) {
   const [from, setFrom] = useState(prevFrom || location?.station || "");
   const [to, setTo] = useState(prevTo || "");
   const [date, setDate] = useState(prevDate || getToday());
-  const [trainType, setTrainType] = useState("");
+  const trainType = useSearchStore((s) => s.trainTypeFilter);
+  const setTrainType = useSearchStore((s) => s.setTrainTypeFilter);
   const { t, locale } = useI18n();
 
   const handleRecentClick = useCallback((entry: RecentSearch) => {
@@ -53,8 +54,8 @@ export function SearchForm({ onSearch, loading }: Props) {
   const handleSwap = useCallback(() => { setFrom(to); setTo(from); }, [from, to]);
   const handleSearch = useCallback(() => {
     if (!from.trim() || !to.trim()) return;
-    onSearch({ from_station: from.trim(), to_station: to.trim(), travel_date: date, ...(trainType ? { train_type: trainType } : {}) });
-  }, [from, to, date, trainType, onSearch]);
+    onSearch({ from_station: from.trim(), to_station: to.trim(), travel_date: date });
+  }, [from, to, date, onSearch]);
   const useMyLocation = useCallback(() => {
     if (location?.station) setFrom(location.station);
     else if (location?.city) setFrom(location.city);
@@ -62,7 +63,7 @@ export function SearchForm({ onSearch, loading }: Props) {
 
   return (
     <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-      <Card variant="outlined" sx={{ borderRadius: "16px", borderColor: (th) => `${th.palette.divider}70`, boxShadow: "var(--shadow-card)" }}>
+      <Card variant="outlined" sx={{ borderRadius: "18px", borderColor: (th) => `${th.palette.divider}70`, boxShadow: "var(--shadow-card)" }}>
         <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2.5, p: { xs: 2.5, sm: 3 } }}>
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "flex-end", gap: { xs: 1, sm: 1.5 } }}>
             <StationAutocomplete
@@ -86,7 +87,7 @@ export function SearchForm({ onSearch, loading }: Props) {
                 borderColor: (th) => `${th.palette.divider}80`,
                 width: 40,
                 height: 40,
-                borderRadius: "8px",
+                borderRadius: "12px",
                 alignSelf: "center",
                 "&:hover": { borderColor: "primary.main", bgcolor: (th) => `${th.palette.primary.main}0A` },
                 transition: "all 0.2s ease",
@@ -113,8 +114,8 @@ export function SearchForm({ onSearch, loading }: Props) {
               fullWidth
             />
             <Box sx={{ display: "flex", gap: 0.75 }}>
-              <Button variant={date === getToday() ? "contained" : "outlined"} size="small" onClick={() => setDate(getToday())} sx={{ borderRadius: "8px" }}>{t("search.today")}</Button>
-              <Button variant={date === getTomorrow() ? "contained" : "outlined"} size="small" onClick={() => setDate(getTomorrow())} sx={{ borderRadius: "8px" }}>{t("search.tomorrow")}</Button>
+              <Button variant={date === getToday() ? "contained" : "outlined"} size="small" onClick={() => setDate(getToday())} sx={{ borderRadius: "10px" }}>{t("search.today")}</Button>
+              <Button variant={date === getTomorrow() ? "contained" : "outlined"} size="small" onClick={() => setDate(getTomorrow())} sx={{ borderRadius: "10px" }}>{t("search.tomorrow")}</Button>
             </Box>
           </Box>
 
@@ -129,7 +130,7 @@ export function SearchForm({ onSearch, loading }: Props) {
                 color={trainType === tt.value ? "primary" : "default"}
                 onClick={() => setTrainType(tt.value)}
                 clickable
-                sx={{ borderRadius: "6px" }}
+                sx={{ borderRadius: "8px" }}
               />
             ))}
           </Box>
@@ -153,7 +154,7 @@ export function SearchForm({ onSearch, loading }: Props) {
                     variant="outlined"
                     clickable
                     onClick={() => handleRecentClick(entry)}
-                    sx={{ borderRadius: "6px", fontSize: "0.75rem" }}
+                    sx={{ borderRadius: "8px", fontSize: "0.75rem" }}
                   />
                 ))}
               </Box>
@@ -167,7 +168,7 @@ export function SearchForm({ onSearch, loading }: Props) {
             disabled={!from.trim() || !to.trim() || loading}
             startIcon={<Search size={18} />}
             fullWidth
-            sx={{ height: { xs: 48, sm: 52 }, borderRadius: "12px", fontSize: "0.9375rem", fontWeight: 700, boxShadow: "var(--shadow-card)" }}
+            sx={{ height: { xs: 48, sm: 52 }, borderRadius: "14px", fontSize: "0.9375rem", fontWeight: 700, boxShadow: "var(--shadow-primary)" }}
           >
             {loading ? t("search.searching") : t("search.btn.search")}
           </Button>

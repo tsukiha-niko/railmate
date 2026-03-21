@@ -76,52 +76,51 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
       sx={{
         position: "relative",
         overflow: "hidden",
-        borderRadius: "14px",
+        borderRadius: "12px",
         borderLeft: 3,
         borderLeftColor: isRefunded ? "warning.main" : "success.main",
         opacity: isRefunded ? 0.88 : 1,
         boxShadow: "var(--shadow-card)",
-        transition: "box-shadow 0.2s",
-        "&:hover": { boxShadow: "var(--shadow-card-hover)" },
+        transition: "all 0.22s ease",
+        "&:hover": { boxShadow: "var(--shadow-card-hover)", transform: "translateY(-1px)" },
       }}
     >
-      {/* Header: train info + price */}
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, px: 1.5, pt: 1.25, pb: 0.75 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap", minWidth: 0 }}>
-          <Chip label={order.train_no} color="primary" size="small" sx={{ fontWeight: 700, borderRadius: "6px", height: 22 }} />
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, px: 2, pt: 1.5, pb: 0.75 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}>
+          <Chip label={order.train_no} color="primary" size="small" sx={{ fontWeight: 700, height: 24 }} />
           {order.train_type && <Typography variant="caption" color="text.secondary">{getTrainTypeLabel(order.train_type, fmtLocale)}</Typography>}
-          <Chip label={isRefunded ? t("trips.status.refunded") : t("trips.status.booked")} size="small" color={isRefunded ? "warning" : "success"} sx={{ borderRadius: "6px", height: 20, fontSize: "0.6rem" }} />
-          {order.demo_mode && <Chip label="Demo" size="small" variant="outlined" sx={{ borderRadius: "6px", height: 20, fontSize: "0.6rem" }} />}
+          <Chip label={isRefunded ? t("trips.status.refunded") : t("trips.status.booked")} size="small" color={isRefunded ? "warning" : "success"} sx={{ height: 22, fontSize: "0.6rem" }} />
+          {order.demo_mode && <Chip label="Demo" size="small" variant="outlined" sx={{ height: 22, fontSize: "0.6rem" }} />}
         </Box>
         <Typography variant="subtitle2" fontWeight={800} color="warning.main" sx={{ fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
           {formatPrice(order.fare_amount)}
         </Typography>
       </Box>
 
-      {/* Route row */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, px: 1.5, py: 0.75 }}>
-        <Box sx={{ minWidth: 0 }}>
-          <Typography variant="h6" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums", lineHeight: 1.1, fontSize: "1.125rem" }}>{order.departure_time || "--:--"}</Typography>
-          <Typography variant="caption" color="text.secondary" noWrap>{order.from_station}</Typography>
+      <Box sx={{ display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 1.5, px: 2, py: 1 }}>
+        <Box sx={{ minWidth: 56 }}>
+          <Typography variant="h6" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums", lineHeight: 1.15, fontSize: "1.125rem", letterSpacing: "-0.01em" }}>{order.departure_time || "--:--"}</Typography>
+          <Typography variant="caption" color="text.secondary" noWrap sx={{ mt: 0.25, display: "block" }}>{order.from_station}</Typography>
         </Box>
-        <Box sx={{ flex: 1, display: "flex", alignItems: "center", gap: 0.5, minWidth: 40 }}>
-          <Box sx={{ flex: 1, height: "1px", bgcolor: "divider" }} />
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.25 }}>
           <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.6rem", whiteSpace: "nowrap", fontWeight: 600 }}>{seatInfo}</Typography>
-          <ArrowRight size={12} style={{ opacity: 0.4, flexShrink: 0 }} />
+          <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
+            <Box sx={{ flex: 1, height: "1px", bgcolor: "divider", borderRadius: 1 }} />
+            <ArrowRight size={12} style={{ opacity: 0.4, flexShrink: 0 }} />
+          </Box>
         </Box>
-        <Box sx={{ minWidth: 0, textAlign: "right" }}>
-          <Typography variant="h6" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums", lineHeight: 1.1, fontSize: "1.125rem" }}>{order.arrival_time || "--:--"}</Typography>
-          <Typography variant="caption" color="text.secondary" noWrap>{order.to_station}</Typography>
+        <Box sx={{ minWidth: 56, textAlign: "right" }}>
+          <Typography variant="h6" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums", lineHeight: 1.15, fontSize: "1.125rem", letterSpacing: "-0.01em" }}>{order.arrival_time || "--:--"}</Typography>
+          <Typography variant="caption" color="text.secondary" noWrap sx={{ mt: 0.25, display: "block" }}>{order.to_station}</Typography>
         </Box>
       </Box>
 
-      {/* Footer */}
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, px: 1.5, pb: 1.25, pt: 0.5, flexWrap: "wrap" }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", minWidth: 0 }}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, px: 2, pb: 1.5, pt: 0.75, flexWrap: "wrap" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap", minWidth: 0 }}>
           <Typography variant="caption" color="text.secondary">{departureDate}</Typography>
-          <Typography variant="caption" color="text.secondary">·</Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ opacity: 0.5 }}>·</Typography>
           <Typography variant="caption" color="text.secondary">{order.passenger_name}</Typography>
-          <Typography variant="caption" color="text.secondary">·</Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ opacity: 0.5 }}>·</Typography>
           <Typography variant="caption" color="text.secondary">{order.seat_label}</Typography>
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.25 }}>
             <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "monospace", fontSize: "0.6rem" }}>{order.order_no}</Typography>
@@ -136,23 +135,23 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
               size="small"
               onClick={handleToggleReminder}
               sx={{
-                borderRadius: "8px",
+                borderRadius: "10px",
                 border: 1,
                 borderColor: existingReminder ? "primary.main" : "divider",
-                bgcolor: existingReminder ? (th) => `${th.palette.primary.main}0A` : "transparent",
-                width: 28,
-                height: 28,
+                bgcolor: existingReminder ? (th: any) => `${th.palette.primary.main}0A` : "transparent",
+                width: 30,
+                height: 30,
               }}
               title={existingReminder ? t("trips.reminder.off") : t("trips.reminder.on")}
             >
-              {existingReminder ? <Bell size={13} style={{ color: "var(--primary)" }} /> : <BellOff size={13} />}
+              {existingReminder ? <Bell size={14} style={{ color: "var(--primary)" }} /> : <BellOff size={14} />}
             </IconButton>
             <Button variant="outlined" size="small" onClick={() => onRefund(order)} disabled={refunding} startIcon={<Undo2 size={13} />}
-              sx={{ borderRadius: "8px", fontSize: "0.75rem", py: 0.25, px: 1.5, minHeight: 28 }}>
+              sx={{ borderRadius: "10px", fontSize: "0.75rem", py: 0.25, px: 1.5, minHeight: 30 }}>
               {refunding ? t("trips.refund.processing") : t("trips.refund.action")}
             </Button>
             <Button variant="contained" size="small" onClick={() => setGateOpen(true)} startIcon={<ScanLine size={13} />}
-              sx={{ borderRadius: "8px", fontSize: "0.75rem", py: 0.25, px: 1.5, minHeight: 28 }}>
+              sx={{ borderRadius: "10px", fontSize: "0.75rem", py: 0.25, px: 1.5, minHeight: 30 }}>
               {t("trips.gate.action")}
             </Button>
           </Box>
@@ -160,10 +159,10 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
       </Box>
 
       {/* Gate entry dialog */}
-      <Dialog open={gateOpen} onClose={() => setGateOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: "16px", overflow: "hidden" } }}>
+      <Dialog open={gateOpen} onClose={() => setGateOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: "20px", overflow: "hidden" } }}>
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2.5, pt: 2, pb: 0.5 }}>
           <Typography variant="subtitle1" fontWeight={700}>{t("trips.gate.title")}</Typography>
-          <IconButton size="small" onClick={() => setGateOpen(false)} sx={{ bgcolor: "action.hover", borderRadius: "8px" }}>
+          <IconButton size="small" onClick={() => setGateOpen(false)} sx={{ bgcolor: "action.hover", borderRadius: "10px" }}>
             <X size={16} />
           </IconButton>
         </Box>
@@ -173,7 +172,7 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
             <Box sx={{ position: "relative" }}>
               <Box sx={{
                 p: 2,
-                borderRadius: "14px",
+                borderRadius: "12px",
                 bgcolor: "#fff",
                 border: 2,
                 borderColor: "primary.main",
@@ -230,7 +229,7 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
             gap: 1,
             px: 2,
             py: 1.5,
-            borderRadius: "10px",
+            borderRadius: "14px",
             bgcolor: "action.hover",
           }}>
             <Box sx={{ textAlign: "center" }}>
@@ -238,7 +237,7 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
               <Typography variant="subtitle2" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums" }}>{order.departure_time}</Typography>
             </Box>
             <Box sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
-              <Chip label={order.train_no} size="small" color="primary" sx={{ fontWeight: 700, borderRadius: "6px", height: 20, fontSize: "0.65rem" }} />
+              <Chip label={order.train_no} size="small" color="primary" sx={{ fontWeight: 700, height: 22, fontSize: "0.65rem" }} />
               <Box sx={{ display: "flex", alignItems: "center", width: "80%", mt: 0.5 }}>
                 <Box sx={{ flex: 1, height: "1px", bgcolor: "divider" }} />
                 <ArrowRight size={12} style={{ opacity: 0.35 }} />

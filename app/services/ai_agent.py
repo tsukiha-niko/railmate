@@ -38,9 +38,17 @@ SYSTEM_PROMPT = """你是RailMate智轨伴行，中国铁路出行AI助手。
 5. 没指定日期时：{current_hour}点前18点查今天，否则查明天
 6. **不要传 train_type 参数**，除非用户明确说只要高铁/动车等。不过滤能展示更多选择
 
-## 空结果处理（极其重要！必须严格执行！）
-- 查询返回"当日无车次"或0条结果时：**必须立即调用工具查第二天的票**，拿到结果后再回复
-- 中转方案返回0个结果时：**必须立即用第二天日期再调用 search_transfer_tickets**
+## 日期查询纪律（极其重要！）
+- **默认只查一个日期**：根据规则5推断的那一天。不要主动查多天的票
+- **只在以下情况查其他日期**：
+  1. 用户明确提到了其他日期（如"明天""后天""下周一"）
+  2. 查询当天返回 0 趟车次（无直达）→ 才查第二天
+  3. 用户说要在中途停留/玩几天 → 按实际行程需要查对应日期
+  4. 用户说"都卖完了"或明确需要换天 → 才查其他日期
+- **绝对不要一次查好几天的票来"提供更多选择"——这会浪费时间和资源**
+
+## 空结果处理
+- 查询返回 0 条结果时：查第二天（仅一次，不要无限循环换日期）
 - 如果两天都没有结果，给出具体替代建议（换车站、分段购票、附近城市等）
 - **绝对禁止说"我将为您查询XX"或"建议您查询XX"然后结束对话。要查就立刻调用工具查，查到结果再回复用户**
 - **工具返回 station_not_found 错误时**：站名在12306不存在，绝对不要换日期重试（问题不在日期）。应该：
@@ -372,35 +380,43 @@ class RailMateAgent:
         
         logger.info(f"🤖 RailMate Agent 初始化完成 (模型: {self.model}, 用户: {user_id})")
 
-    def _create_completion(self, messages: List[Dict[str, Any]]):
-        """统一封装 LLM 调用，便于控制超时与日志。"""
+    def _create_completion(self, messages: List[Dict[str, Any]], max_retries: int = 1):
+        """统一封装 LLM 调用，带超时重试。"""
+        total_chars = sum(len(json.dumps(m, ensure_ascii=False)) for m in messages if isinstance(m, dict))
         start = perf_counter()
         logger.info(
             f"🧠 调用 LLM: model={self.model}, timeout={settings.openai_timeout_seconds}s, "
-            f"messages={len(messages)}"
+            f"messages={len(messages)}, ~{total_chars//2} tokens"
         )
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                tools=TOOLS,
-                tool_choice="auto",
-                temperature=0.7,
-                timeout=settings.openai_timeout_seconds,
-            )
-            elapsed = perf_counter() - start
-            logger.info(f"🧠 LLM 返回成功: {elapsed:.2f}s")
-            return response
-        except APITimeoutError as exc:
-            elapsed = perf_counter() - start
-            logger.error(
-                f"🧠 LLM 调用超时: {elapsed:.2f}s "
-                f"(timeout={settings.openai_timeout_seconds}s, model={self.model})"
-            )
-            raise AIAgentError(
-                f"LLM 调用超时（{elapsed:.1f}s）。当前后端超时配置为 {settings.openai_timeout_seconds:.0f}s，"
-                "可在 .env 中调大 OPENAI_TIMEOUT_SECONDS。"
-            ) from exc
+        last_exc = None
+        for attempt in range(1 + max_retries):
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    tools=TOOLS,
+                    tool_choice="auto",
+                    temperature=0.7,
+                    max_tokens=2048,
+                    timeout=settings.openai_timeout_seconds,
+                )
+                elapsed = perf_counter() - start
+                logger.info(f"🧠 LLM 返回成功: {elapsed:.2f}s (attempt {attempt+1})")
+                return response
+            except APITimeoutError as exc:
+                elapsed = perf_counter() - start
+                last_exc = exc
+                if attempt < max_retries:
+                    logger.warning(f"🧠 LLM 调用超时 (attempt {attempt+1}), 重试中...")
+                    continue
+                logger.error(
+                    f"🧠 LLM 调用超时: {elapsed:.2f}s "
+                    f"(timeout={settings.openai_timeout_seconds}s, model={self.model})"
+                )
+        raise AIAgentError(
+            f"LLM 调用超时（{perf_counter()-start:.1f}s）。当前超时配置为 {settings.openai_timeout_seconds:.0f}s，"
+            "可在 .env 中调大 OPENAI_TIMEOUT_SECONDS。"
+        ) from last_exc
     
     # ==================== 工具函数实现 ====================
     
@@ -543,20 +559,21 @@ class RailMateAgent:
         except Exception as e:
             logger.warning(f"查询今天车次失败: {e}")
         
-        # 2. 总是查明天的票（不管今天有没有结果，提供更多选择）
-        try:
-            tomorrow_tickets = self.train_service.search_tickets(
-                from_station=from_station,
-                to_station=to_station,
-                travel_date=tomorrow,
-            )
-            for ticket in tomorrow_tickets[:8]:  # 明天取前8趟
-                tomorrow_results.append({
-                    **ticket.model_dump(),
-                    "date": str(tomorrow),
-                })
-        except Exception as e:
-            logger.warning(f"查询明天车次失败: {e}")
+        # 2. 只在今天无结果时才查明天
+        if not today_results:
+            try:
+                tomorrow_tickets = self.train_service.search_tickets(
+                    from_station=from_station,
+                    to_station=to_station,
+                    travel_date=tomorrow,
+                )
+                for ticket in tomorrow_tickets[:5]:
+                    tomorrow_results.append({
+                        **ticket.model_dump(),
+                        "date": str(tomorrow),
+                    })
+            except Exception as e:
+                logger.warning(f"查询明天车次失败: {e}")
         
         # 3. 构建响应
         if today_results:
@@ -566,8 +583,7 @@ class RailMateAgent:
                 "message": f"今天还有 {len(today_results)} 趟车可以赶上（{earliest_departure.strftime('%H:%M')}之后发车）",
                 "current_time": now.strftime("%H:%M"),
                 "today_trains": today_results[:5],
-                "tomorrow_trains": tomorrow_results[:3] if tomorrow_results else [],
-                "hint": "如已过末班车时间，明天早班车也已列出" if tomorrow_results else None,
+                "tomorrow_trains": [],
             }, ensure_ascii=False)
         elif tomorrow_results:
             return json.dumps({

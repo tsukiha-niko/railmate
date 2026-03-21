@@ -77,7 +77,7 @@ export function ChatInput({ onSend, loading, conversationId }: Props) {
     <Box
       sx={{
         p: "6px",
-        borderRadius: "12px",
+        borderRadius: "16px",
         bgcolor: "background.paper",
         border: 1,
         borderColor: (th) => th.palette.divider,
@@ -127,7 +127,7 @@ export function ChatInput({ onSend, loading, conversationId }: Props) {
           sx={{
             width: 40,
             height: 40,
-            borderRadius: "10px",
+            borderRadius: "12px",
             bgcolor: "primary.main",
             color: "primary.contrastText",
             "&:hover": { bgcolor: "primary.dark", transform: "scale(1.04)" },

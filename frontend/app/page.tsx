@@ -45,22 +45,22 @@ export default function HomePage() {
     <div className="relative flex min-h-0 flex-1 overflow-hidden bg-transparent">
       <aside
         className={cn(
-          "hidden w-[19.5rem] shrink-0 border-r border-border/60 bg-card transition-all duration-300 lg:flex",
+          "hidden w-[19.5rem] shrink-0 border-r border-border/50 bg-card transition-all duration-300 lg:flex",
           !sidebarOpen && "lg:hidden",
         )}
       >
         <ConversationList />
       </aside>
 
-      <section className="flex min-h-0 min-w-0 flex-1 flex-col px-0 pb-0 lg:px-2 lg:pb-2 xl:px-3">
-        <div className="flex min-h-0 flex-1 flex-col bg-transparent lg:rounded-2xl lg:border lg:border-border/40 lg:bg-card/[0.06] lg:shadow-[var(--shadow-card)]">
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col px-0 pb-0 lg:px-2.5 lg:pb-2.5 xl:px-3">
+        <div className="flex min-h-0 flex-1 flex-col bg-transparent lg:rounded-[1.25rem] lg:border lg:border-border/20 lg:bg-card/[0.03] lg:shadow-[var(--shadow-xs)]">
           <ChatPanel />
         </div>
       </section>
 
       <aside
         className={cn(
-          "hidden w-[19.5rem] shrink-0 border-l border-border/60 bg-card transition-all duration-300 xl:flex",
+          "hidden w-[19.5rem] shrink-0 border-l border-border/50 bg-card transition-all duration-300 xl:flex",
           !contextOpen && "xl:hidden",
         )}
       >

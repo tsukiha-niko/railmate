@@ -10,7 +10,8 @@ import { AlertCircle, TrainFront } from "lucide-react";
 import { SearchForm } from "@/components/search/SearchForm";
 import { TrainCardList } from "@/components/tickets/TrainCardList";
 import { useTicketSearch } from "@/hooks/useTicketSearch";
-import type { TrainSearchParams } from "@/types/trains";
+import { useSearchStore } from "@/store/searchStore";
+import type { TrainSearchParams, TrainSearchResult } from "@/types/trains";
 import { useI18n } from "@/lib/i18n/i18n";
 import { formatDuration } from "@/utils/date";
 import { formatPrice, getLowestFare } from "@/utils/format";
@@ -24,7 +25,7 @@ function toMinutesOfDay(time: string): number {
   return h * 60 + m;
 }
 
-function compareBySortKey(a: ReturnType<typeof useTicketSearch>["results"][number], b: ReturnType<typeof useTicketSearch>["results"][number], sortKey: SortKey): number {
+function compareBySortKey(a: TrainSearchResult, b: TrainSearchResult, sortKey: SortKey): number {
   const aPrice = getLowestFare(a)?.price ?? Infinity;
   const bPrice = getLowestFare(b)?.price ?? Infinity;
   const aDep = toMinutesOfDay(a.departure_time);
@@ -35,24 +36,25 @@ function compareBySortKey(a: ReturnType<typeof useTicketSearch>["results"][numbe
 }
 
 export default function SearchPage() {
-  const { results, loading, error, searched, searchDate, search } = useTicketSearch();
+  const { results, filteredResults, trainTypeFilter, loading, error, searched, searchDate, search } = useTicketSearch();
   const { t, locale } = useI18n();
   const [sortKey, setSortKey] = useState<SortKey>("departure");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const statsLocale = locale === "en" ? "en" : "zh-CN";
+
   const sortedResults = useMemo(() => {
-    const list = [...results];
+    const list = [...filteredResults];
     list.sort((a, b) => { const v = compareBySortKey(a, b, sortKey); return sortDirection === "asc" ? v : -v; });
     return list;
-  }, [results, sortDirection, sortKey]);
+  }, [filteredResults, sortDirection, sortKey]);
 
   const getTopBySort = useMemo(() => (key: SortKey, dir: SortDirection) => {
-    if (results.length === 0) return null;
-    const list = [...results];
+    if (filteredResults.length === 0) return null;
+    const list = [...filteredResults];
     list.sort((a, b) => { const v = compareBySortKey(a, b, key); return dir === "asc" ? v : -v; });
     return list[0] ?? null;
-  }, [results]);
+  }, [filteredResults]);
 
   const departureTop = getTopBySort("departure", sortKey === "departure" ? sortDirection : "asc");
   const durationTop = getTopBySort("duration", sortKey === "duration" ? sortDirection : "asc");
@@ -103,9 +105,16 @@ export default function SearchPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
               {!loading && results.length > 0 && (
                 <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 1, mb: 2 }}>
-                  <Typography variant="body2" fontWeight={700} color="text.secondary">
-                    {t("search.found", { count: results.length })}
-                  </Typography>
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
+                    <Typography variant="body2" fontWeight={700} color="text.secondary">
+                      {t("search.found", { count: filteredResults.length })}
+                    </Typography>
+                    {trainTypeFilter ? (
+                      <Typography variant="caption" color="text.disabled">
+                        {t("search.queryTotal", { total: results.length })}
+                      </Typography>
+                    ) : null}
+                  </Box>
                   <Box sx={{ display: "flex", gap: 0.75 }}>
                     {departureTop && (
                       <Chip label={`${departureTop.departure_time}${sortKey === "departure" ? ` ${sortIcon}` : ""}`} size="small"

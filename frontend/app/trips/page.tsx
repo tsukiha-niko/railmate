@@ -37,7 +37,7 @@ function SummaryCard({ icon: Icon, label, value, semanticColor }: { icon: React.
       variant="outlined"
       sx={{
         minHeight: 104,
-        borderRadius: "16px",
+        borderRadius: "12px",
         borderColor: (th) => `${th.palette.divider}60`,
         boxShadow: "var(--shadow-card)",
         transition: "all 0.2s ease",
@@ -114,10 +114,10 @@ export default function TripsPage() {
         </Box>
       </motion.div>
 
-      {error && <Card variant="outlined" sx={{ borderRadius: "16px" }}><CardContent><Typography variant="body2" color="error">{error}</Typography></CardContent></Card>}
+      {error && <Card variant="outlined" sx={{ borderRadius: "12px" }}><CardContent><Typography variant="body2" color="error">{error}</Typography></CardContent></Card>}
 
       {loading ? (
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 280, borderRadius: "16px", border: 1, borderColor: "divider", bgcolor: "background.paper" }}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 280, borderRadius: "12px", border: 1, borderColor: "divider", bgcolor: "background.paper" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, color: "text.secondary" }}>
             <CircularProgress size={20} />
             <Typography variant="body2">{t("trips.loading")}</Typography>

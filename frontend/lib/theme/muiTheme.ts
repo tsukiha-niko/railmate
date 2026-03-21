@@ -6,7 +6,7 @@ const shared: ThemeOptions = {
   typography: {
     fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
   },
-  shape: { borderRadius: 12 },
+  shape: { borderRadius: 14 },
   components: {
     MuiCssBaseline: {
       styleOverrides: {
@@ -16,9 +16,9 @@ const shared: ThemeOptions = {
     MuiButton: {
       defaultProps: { disableElevation: true },
       styleOverrides: {
-        root: { textTransform: "none", fontWeight: 600, borderRadius: 10 },
-        sizeSmall: { fontSize: "0.8125rem", padding: "5px 14px", minHeight: 34, borderRadius: 8 },
-        sizeLarge: { borderRadius: 12, fontSize: "0.9375rem", fontWeight: 700 },
+        root: { textTransform: "none", fontWeight: 600, borderRadius: 12 },
+        sizeSmall: { fontSize: "0.8125rem", padding: "5px 14px", minHeight: 34, borderRadius: 10 },
+        sizeLarge: { borderRadius: 14, fontSize: "0.9375rem", fontWeight: 700 },
         contained: { boxShadow: "var(--shadow-primary)" },
       },
     },
@@ -35,7 +35,7 @@ const shared: ThemeOptions = {
     MuiChip: {
       styleOverrides: {
         root: { fontWeight: 600, borderRadius: 8 },
-        sizeSmall: { fontSize: "0.6875rem", height: 24, borderRadius: 6 },
+        sizeSmall: { fontSize: "0.6875rem", height: 24, borderRadius: 8 },
       },
     },
     MuiDialog: {
@@ -48,7 +48,7 @@ const shared: ThemeOptions = {
       styleOverrides: {
         root: {
           "& .MuiOutlinedInput-root": {
-            borderRadius: 10,
+            borderRadius: 12,
           },
         },
       },
@@ -71,16 +71,16 @@ const shared: ThemeOptions = {
     },
     MuiSkeleton: {
       defaultProps: { animation: "wave" },
-      styleOverrides: { root: { borderRadius: 8 } },
+      styleOverrides: { root: { borderRadius: 10 } },
     },
     MuiAlert: {
       styleOverrides: {
-        root: { borderRadius: 12 },
+        root: { borderRadius: 14 },
       },
     },
     MuiListItemButton: {
       styleOverrides: {
-        root: { borderRadius: 10 },
+        root: { borderRadius: 12 },
       },
     },
   },

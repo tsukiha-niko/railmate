@@ -64,7 +64,7 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
           sx={{
             width: 34,
             height: 34,
-            borderRadius: 3,
+            borderRadius: "10px",
             bgcolor: isUser ? "primary.main" : undefined,
             background: isUser ? undefined : "linear-gradient(135deg, #3B82F6, #06B6D4)",
             fontSize: "0.875rem",
@@ -73,11 +73,11 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
           {isUser ? <User size={16} /> : <Bot size={16} />}
         </Avatar>
 
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75, minWidth: 0, overflow: "hidden", ...(isUser ? { ml: "auto", maxWidth: "80%", alignItems: "flex-end" } : { width: "100%", alignItems: "flex-start" }) }}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75, minWidth: 0, overflow: "hidden", ...(isUser ? { ml: "auto", maxWidth: "75%", alignItems: "flex-end" } : { width: "100%", alignItems: "flex-start" }) }}>
           {!isUser && message.tool_calls && message.tool_calls.length > 0 && (
             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mb: 0.5 }}>
               {message.tool_calls.map((tc, i) => (
-                <Chip key={i} icon={<Wrench size={10} />} label={tc.tool_name} size="small" variant="outlined" sx={{ borderRadius: "6px" }} />
+                <Chip key={i} icon={<Wrench size={10} />} label={tc.tool_name} size="small" variant="outlined" />
               ))}
             </Box>
           )}
@@ -87,10 +87,10 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
               fontSize: "0.875rem",
               lineHeight: 1.7,
               ...(isUser
-                ? { maxWidth: "min(840px,100%)", borderRadius: "16px 16px 4px 16px", bgcolor: "primary.main", color: "primary.contrastText", px: 2.5, py: 1.5, whiteSpace: "pre-wrap" }
+                ? { maxWidth: "min(560px,100%)", borderRadius: "18px 18px 6px 18px", bgcolor: "primary.main", color: "primary.contrastText", px: 2, py: 1.25, whiteSpace: "pre-wrap", boxShadow: "var(--shadow-primary)" }
                 : isProgressOnly
                   ? { width: "100%" }
-                  : { width: "100%", borderRadius: "16px 16px 16px 4px", border: 1, borderColor: (th: any) => `${th.palette.divider}80`, bgcolor: "background.paper", px: 2.5, py: 1.5, boxShadow: "var(--shadow-card)" }),
+                  : { width: "100%", borderRadius: "18px 18px 18px 6px", border: 1, borderColor: (th: any) => `${th.palette.divider}40`, bgcolor: "background.paper", px: 2.25, py: 1.5, boxShadow: "var(--shadow-xs)" }),
             }}
           >
             {isUser ? (

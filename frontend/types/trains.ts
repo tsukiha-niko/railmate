@@ -22,7 +22,6 @@ export interface TrainSearchParams {
   from_station: string;
   to_station: string;
   travel_date: string;
-  train_type?: string;
 }
 
 export interface QuickSearchParams {

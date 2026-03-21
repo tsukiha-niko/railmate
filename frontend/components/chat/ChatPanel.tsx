@@ -113,7 +113,7 @@ export function ChatPanel() {
             </motion.div>
           </div>
         ) : (
-          <div className="mx-auto w-full max-w-6xl space-y-3 px-3 py-3 sm:space-y-4 sm:px-5 sm:py-4 lg:px-7">
+          <div className="mx-auto w-full max-w-5xl space-y-2.5 px-3 py-3 sm:space-y-3 sm:px-5 sm:py-4 lg:px-6">
             {messages.map((msg, i) => (
               <MessageBubble
                 key={msg.id}
@@ -126,8 +126,8 @@ export function ChatPanel() {
           </div>
         )}
       </div>
-      <div className="border-t border-border bg-card px-3 py-2 sm:px-5 sm:py-2.5 lg:px-7">
-        <div className="mx-auto w-full max-w-4xl">
+      <div className="border-t border-border/40 bg-card/60 backdrop-blur-md px-3 py-2 sm:px-5 sm:py-2.5 lg:px-6 lg:rounded-b-[1.25rem]">
+        <div className="mx-auto w-full max-w-3xl">
           <ChatInput onSend={sendMessage} loading={loading} conversationId={activeConv?.id} />
         </div>
       </div>

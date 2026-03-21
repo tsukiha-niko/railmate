@@ -58,7 +58,7 @@ export class ErrorBoundary extends Component<Props, State> {
             sx={{
               width: 64,
               height: 64,
-              borderRadius: "16px",
+              borderRadius: "12px",
               bgcolor: "error.main",
               opacity: 0.12,
               display: "flex",

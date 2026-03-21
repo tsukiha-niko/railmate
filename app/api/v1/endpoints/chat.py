@@ -129,12 +129,12 @@ async def stream_chat(request: ChatRequest):
     event_queue: queue_mod.Queue = queue_mod.Queue()
     conversation_id = request.conversation_id or str(uuid.uuid4())[:8]
 
-    def on_progress(*, status: str, percent: int, message: str, detail: Optional[str] = None, append_event: bool = True):
+    def on_progress(data: dict):
         event_queue.put(("progress", {
-            "status": status,
-            "percent": percent,
-            "message": message,
-            "detail": detail,
+            "status": data.get("status", ""),
+            "percent": data.get("percent", 0),
+            "message": data.get("message", ""),
+            "detail": data.get("detail"),
         }))
 
     def worker():
@@ -166,12 +166,18 @@ async def stream_chat(request: ChatRequest):
 
     async def event_generator():
         yield f"data: {json.dumps({'event': 'start', 'conversation_id': conversation_id})}\n\n"
+        deadline = asyncio.get_event_loop().time() + 180
         while True:
             try:
-                event_type, payload = await asyncio.to_thread(event_queue.get, timeout=120)
+                event_type, payload = await asyncio.to_thread(event_queue.get, timeout=2)
             except Exception:
-                yield f"event: error\ndata: {json.dumps({'message': 'timeout'})}\n\n"
-                break
+                if asyncio.get_event_loop().time() > deadline:
+                    yield f"event: error\ndata: {json.dumps({'message': 'timeout'})}\n\n"
+                    break
+                if not thread.is_alive() and event_queue.empty():
+                    yield f"event: error\ndata: {json.dumps({'message': 'worker terminated unexpectedly'})}\n\n"
+                    break
+                continue
             yield f"event: {event_type}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
             if event_type in ("done", "error"):
                 break

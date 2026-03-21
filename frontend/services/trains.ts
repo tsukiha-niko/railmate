@@ -6,7 +6,6 @@ export async function searchTickets(params: TrainSearchParams): Promise<TrainSea
     from_station: params.from_station,
     to_station: params.to_station,
     travel_date: params.travel_date,
-    ...(params.train_type ? { train_type: params.train_type } : {}),
   });
 }
 

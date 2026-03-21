@@ -20,7 +20,7 @@ export function PreferenceSettings() {
   ];
 
   return (
-    <Card variant="outlined" sx={{ borderRadius: 5 }}>
+    <Card variant="outlined" sx={{ borderRadius: "16px" }}>
       <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2, p: { xs: 2, sm: 2.5 } }}>
         <SectionHeader icon={<TrendingUp />} title={t("settings.preference")} />
         <RadioCardGroup options={options} value={preference} onChange={setPreference} />
