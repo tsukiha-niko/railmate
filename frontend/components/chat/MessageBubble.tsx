@@ -3,8 +3,14 @@
 import { useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
-import { Bot, Check, ChevronDown, Loader2, User, Wrench } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Bot, Check, ChevronDown, User, Wrench } from "lucide-react";
+import Avatar from "@mui/material/Avatar";
+import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
+import Typography from "@mui/material/Typography";
+import LinearProgress from "@mui/material/LinearProgress";
+import CircularProgress from "@mui/material/CircularProgress";
+import ButtonBase from "@mui/material/ButtonBase";
 import type { ChatMessage, ProgressEvent } from "@/types/chat";
 import { cn } from "@/utils/cn";
 import { extractCards } from "@/utils/parseToolCards";
@@ -21,10 +27,7 @@ interface Props {
 export function MessageBubble({ message, index, onQueryTransfer }: Props) {
   const isUser = message.role === "user";
   const { t } = useI18n();
-  const cards = useMemo(
-    () => (isUser ? [] : extractCards(message.tool_calls)),
-    [isUser, message.tool_calls],
-  );
+  const cards = useMemo(() => (isUser ? [] : extractCards(message.tool_calls)), [isUser, message.tool_calls]);
   const progressExpanded = useChatViewStore((s) => s.progressExpandedByMessage[message.id] ?? false);
   const setProgressExpanded = useChatViewStore((s) => s.setProgressExpanded);
   const recentEvents = message.progress?.events?.slice(-6) ?? [];
@@ -55,159 +58,105 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, delay: Math.min(index * 0.05, 0.3) }}
-      className={cn("flex w-full gap-2.5 sm:gap-3", isUser ? "flex-row-reverse" : "flex-row")}
     >
-      <div
-        className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white shadow-sm",
-          isUser ? "bg-primary" : "bg-gradient-to-br from-blue-500 to-cyan-500",
-        )}
-      >
-        {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-      </div>
+      <Box sx={{ display: "flex", width: "100%", gap: 1.5, flexDirection: isUser ? "row-reverse" : "row" }}>
+        <Avatar sx={{ width: 32, height: 32, bgcolor: isUser ? "primary.main" : undefined, background: isUser ? undefined : "linear-gradient(135deg, #3B82F6, #06B6D4)" }}>
+          {isUser ? <User size={16} /> : <Bot size={16} />}
+        </Avatar>
 
-      <div
-        className={cn(
-          "flex min-w-0 flex-col gap-1.5 overflow-x-hidden",
-          isUser
-            ? "ml-auto max-w-[82%] items-end sm:max-w-[74%]"
-            : "w-full items-start",
-        )}
-      >
-        {!isUser && message.tool_calls && message.tool_calls.length > 0 && (
-          <div className="mb-1 flex flex-wrap gap-1.5">
-            {message.tool_calls.map((tc, i) => (
-              <Badge key={i} variant="secondary" className="gap-1 bg-card/70 text-[11px]">
-                <Wrench className="h-2.5 w-2.5" />
-                {tc.tool_name}
-              </Badge>
-            ))}
-          </div>
-        )}
-
-        <div
-          className={cn(
-            "text-sm leading-relaxed",
-            isUser
-              ? "max-w-[min(840px,100%)] rounded-2xl rounded-br-md bg-gradient-to-br from-primary to-primary/85 px-3.5 py-2.5 text-primary-foreground whitespace-pre-wrap shadow-[0_8px_22px_-18px_color-mix(in_oklab,var(--primary)_80%,transparent)] sm:px-4"
-              : isProgressOnly
-                ? "w-full max-w-full"
-                : "w-full max-w-full rounded-2xl rounded-bl-md border border-border/70 bg-card/75 px-3.5 py-2.5 text-secondary-foreground sm:px-4",
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75, minWidth: 0, overflow: "hidden", ...(isUser ? { ml: "auto", maxWidth: "80%", alignItems: "flex-end" } : { width: "100%", alignItems: "flex-start" }) }}>
+          {!isUser && message.tool_calls && message.tool_calls.length > 0 && (
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mb: 0.5 }}>
+              {message.tool_calls.map((tc, i) => (
+                <Chip key={i} icon={<Wrench size={10} />} label={tc.tool_name} size="small" variant="outlined" />
+              ))}
+            </Box>
           )}
-        >
-          {isUser ? (
-            message.content
-          ) : isProgressOnly ? (
-            <div className="w-full min-w-0">
-              <button
-                type="button"
-                onClick={() => setProgressExpanded(message.id, !progressExpanded)}
-                className="w-full rounded-2xl border border-border/60 bg-gradient-to-b from-background/85 to-background/55 p-3 text-left transition-colors hover:border-primary/25"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                    <Loader2 className="h-4.5 w-4.5 animate-spin" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-medium tracking-wide text-muted-foreground">
-                          {t("chat.progress.current")}
-                        </p>
-                        <p className="truncate text-sm font-semibold text-foreground">
-                          {message.progress?.current_message || t("chat.progress.processing")}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-xs font-medium tabular-nums text-muted-foreground">
-                          {message.progress?.percent ?? 0}%
-                        </span>
-                        <ChevronDown
-                          className={cn(
-                            "h-4 w-4 text-muted-foreground transition-transform",
-                            progressExpanded && "rotate-180",
-                          )}
-                        />
-                      </div>
-                    </div>
-                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-background/90">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all duration-500"
-                        style={{ width: `${message.progress?.percent ?? 0}%` }}
-                      />
-                    </div>
-                    <div className="mt-3 grid grid-cols-5 gap-1.5">
-                      {stageDefs.map((stage, stageIndex) => {
-                        const state =
-                          stageIndex < currentStageIndex ? "done" :
-                          stageIndex === currentStageIndex ? "active" : "idle";
-                        return (
-                          <div
-                            key={stage.id}
-                            className={cn(
-                              "flex items-center justify-center rounded-xl border px-1.5 py-1.5 text-[10px] font-medium",
-                              state === "done" && "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
-                              state === "active" && "border-primary/30 bg-primary/10 text-primary",
-                              state === "idle" && "border-border/60 bg-background/70 text-muted-foreground",
-                            )}
-                          >
-                            {state === "done" ? <Check className="mr-1 h-3 w-3" /> : null}
-                            <span className="truncate">{stage.label}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {latestDetail ? (
-                      <p className="mt-2 truncate text-[11px] text-muted-foreground">
-                        {latestDetail}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              </button>
 
-              <AnimatePresence initial={false}>
-                {progressExpanded && recentEvents.length > 0 ? (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="mt-2 space-y-2 rounded-2xl border border-white/5 bg-background/30 p-3">
-                      {recentEvents.map((event: ProgressEvent, eventIndex) => (
-                        <div
-                          key={`${event.timestamp || eventIndex}-${eventIndex}`}
-                          className="flex gap-2 rounded-xl bg-background/70 px-3 py-2.5"
-                        >
-                          <div className={cn(
-                            "mt-1 h-2 w-2 shrink-0 rounded-full",
-                            eventIndex === recentEvents.length - 1 ? "bg-primary" : "bg-muted-foreground/40",
-                          )} />
-                          <div className="min-w-0">
-                            <p className="text-xs font-medium text-foreground/90">{event.message}</p>
-                            {event.detail ? (
-                              <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{event.detail}</p>
-                            ) : null}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </motion.div>
-                ) : null}
-              </AnimatePresence>
-            </div>
-          ) : (
-            <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-p:leading-7 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-foreground prose-code:text-xs prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-muted prose-pre:p-2 prose-pre:rounded-lg">
-              <ReactMarkdown>{message.content}</ReactMarkdown>
-            </div>
-          )}
-        </div>
+          <Box
+            sx={{
+              fontSize: "0.875rem",
+              lineHeight: 1.7,
+              ...(isUser
+                ? { maxWidth: "min(840px,100%)", borderRadius: "16px 16px 4px 16px", bgcolor: "primary.main", color: "primary.contrastText", px: 2, py: 1.5, whiteSpace: "pre-wrap" }
+                : isProgressOnly
+                  ? { width: "100%" }
+                  : { width: "100%", borderRadius: "16px 16px 16px 4px", border: 1, borderColor: "divider", bgcolor: "background.paper", px: 2, py: 1.5 }),
+            }}
+          >
+            {isUser ? (
+              message.content
+            ) : isProgressOnly ? (
+              <Box sx={{ width: "100%" }}>
+                <ButtonBase
+                  onClick={() => setProgressExpanded(message.id, !progressExpanded)}
+                  sx={{ width: "100%", borderRadius: 4, border: 1, borderColor: "divider", bgcolor: "background.default", p: 1.5, textAlign: "left", display: "block" }}
+                >
+                  <Box sx={{ display: "flex", gap: 1.5 }}>
+                    <Box sx={{ mt: 0.5, flexShrink: 0 }}>
+                      <CircularProgress size={24} />
+                    </Box>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 1 }}>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography variant="caption" color="text.secondary">{t("chat.progress.current")}</Typography>
+                          <Typography variant="body2" fontWeight={700} noWrap>{message.progress?.current_message || t("chat.progress.processing")}</Typography>
+                        </Box>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontVariantNumeric: "tabular-nums" }}>{message.progress?.percent ?? 0}%</Typography>
+                          <ChevronDown size={16} style={{ transform: progressExpanded ? "rotate(180deg)" : undefined, transition: "transform 0.2s" }} />
+                        </Box>
+                      </Box>
+                      <LinearProgress variant="determinate" value={message.progress?.percent ?? 0} sx={{ mt: 1, borderRadius: 1, height: 6 }} />
+                      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 0.75, mt: 1.5 }}>
+                        {stageDefs.map((stage, si) => {
+                          const state = si < currentStageIndex ? "done" : si === currentStageIndex ? "active" : "idle";
+                          return (
+                            <Chip
+                              key={stage.id}
+                              label={stage.label}
+                              size="small"
+                              icon={state === "done" ? <Check size={12} /> : undefined}
+                              color={state === "done" ? "success" : state === "active" ? "primary" : "default"}
+                              variant={state === "idle" ? "outlined" : "filled"}
+                              sx={{ fontSize: "0.625rem", justifyContent: "center" }}
+                            />
+                          );
+                        })}
+                      </Box>
+                      {latestDetail && <Typography variant="caption" color="text.secondary" noWrap sx={{ mt: 1, display: "block" }}>{latestDetail}</Typography>}
+                    </Box>
+                  </Box>
+                </ButtonBase>
 
-        {cards.length > 0 && (
-          <TrainResultCards cards={cards} onQueryTransfer={onQueryTransfer} messageId={message.id} />
-        )}
-      </div>
+                <AnimatePresence initial={false}>
+                  {progressExpanded && recentEvents.length > 0 && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} style={{ overflow: "hidden" }}>
+                      <Box sx={{ mt: 1, display: "flex", flexDirection: "column", gap: 1, borderRadius: 4, border: 1, borderColor: "divider", bgcolor: "background.default", p: 1.5 }}>
+                        {recentEvents.map((event: ProgressEvent, ei) => (
+                          <Box key={`${event.timestamp || ei}-${ei}`} sx={{ display: "flex", gap: 1, borderRadius: 3, bgcolor: "background.paper", px: 1.5, py: 1 }}>
+                            <Box sx={{ mt: 0.75, width: 8, height: 8, borderRadius: "50%", flexShrink: 0, bgcolor: ei === recentEvents.length - 1 ? "primary.main" : "text.disabled" }} />
+                            <Box sx={{ minWidth: 0 }}>
+                              <Typography variant="caption" fontWeight={600}>{event.message}</Typography>
+                              {event.detail && <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>{event.detail}</Typography>}
+                            </Box>
+                          </Box>
+                        ))}
+                      </Box>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </Box>
+            ) : (
+              <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-p:leading-7 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-foreground prose-code:text-xs prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-muted prose-pre:p-2 prose-pre:rounded-lg">
+                <ReactMarkdown>{message.content}</ReactMarkdown>
+              </div>
+            )}
+          </Box>
+
+          {cards.length > 0 && <TrainResultCards cards={cards} onQueryTransfer={onQueryTransfer} messageId={message.id} />}
+        </Box>
+      </Box>
     </motion.div>
   );
 }

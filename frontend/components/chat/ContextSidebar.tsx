@@ -1,10 +1,14 @@
 "use client";
 
 import { MapPin, Star, TrendingUp, Navigation } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import CardHeader from "@mui/material/CardHeader";
+import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
+import Divider from "@mui/material/Divider";
+import Typography from "@mui/material/Typography";
+import Box from "@mui/material/Box";
 import { useUserContextStore } from "@/store/userContextStore";
 import { useGeoLocation } from "@/hooks/useGeoLocation";
 import { useI18n } from "@/lib/i18n/i18n";
@@ -17,88 +21,60 @@ export function ContextSidebar() {
   const { detectByIP, loading } = useGeoLocation();
   const { t } = useI18n();
 
-  const prefLabels: Record<string, string> = {
-    fast: t("context.pref.fast"),
-    cheap: t("context.pref.cheap"),
-    balanced: t("context.pref.balanced"),
-  };
-  const modeLabels: Record<string, string> = {
-    efficient: t("context.mode.efficient"),
-    rail_experience: t("context.mode.rail_experience"),
-    stopover_explore: t("context.mode.stopover_explore"),
-  };
+  const prefLabels: Record<string, string> = { fast: t("context.pref.fast"), cheap: t("context.pref.cheap"), balanced: t("context.pref.balanced") };
+  const modeLabels: Record<string, string> = { efficient: t("context.mode.efficient"), rail_experience: t("context.mode.rail_experience"), stopover_explore: t("context.mode.stopover_explore") };
 
   return (
-    <div className="flex h-full flex-col gap-3.5 overflow-y-auto p-3.5">
-      <Card>
-        <CardHeader className="p-4 pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <MapPin className="h-4 w-4 text-primary" />
-            {t("context.location")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 pt-0">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2, overflow: "auto", p: 2, height: "100%" }}>
+      <Card variant="outlined">
+        <CardHeader title={<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><MapPin size={16} style={{ color: "var(--primary)" }} /><Typography variant="subtitle2">{t("context.location")}</Typography></Box>} sx={{ pb: 0, px: 2, pt: 2 }} />
+        <CardContent sx={{ px: 2, pt: 1 }}>
           {location ? (
-            <div className="space-y-1.5">
-              <p className="text-sm font-semibold">{location.city}</p>
-              {location.station && (
-                <p className="text-xs text-muted-foreground">{t("context.location.recommendStation", { station: location.station })}</p>
-              )}
-              <Badge variant="secondary" className="text-xs mt-1">
-                <Navigation className="h-3 w-3 mr-1" />
-                {location.source === "ip" ? t("context.location.ip") : location.source === "gps" ? t("context.location.gps") : t("context.location.manual")}
-              </Badge>
-            </div>
+            <Box>
+              <Typography variant="body2" fontWeight={700}>{location.city}</Typography>
+              {location.station && <Typography variant="caption" color="text.secondary">{t("context.location.recommendStation", { station: location.station })}</Typography>}
+              <Box sx={{ mt: 0.75 }}>
+                <Chip icon={<Navigation size={12} />} label={location.source === "ip" ? t("context.location.ip") : location.source === "gps" ? t("context.location.gps") : t("context.location.manual")} size="small" />
+              </Box>
+            </Box>
           ) : (
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">{t("context.location.unset")}</p>
-              <Button variant="outline" size="sm" onClick={() => detectByIP()} disabled={loading} className="w-full text-xs">
+            <Box>
+              <Typography variant="caption" color="text.secondary">{t("context.location.unset")}</Typography>
+              <Button variant="outlined" size="small" fullWidth onClick={() => detectByIP()} disabled={loading} sx={{ mt: 1 }}>
                 {loading ? t("context.location.locating") : t("context.location.autoLocate")}
               </Button>
-            </div>
+            </Box>
           )}
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader className="p-4 pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <TrendingUp className="h-4 w-4 text-primary" />
-            {t("context.preference")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 pt-0">
-          <Badge variant="default" className="px-3 py-1 text-xs">{prefLabels[preference]}</Badge>
+
+      <Card variant="outlined">
+        <CardHeader title={<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><TrendingUp size={16} style={{ color: "var(--primary)" }} /><Typography variant="subtitle2">{t("context.preference")}</Typography></Box>} sx={{ pb: 0, px: 2, pt: 2 }} />
+        <CardContent sx={{ px: 2, pt: 1 }}>
+          <Chip label={prefLabels[preference]} color="primary" size="small" />
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader className="p-4 pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <TrendingUp className="h-4 w-4 text-primary" />
-            {t("context.mode")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 pt-0">
-          <Badge variant="secondary" className="px-3 py-1 text-xs">{modeLabels[planningMode]}</Badge>
+
+      <Card variant="outlined">
+        <CardHeader title={<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><TrendingUp size={16} style={{ color: "var(--primary)" }} /><Typography variant="subtitle2">{t("context.mode")}</Typography></Box>} sx={{ pb: 0, px: 2, pt: 2 }} />
+        <CardContent sx={{ px: 2, pt: 1 }}>
+          <Chip label={modeLabels[planningMode]} size="small" />
         </CardContent>
       </Card>
+
       {favorites.length > 0 && (
         <>
-          <Separator />
-          <Card>
-            <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Star className="h-4 w-4 text-warning" />
-                {t("context.favorites")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <div className="flex flex-wrap gap-1.5">
-                {favorites.map((s) => (<Badge key={s} variant="secondary">{s}</Badge>))}
-              </div>
+          <Divider />
+          <Card variant="outlined">
+            <CardHeader title={<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><Star size={16} style={{ color: "#F59E0B" }} /><Typography variant="subtitle2">{t("context.favorites")}</Typography></Box>} sx={{ pb: 0, px: 2, pt: 2 }} />
+            <CardContent sx={{ px: 2, pt: 1 }}>
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+                {favorites.map((s) => <Chip key={s} label={s} size="small" />)}
+              </Box>
             </CardContent>
           </Card>
         </>
       )}
-    </div>
+    </Box>
   );
 }

@@ -1,11 +1,15 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from "react";
+import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
+import { lightTheme, darkTheme } from "./muiTheme";
 
 export type ThemeMode = "system" | "light" | "dark";
 
 type ThemeContextValue = {
   theme: ThemeMode;
+  resolvedMode: "light" | "dark";
   setTheme: (theme: ThemeMode) => void;
 };
 
@@ -19,10 +23,15 @@ function getSystemPrefersDark() {
   return window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
 }
 
+function resolveMode(mode: ThemeMode): "light" | "dark" {
+  if (mode === "system") return getSystemPrefersDark() ? "dark" : "light";
+  return mode;
+}
+
 function applyThemeClass(mode: ThemeMode) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  const isDark = mode === "dark" || (mode === "system" && getSystemPrefersDark());
+  const isDark = resolveMode(mode) === "dark";
   root.classList.toggle("dark", isDark);
   root.dataset.theme = mode;
 }
@@ -37,15 +46,12 @@ function subscribeTheme(callback: () => void) {
   themeListeners.add(callback);
 
   if (typeof window === "undefined") {
-    return () => {
-      themeListeners.delete(callback);
-    };
+    return () => { themeListeners.delete(callback); };
   }
 
   const handleStorage = (event: StorageEvent) => {
     if (event.key === STORAGE_KEY) callback();
   };
-
   window.addEventListener("storage", handleStorage);
 
   return () => {
@@ -64,17 +70,15 @@ function getThemeSnapshot(): ThemeMode {
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const theme = useSyncExternalStore<ThemeMode>(subscribeTheme, getThemeSnapshot, () => "system");
+  const resolved = resolveMode(theme);
+  const muiTheme = resolved === "dark" ? darkTheme : lightTheme;
 
-  useEffect(() => {
-    applyThemeClass(theme);
-  }, [theme]);
+  useEffect(() => { applyThemeClass(theme); }, [theme]);
 
   useEffect(() => {
     const mql = window.matchMedia?.("(prefers-color-scheme: dark)");
     if (!mql) return;
-    const handler = () => {
-      if (theme === "system") applyThemeClass("system");
-    };
+    const handler = () => { if (theme === "system") { applyThemeClass("system"); emitThemeChange(); } };
     mql.addEventListener?.("change", handler);
     return () => mql.removeEventListener?.("change", handler);
   }, [theme]);
@@ -86,8 +90,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     emitThemeChange();
   }, []);
 
-  const value = useMemo(() => ({ theme, setTheme }), [theme, setTheme]);
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  const value = useMemo(() => ({ theme, resolvedMode: resolved, setTheme }), [theme, resolved, setTheme]);
+
+  return (
+    <ThemeContext.Provider value={value}>
+      <MuiThemeProvider theme={muiTheme}>
+        <CssBaseline enableColorScheme />
+        {children}
+      </MuiThemeProvider>
+    </ThemeContext.Provider>
+  );
 }
 
 export function useTheme() {

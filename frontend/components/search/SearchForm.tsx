@@ -3,20 +3,25 @@
 import { useState, useCallback } from "react";
 import { Search, ArrowLeftRight, MapPin, CalendarDays } from "lucide-react";
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import TextField from "@mui/material/TextField";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
+import Chip from "@mui/material/Chip";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import InputAdornment from "@mui/material/InputAdornment";
 import { useUserContextStore } from "@/store/userContextStore";
 import { useSearchStore } from "@/store/searchStore";
 import { getToday, getTomorrow, formatDateLocalized } from "@/utils/date";
 import type { TrainSearchParams } from "@/types/trains";
 import { useI18n } from "@/lib/i18n/i18n";
-import { cn } from "@/utils/cn";
 
 interface Props { onSearch: (params: TrainSearchParams) => void; loading?: boolean; }
 
 export function SearchForm({ onSearch, loading }: Props) {
   const location = useUserContextStore((s) => s.location);
-  // 优先用上次搜索的站点回填表单（从 store 读取）
   const prevFrom = useSearchStore((s) => s.fromStation);
   const prevTo = useSearchStore((s) => s.toStation);
   const prevDate = useSearchStore((s) => s.searchDate);
@@ -38,12 +43,7 @@ export function SearchForm({ onSearch, loading }: Props) {
   const handleSwap = useCallback(() => { setFrom(to); setTo(from); }, [from, to]);
   const handleSearch = useCallback(() => {
     if (!from.trim() || !to.trim()) return;
-    onSearch({
-      from_station: from.trim(),
-      to_station: to.trim(),
-      travel_date: date,
-      ...(trainType ? { train_type: trainType } : {}),
-    });
+    onSearch({ from_station: from.trim(), to_station: to.trim(), travel_date: date, ...(trainType ? { train_type: trainType } : {}) });
   }, [from, to, date, trainType, onSearch]);
   const useMyLocation = useCallback(() => {
     if (location?.station) setFrom(location.station);
@@ -51,113 +51,93 @@ export function SearchForm({ onSearch, loading }: Props) {
   }, [location]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border border-border/70 bg-card/82 p-3.5 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.58)] sm:p-4"
-    >
-      {/* Station inputs */}
-      <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2 sm:gap-2.5">
-        <div className="flex-1 space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">{t("search.from")}</label>
-          <div className="relative">
-            <Input
+    <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+      <Card variant="outlined" sx={{ borderRadius: 4 }}>
+        <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2, p: { xs: 2, sm: 2.5 } }}>
+          {/* Station inputs */}
+          <Box sx={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "flex-end", gap: { xs: 1, sm: 1.5 } }}>
+            <TextField
+              label={t("search.from")}
               value={from}
               onChange={(e) => setFrom(e.target.value)}
               placeholder={t("search.stationPlaceholder")}
-              className="pr-8"
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              fullWidth
+              slotProps={{
+                input: {
+                  endAdornment: location ? (
+                    <InputAdornment position="end">
+                      <IconButton onClick={useMyLocation} size="small" title={t("search.useMyLocation")} color="primary">
+                        <MapPin size={16} />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : undefined,
+                },
+              }}
             />
-            {location && (
-              <button
-                onClick={useMyLocation}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-primary hover:text-primary/80 transition-colors"
-                title={t("search.useMyLocation")}
-              >
-                <MapPin className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleSwap}
-          className="h-9 w-9 shrink-0 justify-self-center border border-border/70 bg-card/65 text-muted-foreground hover:bg-primary/10 hover:text-primary sm:h-10 sm:w-10"
-        >
-          <ArrowLeftRight className="h-4 w-4" />
-        </Button>
-        <div className="flex-1 space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">{t("search.to")}</label>
-          <Input
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            placeholder={t("search.stationPlaceholder")}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          />
-        </div>
-      </div>
+            <IconButton onClick={handleSwap} sx={{ border: 1, borderColor: "divider", width: 40, height: 40, borderRadius: 2.5, alignSelf: "center" }}>
+              <ArrowLeftRight size={16} />
+            </IconButton>
+            <TextField
+              label={t("search.to")}
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+              placeholder={t("search.stationPlaceholder")}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              fullWidth
+            />
+          </Box>
 
-      {/* Date row */}
-      <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2 sm:gap-2.5">
-        <div className="flex-1 space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-            <CalendarDays className="h-3.5 w-3.5" />{t("search.departDate")}
-          </label>
-          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} min={getToday()} />
-        </div>
-        <div className="flex flex-wrap gap-1.5">
+          {/* Date row */}
+          <Box sx={{ display: "grid", gridTemplateColumns: "1fr auto", alignItems: "flex-end", gap: { xs: 1, sm: 1.5 } }}>
+            <TextField
+              label={<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}><CalendarDays size={14} />{t("search.departDate")}</Box>}
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              slotProps={{ htmlInput: { min: getToday() } }}
+              fullWidth
+            />
+            <Box sx={{ display: "flex", gap: 0.75 }}>
+              <Button variant={date === getToday() ? "contained" : "outlined"} size="small" onClick={() => setDate(getToday())}>{t("search.today")}</Button>
+              <Button variant={date === getTomorrow() ? "contained" : "outlined"} size="small" onClick={() => setDate(getTomorrow())}>{t("search.tomorrow")}</Button>
+            </Box>
+          </Box>
+
+          {/* Train type filter */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap" }}>
+            <Typography variant="caption" color="text.secondary">{t("search.trainType")}</Typography>
+            {TRAIN_TYPES.map((tt) => (
+              <Chip
+                key={tt.value}
+                label={tt.label}
+                size="small"
+                variant={trainType === tt.value ? "filled" : "outlined"}
+                color={trainType === tt.value ? "primary" : "default"}
+                onClick={() => setTrainType(tt.value)}
+                clickable
+              />
+            ))}
+          </Box>
+
+          {/* Search button */}
           <Button
-            variant={date === getToday() ? "default" : "outline"}
-            size="sm"
-            onClick={() => setDate(getToday())}
+            variant="contained"
+            size="large"
+            onClick={handleSearch}
+            disabled={!from.trim() || !to.trim() || loading}
+            startIcon={<Search size={18} />}
+            fullWidth
+            sx={{ height: { xs: 44, sm: 48 }, borderRadius: 3, fontSize: "1rem" }}
           >
-            {t("search.today")}
+            {loading ? t("search.searching") : t("search.btn.search")}
           </Button>
-          <Button
-            variant={date === getTomorrow() ? "default" : "outline"}
-            size="sm"
-            onClick={() => setDate(getTomorrow())}
-          >
-            {t("search.tomorrow")}
-          </Button>
-        </div>
-      </div>
 
-      {/* Train type filter */}
-      <div className="mb-3 flex flex-wrap items-center gap-1.5">
-        <span className="text-xs text-muted-foreground">{t("search.trainType")}</span>
-        {TRAIN_TYPES.map((tt) => (
-          <button
-            key={tt.value}
-            type="button"
-            className={cn(
-              "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold transition-all",
-              trainType === tt.value
-                ? "border-primary/35 bg-primary/12 text-primary"
-                : "border-border/80 text-muted-foreground hover:border-primary/20 hover:bg-primary/10 hover:text-foreground",
-            )}
-            onClick={() => setTrainType(tt.value)}
-          >
-            {tt.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Search button */}
-      <Button
-        onClick={handleSearch}
-        disabled={!from.trim() || !to.trim() || loading}
-        className="h-11 w-full gap-2 text-base sm:h-12"
-        size="lg"
-      >
-        <Search className="h-4 w-4" />
-        {loading ? t("search.searching") : t("search.btn.search")}
-      </Button>
-
-      <p className="mt-2 text-center text-[11px] text-muted-foreground">
-        {formatDateLocalized(date, locale === "en" ? "en" : "zh-CN")}
-      </p>
+          <Typography variant="caption" color="text.secondary" align="center">
+            {formatDateLocalized(date, locale === "en" ? "en" : "zh-CN")}
+          </Typography>
+        </CardContent>
+      </Card>
     </motion.div>
   );
 }

@@ -4,10 +4,15 @@ import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Clock, Calendar, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import CardHeader from "@mui/material/CardHeader";
+import Chip from "@mui/material/Chip";
+import Typography from "@mui/material/Typography";
+import Skeleton from "@mui/material/Skeleton";
+import Alert from "@mui/material/Alert";
 import { TrainTimeline } from "@/components/tickets/TrainTimeline";
 import { SeatPurchaseDialog } from "@/components/tickets/SeatPurchaseDialog";
 import { getTrainSchedule, getTrainPrices } from "@/services/trains";
@@ -50,19 +55,15 @@ export default function TrainDetailPage() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      setLoading(true);
-      setError(null);
+      setLoading(true); setError(null);
       try {
         const data = await getTrainSchedule(trainNo, date, fromStation || undefined, toStation || undefined);
         if (!cancelled) setStops(data.stops || []);
       } catch (err) {
         if (!cancelled) {
           const msg = err instanceof Error ? err.message : t("common.loadFailed");
-          if (msg.includes("未找到") || msg.includes("404") || msg.includes("Not Found")) {
-            setStops([]);
-          } else {
-            setError(msg);
-          }
+          if (msg.includes("未找到") || msg.includes("404") || msg.includes("Not Found")) setStops([]);
+          else setError(msg);
         }
       } finally { if (!cancelled) setLoading(false); }
     }
@@ -77,19 +78,8 @@ export default function TrainDetailPage() {
       setPricesLoading(true);
       try {
         const res = await getTrainPrices(trainNo, date, fromStation!, toStation!);
-        if (!cancelled) {
-          setPrices(res.prices);
-          setPriceMeta({
-            logged_in: res.logged_in,
-            requires_login: res.requires_login,
-            source: res.source,
-          });
-        }
-      } catch {
-        // price fetch is best-effort
-      } finally {
-        if (!cancelled) setPricesLoading(false);
-      }
+        if (!cancelled) { setPrices(res.prices); setPriceMeta({ logged_in: res.logged_in, requires_login: res.requires_login, source: res.source }); }
+      } catch { /* best-effort */ } finally { if (!cancelled) setPricesLoading(false); }
     }
     loadPrices();
     return () => { cancelled = true; };
@@ -97,58 +87,38 @@ export default function TrainDetailPage() {
 
   useEffect(() => {
     let cancelled = false;
-    async function loadCapabilities() {
-      try {
-        const res = await getTicketingCapabilities();
-        if (!cancelled) {
-          setDemoMode(res.demo_mode);
-          setBoundAccount(res.bound_account_username || null);
-        }
-      } catch {
-        // keep default demo mode
-      }
+    async function loadCap() {
+      try { const res = await getTicketingCapabilities(); if (!cancelled) { setDemoMode(res.demo_mode); setBoundAccount(res.bound_account_username || null); } } catch {}
     }
-    loadCapabilities();
+    loadCap();
     return () => { cancelled = true; };
   }, []);
 
   const trainType = trainNo.charAt(0);
-  const trainTypeLabel = getTrainTypeLabel(trainType, locale === "en" ? "en" : "zh-CN");
-
+  const trainTypeLabel = getTrainTypeLabel(trainType, dateLocale);
   const originStop = stops.length > 0 ? stops[0] : null;
   const terminalStop = stops.length > 1 ? stops[stops.length - 1] : null;
   const totalStops = stops.length;
+
   const seatCards = [
     { key: "business_seat", label: locale === "en" ? "Business" : "商务/特等座" },
-    { key: "first_seat", label: getFareLabel("price_first_seat", locale === "en" ? "en" : "zh-CN") },
-    { key: "second_seat", label: getFareLabel("price_second_seat", locale === "en" ? "en" : "zh-CN") },
-    { key: "soft_sleeper", label: getFareLabel("price_soft_sleeper", locale === "en" ? "en" : "zh-CN") },
-    { key: "hard_sleeper", label: getFareLabel("price_hard_sleeper", locale === "en" ? "en" : "zh-CN") },
-    { key: "hard_seat", label: getFareLabel("price_hard_seat", locale === "en" ? "en" : "zh-CN") },
-    { key: "no_seat", label: getFareLabel("price_no_seat", locale === "en" ? "en" : "zh-CN") },
-  ]
-    .map((item) => ({
-      ...item,
-      price: (prices as Record<string, number | null | undefined> | null)?.[item.key] ?? null,
-    }))
+    { key: "first_seat", label: getFareLabel("price_first_seat", dateLocale) },
+    { key: "second_seat", label: getFareLabel("price_second_seat", dateLocale) },
+    { key: "soft_sleeper", label: getFareLabel("price_soft_sleeper", dateLocale) },
+    { key: "hard_sleeper", label: getFareLabel("price_hard_sleeper", dateLocale) },
+    { key: "hard_seat", label: getFareLabel("price_hard_seat", dateLocale) },
+    { key: "no_seat", label: getFareLabel("price_no_seat", dateLocale) },
+  ].map((item) => ({ ...item, price: (prices as Record<string, number | null | undefined> | null)?.[item.key] ?? null }))
     .filter((item): item is { key: string; label: string; price: number } => item.price != null);
 
   const handleBack = () => {
-    if (returnTo && returnTo.startsWith("/")) {
-      router.push(returnTo);
-      return;
-    }
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-      return;
-    }
+    if (returnTo && returnTo.startsWith("/")) { router.push(returnTo); return; }
+    if (typeof window !== "undefined" && window.history.length > 1) { router.back(); return; }
     router.push("/");
   };
 
   const handleSeatSelect = (seat: { key: string; label: string; price: number }) => {
-    setSelectedSeat(seat);
-    setPurchasedOrder(null);
-    setPurchaseOpen(true);
+    setSelectedSeat(seat); setPurchasedOrder(null); setPurchaseOpen(true);
   };
 
   const handleConfirmPurchase = async () => {
@@ -156,74 +126,51 @@ export default function TrainDetailPage() {
     setPurchasing(true);
     try {
       const order = await purchaseTicket({
-        user_id: userId,
-        train_no: trainNo,
-        train_type: trainType,
-        run_date: date,
-        from_station: fromStation,
-        to_station: toStation,
-        departure_time: originStop?.departure_time || undefined,
-        arrival_time: terminalStop?.arrival_time || undefined,
-        seat_type: selectedSeat.key,
-        seat_label: selectedSeat.label,
-        seat_code: selectedSeat.key,
-        fare_amount: selectedSeat.price,
+        user_id: userId, train_no: trainNo, train_type: trainType, run_date: date,
+        from_station: fromStation, to_station: toStation,
+        departure_time: originStop?.departure_time || undefined, arrival_time: terminalStop?.arrival_time || undefined,
+        seat_type: selectedSeat.key, seat_label: selectedSeat.label, seat_code: selectedSeat.key, fare_amount: selectedSeat.price,
       });
       setPurchasedOrder(order);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("errors.requestFailed"));
-    } finally {
-      setPurchasing(false);
-    }
+    } catch (err) { setError(err instanceof Error ? err.message : t("errors.requestFailed")); } finally { setPurchasing(false); }
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-4 overflow-y-auto px-4 py-4 sm:px-6 lg:px-8">
-      <button
-        onClick={handleBack}
-        className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card/45 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" />{t("train.backToSearch")}
-      </button>
+    <Box sx={{ mx: "auto", width: "100%", maxWidth: "72rem", display: "flex", flexDirection: "column", gap: 2, overflowY: "auto", px: { xs: 2, sm: 3, lg: 4 }, py: 2 }}>
+      <Button variant="outlined" size="small" onClick={handleBack} startIcon={<ArrowLeft size={16} />} sx={{ alignSelf: "flex-start", borderRadius: 5 }}>
+        {t("train.backToSearch")}
+      </Button>
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <Card>
-          <CardContent className="pt-5 pb-4">
-            <div className="mb-4 flex flex-wrap items-center gap-3">
+        <Card variant="outlined">
+          <CardContent sx={{ pt: 2.5, pb: 2 }}>
+            <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5, mb: 2 }}>
               <span className={cn("inline-flex items-center rounded-lg px-3 py-1.5 text-base font-bold text-white shadow-sm", getTrainTypeColor(trainType))}>{trainNo}</span>
-              <Badge variant="secondary">{getTrainTypeLabel(trainType, locale === "en" ? "en" : "zh-CN")}</Badge>
-              <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Calendar className="h-3.5 w-3.5" />{formatDateLocalized(date, dateLocale)}
-              </div>
-            </div>
+              <Chip label={trainTypeLabel} variant="outlined" size="small" />
+              <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 0.75, color: "text.secondary" }}>
+                <Calendar size={14} /><Typography variant="caption">{formatDateLocalized(date, dateLocale)}</Typography>
+              </Box>
+            </Box>
 
             {(fromStation && toStation) || (originStop && terminalStop) ? (
-              <div className="grid gap-4 rounded-xl border border-border/70 bg-muted/35 px-4 py-4 md:grid-cols-[minmax(0,1fr)_minmax(180px,240px)_minmax(0,1fr)] md:items-center">
-                <div className="text-center">
-                  <p className="text-lg font-semibold md:text-2xl">{fromStation || originStop?.station_name}</p>
-                  {originStop && (
-                    <p className="text-sm text-muted-foreground tabular-nums">{originStop.departure_time !== "--" ? originStop.departure_time : ""}</p>
-                  )}
-                </div>
-                <div className="flex min-w-0 flex-col items-center gap-1">
-                  <div className="flex items-center gap-1 w-full">
-                    <div className="h-px flex-1 bg-border" />
-                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <div className="h-px flex-1 bg-border" />
-                  </div>
-                  {totalStops > 0 && (
-                    <span className="text-[11px] text-muted-foreground">
-                      {locale === "en" ? `${totalStops} stops` : `共${totalStops}站`}
-                    </span>
-                  )}
-                </div>
-                <div className="text-center">
-                  <p className="text-lg font-semibold md:text-2xl">{toStation || terminalStop?.station_name}</p>
-                  {terminalStop && (
-                    <p className="text-sm text-muted-foreground tabular-nums">{terminalStop.arrival_time !== "--" ? terminalStop.arrival_time : ""}</p>
-                  )}
-                </div>
-              </div>
+              <Box sx={{ display: "grid", gridTemplateColumns: { md: "1fr auto 1fr" }, alignItems: "center", gap: 2, borderRadius: 3, border: 1, borderColor: "divider", bgcolor: "action.hover", px: 2, py: 2 }}>
+                <Box sx={{ textAlign: "center" }}>
+                  <Typography variant="h6" fontWeight={700}>{fromStation || originStop?.station_name}</Typography>
+                  {originStop && <Typography variant="body2" color="text.secondary" sx={{ fontVariantNumeric: "tabular-nums" }}>{originStop.departure_time !== "--" ? originStop.departure_time : ""}</Typography>}
+                </Box>
+                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, width: "100%" }}>
+                    <Box sx={{ height: "1px", flex: 1, bgcolor: "divider" }} />
+                    <ArrowRight size={14} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
+                    <Box sx={{ height: "1px", flex: 1, bgcolor: "divider" }} />
+                  </Box>
+                  {totalStops > 0 && <Typography variant="caption" color="text.secondary">{locale === "en" ? `${totalStops} stops` : `共${totalStops}站`}</Typography>}
+                </Box>
+                <Box sx={{ textAlign: "center" }}>
+                  <Typography variant="h6" fontWeight={700}>{toStation || terminalStop?.station_name}</Typography>
+                  {terminalStop && <Typography variant="body2" color="text.secondary" sx={{ fontVariantNumeric: "tabular-nums" }}>{terminalStop.arrival_time !== "--" ? terminalStop.arrival_time : ""}</Typography>}
+                </Box>
+              </Box>
             ) : null}
           </CardContent>
         </Card>
@@ -231,62 +178,37 @@ export default function TrainDetailPage() {
 
       {fromStation && toStation && (
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
-          <Card>
-            <CardContent className="space-y-3 pt-4">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <span className="text-base">¥</span>
-                {t("train.price.title")}
-              </CardTitle>
-              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-primary/15 bg-primary/[0.05] px-3 py-2 text-xs text-muted-foreground">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <span>{t("booking.detailHint")}</span>
-              </div>
+          <Card variant="outlined">
+            <CardContent sx={{ display: "flex", flexDirection: "column", gap: 1.5, pt: 2 }}>
+              <Typography variant="subtitle2" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <span>¥</span>{t("train.price.title")}
+              </Typography>
+              <Alert severity="info" variant="outlined" icon={<Sparkles size={16} />} sx={{ py: 0.5 }}>{t("booking.detailHint")}</Alert>
               {pricesLoading ? (
-                <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={i} className="h-[84px] w-full rounded-xl" />
-                  ))}
-                </div>
-              ) : prices && Object.values(prices).some(v => v != null) ? (
-                <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
+                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 1 }}>
+                  {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} variant="rounded" height={84} />)}
+                </Box>
+              ) : prices && Object.values(prices).some((v) => v != null) ? (
+                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 1 }}>
                   {seatCards.map(({ key, label, price }) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => handleSeatSelect({ key, label, price })}
-                      className="group flex min-h-[96px] flex-col items-center justify-center gap-1 rounded-xl border border-border/65 bg-muted/35 px-3 py-3 text-center transition-all hover:border-primary/35 hover:bg-primary/[0.07] hover:shadow-[0_16px_36px_-28px_rgba(37,99,235,0.55)]"
-                    >
-                      <span title={label} className="max-w-full truncate whitespace-nowrap text-[11px] text-muted-foreground">
-                        {label}
-                      </span>
-                      <span className="text-lg font-bold tabular-nums text-foreground">{formatPrice(price)}</span>
-                      <span className="text-[11px] text-primary opacity-80 transition-opacity group-hover:opacity-100">
-                        {t("booking.selectSeat")}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-3 py-3 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    {t("train.price.unavailable")}
-                  </p>
-                  <p className="max-w-md text-xs text-muted-foreground">
-                    {priceMeta?.requires_login
-                      ? t("train.price.needLogin")
-                      : t("train.price.partial")}
-                  </p>
-                  <div className="flex flex-wrap items-center justify-center gap-2">
-                    {priceMeta?.requires_login ? (
-                      <Button variant="default" size="sm" onClick={() => router.push("/settings")}>
-                        {t("train.price.goLogin")}
+                    <Card key={key} variant="outlined" sx={{ "&:hover": { borderColor: "primary.main", boxShadow: "0 16px 36px -28px rgba(37,99,235,0.45)" } }}>
+                      <Button onClick={() => handleSeatSelect({ key, label, price })} sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 0.5, minHeight: 96, width: "100%", textTransform: "none" }}>
+                        <Typography variant="caption" color="text.secondary" noWrap>{label}</Typography>
+                        <Typography variant="h6" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums" }}>{formatPrice(price)}</Typography>
+                        <Typography variant="caption" color="primary">{t("booking.selectSeat")}</Typography>
                       </Button>
-                    ) : null}
-                    <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-                      {t("train.price.retry")}
-                    </Button>
-                  </div>
-                </div>
+                    </Card>
+                  ))}
+                </Box>
+              ) : (
+                <Box sx={{ textAlign: "center", py: 2 }}>
+                  <Typography variant="body2" color="text.secondary">{t("train.price.unavailable")}</Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>{priceMeta?.requires_login ? t("train.price.needLogin") : t("train.price.partial")}</Typography>
+                  <Box sx={{ display: "flex", justifyContent: "center", gap: 1, mt: 1.5 }}>
+                    {priceMeta?.requires_login && <Button variant="contained" size="small" onClick={() => router.push("/settings")}>{t("train.price.goLogin")}</Button>}
+                    <Button variant="outlined" size="small" onClick={() => window.location.reload()}>{t("train.price.retry")}</Button>
+                  </Box>
+                </Box>
               )}
             </CardContent>
           </Card>
@@ -294,53 +216,34 @@ export default function TrainDetailPage() {
       )}
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2"><Clock className="h-4 w-4 text-primary" />{t("train.schedule")}</CardTitle>
-          </CardHeader>
+        <Card variant="outlined">
+          <CardHeader title={<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><Clock size={16} style={{ color: "var(--primary)" }} /><Typography variant="subtitle2">{t("train.schedule")}</Typography></Box>} />
           <CardContent>
             {loading ? (
-              <div className="space-y-4">{Array.from({ length: 8 }).map((_, i) => (<Skeleton key={i} className="h-6 w-full" />))}</div>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} variant="text" />)}</Box>
             ) : error ? (
-              <div className="text-center py-8">
-                <p className="text-sm text-destructive">{error}</p>
-                <Button variant="outline" size="sm" className="mt-3" onClick={() => window.location.reload()}>{t("common.retry")}</Button>
-              </div>
+              <Box sx={{ textAlign: "center", py: 4 }}>
+                <Typography variant="body2" color="error">{error}</Typography>
+                <Button variant="outlined" size="small" onClick={() => window.location.reload()} sx={{ mt: 1 }}>{t("common.retry")}</Button>
+              </Box>
             ) : stops.length > 0 ? (
               <TrainTimeline stops={stops} highlightFrom={fromStation} highlightTo={toStation} />
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-8">{t("train.noSchedule")}</p>
+              <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 4 }}>{t("train.noSchedule")}</Typography>
             )}
           </CardContent>
         </Card>
       </motion.div>
 
       <SeatPurchaseDialog
-        open={purchaseOpen}
-        seat={selectedSeat}
-        trainNo={trainNo}
-        trainTypeLabel={trainTypeLabel}
-        runDate={date}
-        fromStation={fromStation || originStop?.station_name || ""}
-        toStation={toStation || terminalStop?.station_name || ""}
-        departureTime={fromStation ? originStop?.departure_time : originStop?.departure_time}
-        arrivalTime={toStation ? terminalStop?.arrival_time : terminalStop?.arrival_time}
-        durationMinutes={null}
-        demoMode={demoMode}
-        loginBound={Boolean(priceMeta?.logged_in || boundAccount)}
-        accountUsername={boundAccount}
-        purchasing={purchasing}
-        purchasedOrder={purchasedOrder}
-        onConfirm={handleConfirmPurchase}
-        onClose={() => {
-          if (!purchasing) {
-            setPurchaseOpen(false);
-            setSelectedSeat(null);
-            setPurchasedOrder(null);
-          }
-        }}
+        open={purchaseOpen} seat={selectedSeat} trainNo={trainNo} trainTypeLabel={trainTypeLabel} runDate={date}
+        fromStation={fromStation || originStop?.station_name || ""} toStation={toStation || terminalStop?.station_name || ""}
+        departureTime={originStop?.departure_time} arrivalTime={terminalStop?.arrival_time} durationMinutes={null}
+        demoMode={demoMode} loginBound={Boolean(priceMeta?.logged_in || boundAccount)} accountUsername={boundAccount}
+        purchasing={purchasing} purchasedOrder={purchasedOrder} onConfirm={handleConfirmPurchase}
+        onClose={() => { if (!purchasing) { setPurchaseOpen(false); setSelectedSeat(null); setPurchasedOrder(null); } }}
         onViewTrips={() => router.push("/trips")}
       />
-    </div>
+    </Box>
   );
 }

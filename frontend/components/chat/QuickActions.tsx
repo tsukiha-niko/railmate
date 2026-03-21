@@ -1,6 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Card from "@mui/material/Card";
+import CardActionArea from "@mui/material/CardActionArea";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
 import { Zap, Clock, ArrowRightLeft, MapPin } from "lucide-react";
 import { useI18n } from "@/lib/i18n/i18n";
 
@@ -11,26 +15,24 @@ interface Props {
 export function QuickActions({ onSelect }: Props) {
   const { t } = useI18n();
   const ACTIONS = [
-    { icon: Zap, label: t("chat.quick.fast.label"), text: t("chat.quick.fast.text"), color: "text-amber-500" },
-    { icon: Clock, label: t("chat.quick.tomorrow.label"), text: t("chat.quick.tomorrow.text"), color: "text-blue-500" },
-    { icon: ArrowRightLeft, label: t("chat.quick.transfer.label"), text: t("chat.quick.transfer.text"), color: "text-emerald-500" },
-    { icon: MapPin, label: t("chat.quick.nearby.label"), text: t("chat.quick.nearby.text"), color: "text-purple-500" },
+    { icon: Zap, label: t("chat.quick.fast.label"), text: t("chat.quick.fast.text"), color: "#F59E0B" },
+    { icon: Clock, label: t("chat.quick.tomorrow.label"), text: t("chat.quick.tomorrow.text"), color: "#3B82F6" },
+    { icon: ArrowRightLeft, label: t("chat.quick.transfer.label"), text: t("chat.quick.transfer.text"), color: "#10B981" },
+    { icon: MapPin, label: t("chat.quick.nearby.label"), text: t("chat.quick.nearby.text"), color: "#8B5CF6" },
   ];
 
   return (
-    <div className="grid w-full grid-cols-1 gap-2.5 pt-1 sm:grid-cols-2">
+    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1.5, width: "100%", pt: 0.5 }}>
       {ACTIONS.map((action, i) => (
-        <motion.button
-          key={action.label}
-          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25, delay: i * 0.05 }}
-          onClick={() => onSelect(action.text)}
-          className="group flex items-center gap-2.5 rounded-xl border border-border/80 bg-card/55 p-3 text-left text-sm transition-all hover:border-primary/25 hover:bg-secondary/65"
-        >
-          <action.icon className={`h-4 w-4 ${action.color} group-hover:scale-110 transition-transform`} />
-          <span className="text-foreground">{action.label}</span>
-        </motion.button>
+        <motion.div key={action.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: i * 0.05 }}>
+          <Card variant="outlined" sx={{ "&:hover": { borderColor: "primary.main" } }}>
+            <CardActionArea onClick={() => onSelect(action.text)} sx={{ display: "flex", alignItems: "center", gap: 1.5, p: 1.5, justifyContent: "flex-start" }}>
+              <action.icon size={16} style={{ color: action.color }} />
+              <Typography variant="body2">{action.label}</Typography>
+            </CardActionArea>
+          </Card>
+        </motion.div>
       ))}
-    </div>
+    </Box>
   );
 }

@@ -3,9 +3,16 @@
 import { MessageSquare, Plus, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
+import Typography from "@mui/material/Typography";
+import Chip from "@mui/material/Chip";
+import List from "@mui/material/List";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
 import { useChatStore } from "@/store/chatStore";
-import { cn } from "@/utils/cn";
 import { useI18n } from "@/lib/i18n/i18n";
 
 interface Props {
@@ -22,81 +29,51 @@ export function ConversationList({ onAction }: Props) {
   const remove = useChatStore((s) => s.deleteConversation);
   const { t } = useI18n();
 
-  const navigateToAssistantIfNeeded = () => {
-    if (pathname !== "/") {
-      router.push("/");
-    }
-  };
+  const nav = () => { if (pathname !== "/") router.push("/"); };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="border-b border-border/70 px-3 py-3.5">
-        <div className="mb-2.5 flex items-center justify-between px-1">
-          <p className="text-xs font-semibold tracking-wide text-muted-foreground/90">{t("chat.sidebar.subtitle")}</p>
-          <span className="rounded-full border border-border/80 px-2 py-0.5 text-[10px] text-muted-foreground">{conversations.length}</span>
-        </div>
-        <Button
-          onClick={() => {
-            create();
-            navigateToAssistantIfNeeded();
-            onAction?.();
-          }}
-          className="w-full justify-start gap-2"
-          variant="outline"
-          size="sm"
-        >
-          <Plus className="h-4 w-4" />
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <Box sx={{ borderBottom: 1, borderColor: "divider", px: 1.5, py: 1.5 }}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1, px: 0.5 }}>
+          <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ letterSpacing: 0.5 }}>{t("chat.sidebar.subtitle")}</Typography>
+          <Chip label={conversations.length} size="small" variant="outlined" />
+        </Box>
+        <Button variant="outlined" size="small" fullWidth startIcon={<Plus size={16} />} onClick={() => { create(); nav(); onAction?.(); }} sx={{ justifyContent: "flex-start" }}>
           {t("chat.newConversation")}
         </Button>
-      </div>
-      <div className="flex-1 space-y-1 overflow-y-auto p-2.5">
+      </Box>
+
+      <List sx={{ flex: 1, overflow: "auto", px: 1, py: 1 }} dense>
         <AnimatePresence initial={false}>
           {conversations.map((conv) => (
             <motion.div key={conv.id} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.2 }}>
-              <div
-                role="button" tabIndex={0}
-                onClick={() => {
-                  setActive(conv.id);
-                  navigateToAssistantIfNeeded();
-                  onAction?.();
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    setActive(conv.id);
-                    navigateToAssistantIfNeeded();
-                    onAction?.();
-                  }
-                }}
-                className={cn(
-                  "group flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-all",
-                  activeId === conv.id
-                    ? "bg-primary/12 text-primary shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--primary)_30%,transparent)]"
-                    : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground",
-                )}
+              <ListItemButton
+                selected={activeId === conv.id}
+                onClick={() => { setActive(conv.id); nav(); onAction?.(); }}
+                sx={{ borderRadius: 3, mb: 0.5, pr: 1 }}
               >
-                <MessageSquare className="h-4 w-4 shrink-0" />
-                <span className="truncate flex-1">{conv.title}</span>
-                <button
-                  type="button"
+                <ListItemIcon sx={{ minWidth: 32 }}><MessageSquare size={16} /></ListItemIcon>
+                <ListItemText primary={conv.title} primaryTypographyProps={{ noWrap: true, variant: "body2" }} />
+                <IconButton
+                  size="small"
                   onClick={(e) => { e.stopPropagation(); remove(conv.id); }}
                   aria-label={t("chat.deleteConversation")}
-                  className="rounded-md p-1 text-muted-foreground/60 opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                  sx={{ opacity: 0, ".MuiListItemButton-root:hover &": { opacity: 1 }, color: "error.main" }}
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
+                  <Trash2 size={14} />
+                </IconButton>
+              </ListItemButton>
             </motion.div>
           ))}
         </AnimatePresence>
         {conversations.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-10 text-muted-foreground text-sm">
-            <MessageSquare className="h-8 w-8 mb-2 opacity-40" />
-            <p>{t("chat.emptyConversations")}</p>
-            <p className="text-xs mt-1">{t("chat.emptyHint")}</p>
-          </div>
+          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 6, color: "text.secondary" }}>
+            <MessageSquare size={32} style={{ opacity: 0.4, marginBottom: 8 }} />
+            <Typography variant="body2">{t("chat.emptyConversations")}</Typography>
+            <Typography variant="caption" sx={{ mt: 0.5 }}>{t("chat.emptyHint")}</Typography>
+          </Box>
         )}
-      </div>
-    </div>
+      </List>
+    </Box>
   );
 }

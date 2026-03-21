@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { PanelLeftClose } from "lucide-react";
 import { usePathname } from "next/navigation";
+import MuiDrawer from "@mui/material/Drawer";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import IconButton from "@mui/material/IconButton";
+import { PanelLeftClose } from "lucide-react";
 import { ConversationList } from "@/components/chat/ConversationList";
 import { useUIStore } from "@/store/uiStore";
 import { useI18n } from "@/lib/i18n/i18n";
@@ -19,44 +22,36 @@ export function ChatHistoryDrawer() {
   }, [pathname, setMobileSidebarOpen]);
 
   return (
-    <AnimatePresence>
-      {mobileSidebarOpen ? (
-        <>
-          <motion.button
-            type="button"
-            aria-label={t("chat.sidebar.close")}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            className="fixed inset-0 z-40 bg-black/45"
-            onClick={() => setMobileSidebarOpen(false)}
-          />
-          <motion.aside
-            initial={{ x: "-100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "-100%" }}
-            transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed top-14 bottom-0 left-0 z-50 flex w-[min(22rem,calc(100vw-2.5rem))] flex-col border-r border-border/70 bg-card/95 shadow-2xl backdrop-blur-xl lg:top-[3.75rem]"
-          >
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <div>
-                <p className="text-sm font-semibold text-foreground">RailMate</p>
-                <p className="text-xs text-muted-foreground">{t("chat.sidebar.subtitle")}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setMobileSidebarOpen(false)}
-                aria-label={t("chat.sidebar.close")}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              >
-                <PanelLeftClose className="h-4.5 w-4.5" />
-              </button>
-            </div>
-            <ConversationList onAction={() => setMobileSidebarOpen(false)} />
-          </motion.aside>
-        </>
-      ) : null}
-    </AnimatePresence>
+    <MuiDrawer
+      anchor="left"
+      open={mobileSidebarOpen}
+      onClose={() => setMobileSidebarOpen(false)}
+      sx={{
+        zIndex: 50,
+        "& .MuiDrawer-paper": {
+          width: "min(22rem, calc(100vw - 2.5rem))",
+          top: { xs: 56, lg: 60 },
+          height: { xs: "calc(100% - 56px)", lg: "calc(100% - 60px)" },
+          bgcolor: (th) => `${th.palette.background.paper}F2`,
+          backdropFilter: "blur(16px)",
+        },
+        "& .MuiBackdrop-root": { bgcolor: "rgba(0,0,0,0.45)" },
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: 1, borderColor: "divider", px: 2, py: 1.5 }}>
+        <Box>
+          <Typography variant="body2" fontWeight={700}>RailMate</Typography>
+          <Typography variant="caption" color="text.secondary">{t("chat.sidebar.subtitle")}</Typography>
+        </Box>
+        <IconButton
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-label={t("chat.sidebar.close")}
+          size="small"
+        >
+          <PanelLeftClose size={18} />
+        </IconButton>
+      </Box>
+      <ConversationList onAction={() => setMobileSidebarOpen(false)} />
+    </MuiDrawer>
   );
 }

@@ -2,6 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Chip from "@mui/material/Chip";
+import Alert from "@mui/material/Alert";
 import { AlertCircle, TrainFront } from "lucide-react";
 import { SearchForm } from "@/components/search/SearchForm";
 import { TrainCardList } from "@/components/tickets/TrainCardList";
@@ -10,7 +14,6 @@ import type { TrainSearchParams } from "@/types/trains";
 import { useI18n } from "@/lib/i18n/i18n";
 import { formatDuration } from "@/utils/date";
 import { formatPrice, getLowestFare } from "@/utils/format";
-import { cn } from "@/utils/cn";
 
 type SortKey = "departure" | "duration" | "price";
 type SortDirection = "asc" | "desc";
@@ -21,23 +24,14 @@ function toMinutesOfDay(time: string): number {
   return h * 60 + m;
 }
 
-function compareBySortKey(
-  a: ReturnType<typeof useTicketSearch>["results"][number],
-  b: ReturnType<typeof useTicketSearch>["results"][number],
-  sortKey: SortKey,
-): number {
+function compareBySortKey(a: ReturnType<typeof useTicketSearch>["results"][number], b: ReturnType<typeof useTicketSearch>["results"][number], sortKey: SortKey): number {
   const aPrice = getLowestFare(a)?.price ?? Infinity;
   const bPrice = getLowestFare(b)?.price ?? Infinity;
-  const aDeparture = toMinutesOfDay(a.departure_time);
-  const bDeparture = toMinutesOfDay(b.departure_time);
-
-  if (sortKey === "departure") {
-    return aDeparture - bDeparture || a.duration_minutes - b.duration_minutes || aPrice - bPrice;
-  }
-  if (sortKey === "duration") {
-    return a.duration_minutes - b.duration_minutes || aDeparture - bDeparture || aPrice - bPrice;
-  }
-  return aPrice - bPrice || aDeparture - bDeparture || a.duration_minutes - b.duration_minutes;
+  const aDep = toMinutesOfDay(a.departure_time);
+  const bDep = toMinutesOfDay(b.departure_time);
+  if (sortKey === "departure") return aDep - bDep || a.duration_minutes - b.duration_minutes || aPrice - bPrice;
+  if (sortKey === "duration") return a.duration_minutes - b.duration_minutes || aDep - bDep || aPrice - bPrice;
+  return aPrice - bPrice || aDep - bDep || a.duration_minutes - b.duration_minutes;
 }
 
 export default function SearchPage() {
@@ -46,165 +40,86 @@ export default function SearchPage() {
   const [sortKey, setSortKey] = useState<SortKey>("departure");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
-  const handleSearch = (params: TrainSearchParams) => {
-    search(params);
-  };
-
   const statsLocale = locale === "en" ? "en" : "zh-CN";
   const sortedResults = useMemo(() => {
     const list = [...results];
-    list.sort((a, b) => {
-      const value = compareBySortKey(a, b, sortKey);
-      return sortDirection === "asc" ? value : -value;
-    });
+    list.sort((a, b) => { const v = compareBySortKey(a, b, sortKey); return sortDirection === "asc" ? v : -v; });
     return list;
   }, [results, sortDirection, sortKey]);
 
-  const getTopBySort = useMemo(() => {
-    return (key: SortKey, direction: SortDirection) => {
-      if (results.length === 0) return null;
-      const list = [...results];
-      list.sort((a, b) => {
-        const value = compareBySortKey(a, b, key);
-        return direction === "asc" ? value : -value;
-      });
-      return list[0] ?? null;
-    };
+  const getTopBySort = useMemo(() => (key: SortKey, dir: SortDirection) => {
+    if (results.length === 0) return null;
+    const list = [...results];
+    list.sort((a, b) => { const v = compareBySortKey(a, b, key); return dir === "asc" ? v : -v; });
+    return list[0] ?? null;
   }, [results]);
 
   const departureTop = getTopBySort("departure", sortKey === "departure" ? sortDirection : "asc");
   const durationTop = getTopBySort("duration", sortKey === "duration" ? sortDirection : "asc");
   const priceTop = getTopBySort("price", sortKey === "price" ? sortDirection : "asc");
   const priceTopFare = priceTop ? getLowestFare(priceTop) : null;
-
-  const sortLabel = (key: SortKey, direction: SortDirection) => {
-    if (key === "departure") {
-      if (locale === "en") return direction === "asc" ? "Departure (Early → Late)" : "Departure (Late → Early)";
-      return direction === "asc" ? "出发时间（早→晚）" : "出发时间（晚→早）";
-    }
-    if (key === "duration") {
-      if (locale === "en") return direction === "asc" ? "Duration (Short → Long)" : "Duration (Long → Short)";
-      return direction === "asc" ? "耗时（短→长）" : "耗时（长→短）";
-    }
-    if (locale === "en") return direction === "asc" ? "Price (Low → High)" : "Price (High → Low)";
-    return direction === "asc" ? "价格（低→高）" : "价格（高→低）";
-  };
-
   const sortIcon = sortDirection === "asc" ? "↑" : "↓";
 
   const handleSortClick = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-      return;
-    }
-    setSortKey(key);
-    setSortDirection("asc");
+    if (sortKey === key) { setSortDirection((p) => (p === "asc" ? "desc" : "asc")); return; }
+    setSortKey(key); setSortDirection("asc");
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-[1680px] flex-1 flex-col overflow-y-auto px-3 py-3 sm:px-5 sm:py-4 lg:px-6">
+    <Box sx={{ mx: "auto", width: "100%", maxWidth: 1680, flex: 1, overflowY: "auto", px: { xs: 1.5, sm: 2.5, lg: 3 }, py: { xs: 1.5, sm: 2 } }}>
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="mb-2.5 flex items-center gap-2.5 sm:mb-3 sm:gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-            <TrainFront className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold">{t("search.title")}</h1>
-            <p className="text-xs text-muted-foreground">{t("search.subtitle")}</p>
-          </div>
-        </div>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1.5 }}>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", width: 40, height: 40, borderRadius: 3, bgcolor: (th) => `${th.palette.primary.main}1A` }}>
+            <TrainFront size={20} style={{ color: "var(--primary)" }} />
+          </Box>
+          <Box>
+            <Typography variant="h6" fontWeight={800}>{t("search.title")}</Typography>
+            <Typography variant="caption" color="text.secondary">{t("search.subtitle")}</Typography>
+          </Box>
+        </Box>
       </motion.div>
 
-      <div className="grid flex-1 gap-4 lg:grid-cols-[380px_minmax(0,1fr)] lg:gap-5">
-        <div className="lg:sticky lg:top-3 lg:h-fit">
-          <SearchForm onSearch={handleSearch} loading={loading} />
-        </div>
+      <Box sx={{ display: "grid", flex: 1, gap: { xs: 2, lg: 2.5 }, gridTemplateColumns: { lg: "380px 1fr" } }}>
+        <Box sx={{ position: { lg: "sticky" }, top: { lg: 12 }, height: "fit-content" }}>
+          <SearchForm onSearch={(params: TrainSearchParams) => search(params)} loading={loading} />
+        </Box>
 
-        <div className="space-y-3">
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
           {error && (
-            <motion.div
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3"
-            >
-              <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
-              <p className="text-sm text-destructive">{error}</p>
-            </motion.div>
+            <Alert severity="error" variant="outlined" icon={<AlertCircle size={18} />}>{error}</Alert>
           )}
 
           {searched && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.1 }}
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
               {!loading && results.length > 0 && (
-                <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-muted-foreground">
+                <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 1, mb: 1.5 }}>
+                  <Typography variant="body2" fontWeight={700} color="text.secondary">
                     {t("search.found", { count: results.length })}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                    {departureTop ? (
-                      <button
-                        type="button"
-                        onClick={() => handleSortClick("departure")}
-                        className={cn(
-                          "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors",
-                          sortKey === "departure"
-                            ? "border-primary/25 bg-primary/12 text-primary"
-                            : "border-secondary bg-secondary/70 text-secondary-foreground hover:border-primary/20 hover:text-foreground",
-                        )}
-                        title={sortLabel("departure", sortKey === "departure" ? sortDirection : "asc")}
-                        aria-label={sortLabel("departure", sortKey === "departure" ? sortDirection : "asc")}
-                      >
-                        {departureTop.departure_time}{sortKey === "departure" ? ` ${sortIcon}` : ""}
-                      </button>
-                    ) : null}
-                    {durationTop ? (
-                      <button
-                        type="button"
-                        onClick={() => handleSortClick("duration")}
-                        className={cn(
-                          "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors",
-                          sortKey === "duration"
-                            ? "border-primary/25 bg-primary/12 text-primary"
-                            : "border-secondary bg-secondary/70 text-secondary-foreground hover:border-primary/20 hover:text-foreground",
-                        )}
-                        title={sortLabel("duration", sortKey === "duration" ? sortDirection : "asc")}
-                        aria-label={sortLabel("duration", sortKey === "duration" ? sortDirection : "asc")}
-                      >
-                        {formatDuration(durationTop.duration_minutes, statsLocale)}{sortKey === "duration" ? ` ${sortIcon}` : ""}
-                      </button>
-                    ) : null}
-                    {priceTopFare ? (
-                      <button
-                        type="button"
-                        onClick={() => handleSortClick("price")}
-                        className={cn(
-                          "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors",
-                          sortKey === "price"
-                            ? "border-primary/25 bg-primary/12 text-primary"
-                            : "border-secondary bg-secondary/70 text-secondary-foreground hover:border-primary/20 hover:text-foreground",
-                        )}
-                        title={sortLabel("price", sortKey === "price" ? sortDirection : "asc")}
-                        aria-label={sortLabel("price", sortKey === "price" ? sortDirection : "asc")}
-                      >
-                        {formatPrice(priceTopFare.price)}{sortKey === "price" ? ` ${sortIcon}` : ""}
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
+                  </Typography>
+                  <Box sx={{ display: "flex", gap: 0.75 }}>
+                    {departureTop && (
+                      <Chip label={`${departureTop.departure_time}${sortKey === "departure" ? ` ${sortIcon}` : ""}`} size="small"
+                        color={sortKey === "departure" ? "primary" : "default"} variant={sortKey === "departure" ? "filled" : "outlined"}
+                        onClick={() => handleSortClick("departure")} clickable />
+                    )}
+                    {durationTop && (
+                      <Chip label={`${formatDuration(durationTop.duration_minutes, statsLocale)}${sortKey === "duration" ? ` ${sortIcon}` : ""}`} size="small"
+                        color={sortKey === "duration" ? "primary" : "default"} variant={sortKey === "duration" ? "filled" : "outlined"}
+                        onClick={() => handleSortClick("duration")} clickable />
+                    )}
+                    {priceTopFare && (
+                      <Chip label={`${formatPrice(priceTopFare.price)}${sortKey === "price" ? ` ${sortIcon}` : ""}`} size="small"
+                        color={sortKey === "price" ? "primary" : "default"} variant={sortKey === "price" ? "filled" : "outlined"}
+                        onClick={() => handleSortClick("price")} clickable />
+                    )}
+                  </Box>
+                </Box>
               )}
-              <TrainCardList
-                trains={sortedResults}
-                date={searchDate}
-                loading={loading}
-                emptyMessage={t("search.empty")}
-              />
+              <TrainCardList trains={sortedResults} date={searchDate} loading={loading} emptyMessage={t("search.empty")} />
             </motion.div>
           )}
-        </div>
-      </div>
-    </div>
+        </Box>
+      </Box>
+    </Box>
   );
 }

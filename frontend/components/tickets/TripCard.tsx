@@ -2,19 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Copy, Undo2, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Chip from "@mui/material/Chip";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
+import Divider from "@mui/material/Divider";
 import type { TicketOrder } from "@/types/ticketing";
 import { formatDateLocalized } from "@/utils/date";
 import { formatPrice, getTrainTypeLabel } from "@/utils/format";
 import { useI18n } from "@/lib/i18n/i18n";
-import { cn } from "@/utils/cn";
 
-interface TripCardProps {
-  order: TicketOrder;
-  refunding: boolean;
-  onRefund: (order: TicketOrder) => void;
-}
+interface TripCardProps { order: TicketOrder; refunding: boolean; onRefund: (order: TicketOrder) => void; }
 
 export function TripCard({ order, refunding, onRefund }: TripCardProps) {
   const { locale, t } = useI18n();
@@ -23,179 +24,105 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
   const [copied, setCopied] = useState<"order" | "refund" | null>(null);
   const timerRef = useRef<number | null>(null);
 
-  useEffect(() => () => {
-    if (timerRef.current) window.clearTimeout(timerRef.current);
-  }, []);
+  useEffect(() => () => { if (timerRef.current) window.clearTimeout(timerRef.current); }, []);
 
   const copyValue = async (value: string, field: "order" | "refund") => {
     if (!value || typeof navigator === "undefined" || !navigator.clipboard) return;
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(field);
-      if (timerRef.current) window.clearTimeout(timerRef.current);
-      timerRef.current = window.setTimeout(() => setCopied(null), 1500);
-    } catch {
-      setCopied(null);
-    }
+    try { await navigator.clipboard.writeText(value); setCopied(field); if (timerRef.current) window.clearTimeout(timerRef.current); timerRef.current = window.setTimeout(() => setCopied(null), 1500); } catch { setCopied(null); }
   };
 
   const refundedTime = order.refunded_at
-    ? new Intl.DateTimeFormat(locale === "en" ? "en-US" : "zh-CN", {
-        month: "numeric",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: locale === "en",
-      }).format(new Date(order.refunded_at))
+    ? new Intl.DateTimeFormat(locale === "en" ? "en-US" : "zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: locale === "en" }).format(new Date(order.refunded_at))
     : null;
-
   const departureDate = formatDateLocalized(order.run_date, fmtLocale);
   const seatAssignment = `${order.coach_no || "--"} ${t("booking.success.coach")} ${order.seat_no || "--"}`;
 
   return (
-    <article
-      className={cn(
-        "relative overflow-hidden rounded-[24px] border border-border/70 bg-card/80 shadow-[0_14px_40px_-30px_rgba(15,23,42,0.6)] backdrop-blur-sm transition-opacity duration-300",
-        isRefunded ? "opacity-[0.96]" : "",
-      )}
-    >
-      {/* 已完成角标 */}
+    <Card variant="outlined" sx={{ position: "relative", overflow: "hidden", borderRadius: 6, opacity: isRefunded ? 0.92 : 1, transition: "opacity 0.3s" }}>
       {isRefunded && (
-        <div className="pointer-events-none absolute right-[-44px] top-[18px] z-10 rotate-[34deg] border border-border/70 bg-muted/70 px-10 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-          {locale === "en" ? "Completed" : "已完成"}
-        </div>
+        <Box sx={{ position: "absolute", right: -44, top: 18, zIndex: 10, transform: "rotate(34deg)", bgcolor: "action.disabledBackground", border: 1, borderColor: "divider", px: 5, py: 0.5 }}>
+          <Typography variant="caption" sx={{ fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "text.secondary" }}>
+            {locale === "en" ? "Completed" : "已完成"}
+          </Typography>
+        </Box>
       )}
 
-      {/* 头部信息 */}
-      <div className="flex h-9 items-center justify-between border-b border-border/55 px-4 sm:px-5">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="rounded-xl bg-primary px-2.5 py-1 text-sm font-semibold leading-none text-primary-foreground">
-            {order.train_no}
-          </span>
-          {order.train_type && (
-            <Badge variant="secondary">{getTrainTypeLabel(order.train_type, fmtLocale)}</Badge>
-          )}
-          <Badge variant={isRefunded ? "warning" : "success"}>
-            {isRefunded ? t("trips.status.refunded") : t("trips.status.booked")}
-          </Badge>
-        </div>
-        {order.demo_mode && (
-          <Badge variant="secondary" className="text-[10px]">{t("booking.demo.badge")}</Badge>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: 1, borderColor: "divider", px: { xs: 2, sm: 2.5 }, height: 40 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+          <Chip label={order.train_no} color="primary" size="small" sx={{ fontWeight: 700 }} />
+          {order.train_type && <Chip label={getTrainTypeLabel(order.train_type, fmtLocale)} size="small" variant="outlined" />}
+          <Chip label={isRefunded ? t("trips.status.refunded") : t("trips.status.booked")} size="small" color={isRefunded ? "warning" : "success"} />
+        </Box>
+        {order.demo_mode && <Chip label={t("booking.demo.badge")} size="small" variant="outlined" />}
+      </Box>
+
+      <CardContent sx={{ px: { xs: 2, sm: 2.5 }, py: { xs: 2, sm: 2.5 } }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: { xs: 2, lg: 3 } }}>
+          <Box>
+            <Typography variant="h4" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{order.departure_time || "--:--"}</Typography>
+            <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 1 }}>{order.from_station}</Typography>
+            <Typography variant="caption" color="text.secondary">{departureDate}</Typography>
+          </Box>
+          <Box sx={{ textAlign: "center" }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <Box sx={{ height: "1px", flex: 1, bgcolor: "divider" }} />
+              <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ letterSpacing: 1 }}>{order.train_no}</Typography>
+              <Box sx={{ height: "1px", flex: 1, bgcolor: "divider" }} />
+            </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>{seatAssignment}</Typography>
+          </Box>
+          <Box sx={{ textAlign: "right" }}>
+            <Typography variant="h4" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{order.arrival_time || "--:--"}</Typography>
+            <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 1 }}>{order.to_station}</Typography>
+            <Typography variant="caption" color="text.secondary">{departureDate}</Typography>
+          </Box>
+        </Box>
+
+        <Divider sx={{ my: 2 }} />
+
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: { xs: 1.5, sm: 3 } }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+            <InfoRow label={t("booking.passenger")} value={order.passenger_name} />
+            <InfoRow label={t("trips.card.seat")} value={order.seat_label} />
+          </Box>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ width: 80, flexShrink: 0 }}>{t("trips.card.amount")}</Typography>
+              <Typography variant="h6" fontWeight={800} color="warning.main">{formatPrice(order.fare_amount)}</Typography>
+              {isRefunded && <Chip label={locale === "en" ? "Refunded" : "已退回"} size="small" color="warning" />}
+            </Box>
+            <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ width: 80, flexShrink: 0, pt: 0.25 }}>{t("booking.orderNo")}</Typography>
+              <Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  <Typography variant="body2" fontWeight={600}>{order.order_no}</Typography>
+                  <IconButton size="small" onClick={() => copyValue(order.order_no, "order")} title={t("common.copy")}>
+                    {copied === "order" ? <Check size={14} style={{ color: "#10B981" }} /> : <Copy size={14} />}
+                  </IconButton>
+                </Box>
+                {isRefunded && refundedTime && <Typography variant="caption" color="text.secondary">{t("trips.card.refundedAt")} · {refundedTime}</Typography>}
+              </Box>
+            </Box>
+          </Box>
+        </Box>
+
+        {!isRefunded && (
+          <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2.5 }}>
+            <Button variant="outlined" onClick={() => onRefund(order)} disabled={refunding} startIcon={<Undo2 size={16} />} sx={{ minWidth: { sm: 160 } }}>
+              {refunding ? t("trips.refund.processing") : t("trips.refund.action")}
+            </Button>
+          </Box>
         )}
-      </div>
+      </CardContent>
+    </Card>
+  );
+}
 
-      {/* 主体站点信息 */}
-      <div className="px-4 py-3.5 sm:px-5 sm:py-4">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 lg:gap-5">
-          <div className="min-w-0 text-left">
-            <p className="tabular-nums text-[32px] font-bold leading-none tracking-[-0.04em] text-foreground sm:text-[38px] lg:text-[44px]">
-              {order.departure_time || "--:--"}
-            </p>
-            <p className="mt-1.5 text-[1.05rem] font-semibold tracking-tight sm:text-[1.25rem] lg:text-[1.5rem]">
-              {order.from_station}
-            </p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">{departureDate}</p>
-          </div>
-
-          <div className="flex min-w-0 flex-col items-center justify-center text-center">
-            <div className="flex w-full items-center gap-2.5">
-              <div className="h-px flex-1 bg-border/80" />
-              <span className="shrink-0 text-xs font-semibold tracking-[0.18em] text-muted-foreground lg:text-sm">{order.train_no}</span>
-              <div className="h-px flex-1 bg-border/80" />
-            </div>
-            <p className="mt-1.5 text-xs font-medium leading-5 text-muted-foreground lg:text-sm lg:leading-6">
-              {seatAssignment}
-            </p>
-          </div>
-
-          <div className="min-w-0 text-right">
-            <p className="tabular-nums text-[32px] font-bold leading-none tracking-[-0.04em] text-foreground sm:text-[38px] lg:text-[44px]">
-              {order.arrival_time || "--:--"}
-            </p>
-            <p className="mt-1.5 text-[1.05rem] font-semibold tracking-tight sm:text-[1.25rem] lg:text-[1.5rem]">
-              {order.to_station}
-            </p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">{departureDate}</p>
-          </div>
-        </div>
-
-        {/* 底部详细信息 - 紧凑对其版重构 */}
-        <div className="mt-4 border-t border-border/55 pt-4">
-          <div className="grid grid-cols-1 gap-y-3 sm:grid-cols-2 sm:gap-x-6 lg:gap-x-8 sm:gap-y-0">
-            
-            {/* 左侧信息列 */}
-            <div className="flex flex-col gap-2.5">
-              <div className="flex items-center gap-3">
-                {/* 统一使用 w-20 (80px) 锁定 Label 宽度，实现绝对对齐 */}
-                <span className="w-20 shrink-0 text-sm text-muted-foreground">{t("booking.passenger")}</span>
-                <span className="text-sm font-medium text-foreground">{order.passenger_name}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="w-20 shrink-0 text-sm text-muted-foreground">{t("trips.card.seat")}</span>
-                <span className="text-sm font-medium text-foreground">{order.seat_label}</span>
-              </div>
-            </div>
-
-            {/* 右侧信息列 */}
-            <div className="mt-2 flex flex-col gap-2.5 sm:mt-0">
-              <div className="flex items-center gap-3">
-                <span className="w-20 shrink-0 text-sm text-muted-foreground">{t("trips.card.amount")}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xl font-bold leading-none tracking-tight text-amber-600 dark:text-amber-400 sm:text-2xl">
-                    {formatPrice(order.fare_amount)}
-                  </span>
-                  {isRefunded && (
-                    <Badge variant="warning" className="h-5 px-1.5 text-[10px] font-semibold uppercase leading-none">
-                      {locale === "en" ? "Refunded" : "已退回"}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <span className="w-20 shrink-0 pt-[3px] text-sm text-muted-foreground">{t("booking.orderNo")}</span>
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-medium text-foreground">{order.order_no}</span>
-                    <button
-                      type="button"
-                      onClick={() => copyValue(order.order_no, "order")}
-                      className="group flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                      title={t("common.copy")}
-                    >
-                      {copied === "order" ? (
-                        <Check className="h-3.5 w-3.5 text-green-500" />
-                      ) : (
-                        <Copy className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
-                      )}
-                    </button>
-                  </div>
-                  {isRefunded && refundedTime && (
-                    <span className="text-[11px] leading-tight text-muted-foreground">
-                      {t("trips.card.refundedAt")} · {refundedTime}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 退款操作按钮区域 */}
-          {!isRefunded && (
-            <div className="mt-5 flex w-full justify-end sm:mt-4">
-              <Button
-                variant="outline"
-                className="w-full sm:w-auto"
-                onClick={() => onRefund(order)}
-                disabled={refunding}
-              >
-                <Undo2 className="mr-2 h-4 w-4" />
-                {refunding ? t("trips.refund.processing") : t("trips.refund.action")}
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
-    </article>
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+      <Typography variant="body2" color="text.secondary" sx={{ width: 80, flexShrink: 0 }}>{label}</Typography>
+      <Typography variant="body2" fontWeight={600}>{value}</Typography>
+    </Box>
   );
 }

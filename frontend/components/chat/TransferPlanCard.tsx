@@ -1,0 +1,153 @@
+"use client";
+
+import { motion } from "framer-motion";
+import Link from "next/link";
+import Card from "@mui/material/Card";
+import CardActionArea from "@mui/material/CardActionArea";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Chip from "@mui/material/Chip";
+import { Clock } from "lucide-react";
+import { cn } from "@/utils/cn";
+import { formatDuration } from "@/utils/date";
+import { formatPrice, getTrainTypeColor } from "@/utils/format";
+import type { TransferLegData, TransferPlanData } from "@/utils/parseToolCards";
+import { useI18n } from "@/lib/i18n/i18n";
+import { getDateLabel } from "./MiniTrainCard";
+
+function getLowestLegFare(leg: TransferLegData): number | null {
+  const fares = [leg.price_no_seat, leg.price_hard_seat, leg.price_hard_sleeper, leg.price_soft_sleeper, leg.price_second_seat, leg.price_first_seat, leg.price_business_seat]
+    .filter((p): p is number => typeof p === "number" && Number.isFinite(p) && p > 0);
+  return fares.length ? Math.min(...fares) : null;
+}
+
+function getLowestTotalFare(legs: TransferLegData[]): number | null {
+  if (!legs.length) return null;
+  let sum = 0;
+  for (const leg of legs) {
+    const fare = getLowestLegFare(leg);
+    if (fare == null) return null;
+    sum += fare;
+  }
+  return Math.round(sum * 10) / 10;
+}
+
+interface TransferPlanCardProps {
+  plan: TransferPlanData;
+  index: number;
+  fallbackDate?: string;
+  returnTo: string;
+}
+
+export function TransferPlanCard({ plan, index, fallbackDate, returnTo }: TransferPlanCardProps) {
+  const { locale } = useI18n();
+  const fmtLocale = locale === "en" ? "en" : "zh-CN";
+  const transfers = Math.max(0, plan.legs.length - 1);
+  const maxWait = plan.waits?.length ? Math.max(...plan.waits.filter((x) => typeof x === "number")) : 0;
+  const worstWait = maxWait || (plan.waits?.[0] ?? 0) || 0;
+  const lowestLegTotal = getLowestTotalFare(plan.legs);
+  const displayTotalPrice = lowestLegTotal ?? (typeof plan.total_price === "number" && Number.isFinite(plan.total_price) ? plan.total_price : null);
+
+  function waitLevel(waitMin: number) {
+    if (waitMin <= 0) return "none" as const;
+    if (waitMin < 60) return "good" as const;
+    if (waitMin < 180) return "warn" as const;
+    return "bad" as const;
+  }
+
+  function formatWait(waitMin: number) {
+    const w = Math.max(0, Math.round(waitMin));
+    if (w >= 60) {
+      const h = Math.floor(w / 60);
+      const m = w % 60;
+      return locale === "en" ? `${h}h${m ? ` ${m}m` : ""}` : `${h}小时${m ? `${m}分` : ""}`;
+    }
+    return locale === "en" ? `${w}m` : `${w}分`;
+  }
+
+  const worstLevel = waitLevel(worstWait);
+
+  return (
+    <motion.div initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2, delay: index * 0.08 }}>
+      <Card variant="outlined" sx={{ bgcolor: "background.paper", p: { xs: 1.5, sm: 2 } }}>
+        {/* Header */}
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 2, mb: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "baseline", gap: 1 }}>
+            <Typography variant="h6" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+              {formatDuration(plan.total_minutes, fmtLocale)}
+            </Typography>
+            {index === 0 && <Chip label={locale === "en" ? "Recommended" : "推荐"} size="small" color="primary" sx={{ fontSize: "0.625rem" }} />}
+          </Box>
+          <Box sx={{ textAlign: "right" }}>
+            <Typography variant="caption" color="text.secondary">{locale === "en" ? "Total" : "总价"}</Typography>
+            <Typography variant="subtitle1" fontWeight={800} color={displayTotalPrice != null ? "primary.main" : "text.secondary"} sx={{ fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+              {displayTotalPrice != null ? formatPrice(displayTotalPrice) : "--"}
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* Summary chips */}
+        <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap", mb: 1.5 }}>
+          <Chip label={locale === "en" ? `${transfers} change` : `${transfers}次换乘`} size="small" variant="outlined" />
+          <Chip icon={<Clock size={12} />} label={locale === "en" ? `Wait ${formatWait(worstWait)}` : `候车 ${formatWait(worstWait)}`} size="small" variant="outlined" />
+          <Chip
+            label={worstLevel === "good" ? (locale === "en" ? "Smooth" : "衔接好") : worstLevel === "warn" ? (locale === "en" ? "Normal" : "一般") : worstLevel === "bad" ? (locale === "en" ? "Long wait" : "等待长") : (locale === "en" ? "No wait" : "无等待")}
+            size="small"
+            color={worstLevel === "good" ? "success" : worstLevel === "warn" ? "warning" : worstLevel === "bad" ? "error" : "default"}
+          />
+        </Box>
+
+        {/* Legs */}
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          {plan.legs.map((leg, i) => {
+            const waitMinutes = Number(plan.waits[i] ?? 0);
+            const wl = waitLevel(waitMinutes);
+            const legDate = leg.date || fallbackDate || "";
+            const legParams = new URLSearchParams({ date: legDate, from: leg.from_station, to: leg.to_station });
+            legParams.set("returnTo", returnTo);
+            const legHref = `/trains/${encodeURIComponent(leg.train_no)}?${legParams.toString()}`;
+
+            return (
+              <Box key={`${leg.train_no}:${leg.departure_time}:${i}`}>
+                <Card variant="outlined" sx={{ bgcolor: "action.hover", "&:hover": { borderColor: "primary.main" } }}>
+                  <CardActionArea component={Link} href={legHref} sx={{ px: 1.5, py: 1 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0.5, width: 72 }}>
+                        <span className={cn("inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-bold text-white", getTrainTypeColor(leg.train_no.charAt(0)))}>{leg.train_no}</span>
+                        {legDate && <Chip label={getDateLabel(legDate, locale, true) || legDate.slice(5)} size="small" color="warning" variant="outlined" sx={{ fontSize: "0.5625rem", height: 18 }} />}
+                      </Box>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <Typography variant="body2" fontWeight={700} sx={{ fontVariantNumeric: "tabular-nums" }}>
+                            {leg.departure_time} <Box component="span" sx={{ px: 0.5, color: "text.disabled" }}>→</Box> {leg.arrival_time}
+                          </Typography>
+                          <Typography variant="caption" fontWeight={600} sx={{ fontVariantNumeric: "tabular-nums" }}>
+                            {formatDuration(leg.duration_minutes, fmtLocale)}
+                          </Typography>
+                        </Box>
+                        <Typography variant="caption" color="text.secondary" noWrap>{leg.from_station} → {leg.to_station}</Typography>
+                      </Box>
+                    </Box>
+                  </CardActionArea>
+                </Card>
+
+                {i < plan.legs.length - 1 && plan.waits[i] != null && (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.5, px: 1 }}>
+                    <Box sx={{ flex: 1, height: "1px", bgcolor: "divider" }} />
+                    <Typography variant="caption" sx={{ color: wl === "good" ? "success.main" : wl === "warn" ? "warning.main" : wl === "bad" ? "error.main" : "text.secondary" }}>
+                      {locale === "en" ? `${plan.via[i] || "Transfer"} stop` : `${plan.via[i] || "中转站"}停留`}
+                    </Typography>
+                    <Chip icon={<Clock size={10} />} label={formatWait(waitMinutes)} size="small"
+                      color={wl === "good" ? "success" : wl === "warn" ? "warning" : wl === "bad" ? "error" : "default"}
+                      sx={{ fontSize: "0.625rem", height: 20 }}
+                    />
+                  </Box>
+                )}
+              </Box>
+            );
+          })}
+        </Box>
+      </Card>
+    </motion.div>
+  );
+}
