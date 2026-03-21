@@ -9,17 +9,18 @@ import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
-import { ArrowUpRight, Compass, RefreshCw, Ticket, TrainFront, Wallet } from "lucide-react";
+import { ArrowUpRight, Clock, Compass, RefreshCw, ScanLine, Ticket, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
 import { TripCard } from "@/components/tickets/TripCard";
 import { useTrips, useRefundTicket } from "@/hooks/queries/useTrips";
-import type { TicketOrder, TicketOrderStatus } from "@/types/ticketing";
+import type { TicketOrder, TravelPhase } from "@/types/ticketing";
 import { formatPrice } from "@/utils/format";
+import { resolveTravelPhase } from "@/utils/tripPhase";
 import { useI18n } from "@/lib/i18n/i18n";
 import { useResponsiveNavMode } from "@/hooks/useResponsiveNavMode";
 
-type FilterKey = "all" | TicketOrderStatus;
+type FilterKey = "all" | TravelPhase;
 
 type SummaryColor = "primary" | "success" | "warning" | "error";
 
@@ -75,7 +76,10 @@ export default function TripsPage() {
   const error = queryError ? (queryError instanceof Error ? queryError.message : t("common.loadFailed")) : null;
 
   const trips = useMemo(() => data?.trips ?? [], [data?.trips]);
-  const filteredTrips = useMemo(() => filter === "all" ? trips : trips.filter((i) => i.status === filter), [filter, trips]);
+  const filteredTrips = useMemo(() => {
+    if (filter === "all") return trips;
+    return trips.filter((i) => resolveTravelPhase(i) === filter);
+  }, [filter, trips]);
 
   const handleRefund = (order: TicketOrder) => {
     refundMutation.mutate(order.id);
@@ -96,9 +100,10 @@ export default function TripsPage() {
             </Button>
           }
         >
-          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 1.5, mt: 2.5 }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 1.5, mt: 2.5 }}>
             <SummaryCard icon={Ticket} label={t("trips.summary.total")} value={summary?.total_orders ?? 0} semanticColor="primary" />
-            <SummaryCard icon={TrainFront} label={t("trips.summary.active")} value={summary?.active_orders ?? 0} semanticColor="success" />
+            <SummaryCard icon={Clock} label={t("trips.summary.pendingTravel")} value={summary?.pending_travel_orders ?? summary?.active_orders ?? 0} semanticColor="success" />
+            <SummaryCard icon={ScanLine} label={t("trips.summary.checkedIn")} value={summary?.checked_in_orders ?? 0} semanticColor="primary" />
             <SummaryCard icon={Wallet} label={t("trips.summary.spent")} value={formatPrice(summary?.total_spent ?? 0)} semanticColor="warning" />
             <SummaryCard icon={ArrowUpRight} label={t("trips.summary.refunded")} value={formatPrice(summary?.total_refunded ?? 0)} semanticColor="error" />
           </Box>
@@ -107,10 +112,16 @@ export default function TripsPage() {
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
-          {(["all", "booked", "refunded"] as FilterKey[]).map((item) => (
-            <Chip key={item} label={t(`trips.filter.${item}`)} clickable onClick={() => setFilter(item)}
-              color={filter === item ? "primary" : "default"} variant={filter === item ? "filled" : "outlined"} sx={{ borderRadius: "6px" }} />
-          ))}
+          {(["all", "booked", "checked_in", "expired", "refunded"] as FilterKey[]).map((item) => {
+            const labelKey =
+              item === "checked_in" ? "trips.filter.checkedIn"
+              : item === "expired" ? "trips.filter.expired"
+              : `trips.filter.${item}` as const;
+            return (
+              <Chip key={item} label={t(labelKey)} clickable onClick={() => setFilter(item)}
+                color={filter === item ? "primary" : "default"} variant={filter === item ? "filled" : "outlined"} sx={{ borderRadius: "6px" }} />
+            );
+          })}
         </Box>
       </motion.div>
 

@@ -12,6 +12,7 @@ from app.schemas.ticketing import (
     TicketOrderResponse,
     TicketPurchaseRequest,
     TicketRefundRequest,
+    TicketScanCheckInRequest,
 )
 from app.services.ticketing_service import TicketingService
 
@@ -44,6 +45,31 @@ async def purchase_ticket(payload: TicketPurchaseRequest):
     try:
         return service.purchase_ticket(payload)
     except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    finally:
+        service.close()
+
+
+@router.post("/check-in/scan", response_model=TicketOrderResponse)
+async def scan_check_in_ticket(
+    payload: TicketScanCheckInRequest,
+    user_id: Optional[str] = Query(None, description="前端用户标识，与购票时一致"),
+):
+    service = TicketingService()
+    try:
+        return service.scan_check_in(payload.raw, user_id=user_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    finally:
+        service.close()
+
+
+@router.post("/{order_id}/check-in", response_model=TicketOrderResponse)
+async def check_in_ticket_order(order_id: int):
+    service = TicketingService()
+    try:
+        return service.check_in_ticket(order_id)
+    except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     finally:
         service.close()

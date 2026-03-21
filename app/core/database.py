@@ -38,6 +38,7 @@ def init_db() -> None:
     
     SQLModel.metadata.create_all(engine)
     _run_schema_migrations()
+    _ensure_ticket_orders_checked_in_column()
 
 
 def _run_schema_migrations() -> None:
@@ -146,6 +147,20 @@ def _run_schema_migrations() -> None:
                 )
             )
         conn.execute(text("DROP TABLE ticket_orders_legacy"))
+
+
+def _ensure_ticket_orders_checked_in_column() -> None:
+    """为已有 SQLite 库追加 checked_in_at 列（create_all 不会 ALTER 旧表）。"""
+    if not settings.database_url.startswith("sqlite"):
+        return
+    inspector = inspect(engine)
+    if "ticket_orders" not in inspector.get_table_names():
+        return
+    columns = {col["name"] for col in inspector.get_columns("ticket_orders")}
+    if "checked_in_at" in columns:
+        return
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE ticket_orders ADD COLUMN checked_in_at DATETIME"))
 
 
 def get_session() -> Generator[Session, None, None]:

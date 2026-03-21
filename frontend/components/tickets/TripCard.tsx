@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Copy, Undo2, Check, ArrowRight, ScanLine, X, RefreshCw, Bell, BellOff } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import Card from "@mui/material/Card";
@@ -11,19 +11,28 @@ import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
-import type { TicketOrder } from "@/types/ticketing";
+import Alert from "@mui/material/Alert";
+import Link from "@mui/material/Link";
+import { alpha } from "@mui/material/styles";
+import type { TicketOrder, TravelPhase } from "@/types/ticketing";
+import { resolveTravelPhase } from "@/utils/tripPhase";
 import { formatDateLocalized } from "@/utils/date";
 import { formatPrice, getTrainTypeLabel } from "@/utils/format";
 import { useI18n } from "@/lib/i18n/i18n";
 import { useReminderStore } from "@/store/reminderStore";
+import { useCheckInTicket, useCheckInTicketDirect } from "@/hooks/queries/useTrips";
+import { ApiError } from "@/services/http";
+import { darkDialogHeaderClose, darkElevatedStrip, gateDialogPaper } from "@/lib/theme/muiDarkSurfaces";
 
-function InfoRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <Box>
-      <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.65rem", lineHeight: 1 }}>{label}</Typography>
-      <Typography variant="body2" fontWeight={highlight ? 700 : 600} color={highlight ? "primary.main" : "text.primary"} sx={{ mt: 0.25 }}>{value}</Typography>
-    </Box>
-  );
+function phaseOf(order: TicketOrder): TravelPhase {
+  return resolveTravelPhase(order);
+}
+
+function statusChipLabel(phase: TravelPhase, t: (k: string) => string) {
+  if (phase === "refunded") return t("trips.status.refunded");
+  if (phase === "checked_in") return t("trips.status.checkedIn");
+  if (phase === "expired") return t("trips.status.expired");
+  return t("trips.status.booked");
 }
 
 interface TripCardProps { order: TicketOrder; refunding: boolean; onRefund: (order: TicketOrder) => void; }
@@ -31,14 +40,18 @@ interface TripCardProps { order: TicketOrder; refunding: boolean; onRefund: (ord
 export function TripCard({ order, refunding, onRefund }: TripCardProps) {
   const { locale, t } = useI18n();
   const fmtLocale = locale === "en" ? "en" : "zh-CN";
+  const phase = phaseOf(order);
   const isRefunded = order.status === "refunded";
   const [copied, setCopied] = useState<"order" | "refund" | null>(null);
   const [gateOpen, setGateOpen] = useState(false);
   const [qrSuffix, setQrSuffix] = useState("");
+  const [gateError, setGateError] = useState<string | null>(null);
   const timerRef = useRef<number | null>(null);
   const existingReminder = useReminderStore((s) => s.getReminderByOrder(order.id));
   const addReminder = useReminderStore((s) => s.addReminder);
   const removeReminder = useReminderStore((s) => s.removeReminder);
+  const checkInScan = useCheckInTicket();
+  const checkInDirect = useCheckInTicketDirect();
 
   const handleToggleReminder = () => {
     if (existingReminder) {
@@ -58,6 +71,9 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
   };
 
   useEffect(() => () => { if (timerRef.current) window.clearTimeout(timerRef.current); }, []);
+  useEffect(() => {
+    if (gateOpen) setGateError(null);
+  }, [gateOpen]);
 
   const copyValue = async (value: string, field: "order" | "refund") => {
     if (!value || typeof navigator === "undefined" || !navigator.clipboard) return;
@@ -70,6 +86,83 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
   const departureDate = formatDateLocalized(order.run_date, fmtLocale);
   const seatInfo = `${order.coach_no || "--"}${t("booking.success.coach")} ${order.seat_no || "--"}`;
 
+  const qrPayload = useMemo(
+    () =>
+      JSON.stringify({
+        order_no: order.order_no,
+        train_no: order.train_no,
+        from: order.from_station,
+        to: order.to_station,
+        date: order.run_date,
+        departure: order.departure_time,
+        arrival: order.arrival_time,
+        passenger: order.passenger_name,
+        seat: seatInfo,
+        v: qrSuffix,
+      }),
+    [
+      order.order_no,
+      order.train_no,
+      order.from_station,
+      order.to_station,
+      order.run_date,
+      order.departure_time,
+      order.arrival_time,
+      order.passenger_name,
+      seatInfo,
+      qrSuffix,
+    ],
+  );
+
+  const borderLeftColor =
+    phase === "refunded" ? "warning.main"
+    : phase === "expired" ? "error.main"
+    : phase === "checked_in" ? "info.main"
+    : "success.main";
+
+  const statusChipColor =
+    phase === "refunded" ? "warning"
+    : phase === "expired" ? "error"
+    : phase === "checked_in" ? "info"
+    : "success";
+
+  const checkedInFmt = order.checked_in_at
+    ? new Intl.DateTimeFormat(locale === "en" ? "en-US" : "zh-CN", {
+      month: "numeric",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: locale === "en",
+    }).format(new Date(order.checked_in_at))
+    : null;
+
+  const simulateScan = async () => {
+    setGateError(null);
+    try {
+      await checkInScan.mutateAsync({ qrPayload });
+      setGateOpen(false);
+    } catch (e) {
+      const raw = e instanceof ApiError ? e.detail : t("trips.gate.scanFail");
+      const msg = Array.isArray(raw) ? raw.map((x: unknown) => (typeof x === "object" && x && "msg" in x ? String((x as { msg: string }).msg) : String(x))).join("; ") : String(raw);
+      setGateError(msg || t("trips.gate.scanFail"));
+    }
+  };
+
+  const directCheckIn = async () => {
+    setGateError(null);
+    try {
+      await checkInDirect.mutateAsync(order.id);
+      setGateOpen(false);
+    } catch (e) {
+      const raw = e instanceof ApiError ? e.detail : t("trips.gate.scanFail");
+      const msg = Array.isArray(raw) ? raw.map((x: unknown) => (typeof x === "object" && x && "msg" in x ? String((x as { msg: string }).msg) : String(x))).join("; ") : String(raw);
+      setGateError(msg || t("trips.gate.scanFail"));
+    }
+  };
+
+  const canOpenVoucher = !isRefunded && phase !== "refunded";
+  const checkBusy = checkInScan.isPending || checkInDirect.isPending;
+
   return (
     <Card
       variant="outlined"
@@ -78,7 +171,7 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
         overflow: "hidden",
         borderRadius: "12px",
         borderLeft: 3,
-        borderLeftColor: isRefunded ? "warning.main" : "success.main",
+        borderLeftColor,
         opacity: isRefunded ? 0.88 : 1,
         boxShadow: "var(--shadow-card)",
         transition: "all 0.22s ease",
@@ -86,10 +179,10 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, px: 2, pt: 1.5, pb: 0.75 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0, flexWrap: "wrap" }}>
           <Chip label={order.train_no} color="primary" size="small" sx={{ fontWeight: 700, height: 24 }} />
           {order.train_type && <Typography variant="caption" color="text.secondary">{getTrainTypeLabel(order.train_type, fmtLocale)}</Typography>}
-          <Chip label={isRefunded ? t("trips.status.refunded") : t("trips.status.booked")} size="small" color={isRefunded ? "warning" : "success"} sx={{ height: 22, fontSize: "0.6rem" }} />
+          <Chip label={statusChipLabel(phase, t)} size="small" color={statusChipColor} sx={{ height: 22, fontSize: "0.6rem" }} />
           {order.demo_mode && <Chip label="Demo" size="small" variant="outlined" sx={{ height: 22, fontSize: "0.6rem" }} />}
         </Box>
         <Typography variant="subtitle2" fontWeight={800} color="warning.main" sx={{ fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
@@ -150,105 +243,147 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
               sx={{ borderRadius: "10px", fontSize: "0.75rem", py: 0.25, px: 1.5, minHeight: 30 }}>
               {refunding ? t("trips.refund.processing") : t("trips.refund.action")}
             </Button>
-            <Button variant="contained" size="small" onClick={() => setGateOpen(true)} startIcon={<ScanLine size={13} />}
-              sx={{ borderRadius: "10px", fontSize: "0.75rem", py: 0.25, px: 1.5, minHeight: 30 }}>
-              {t("trips.gate.action")}
-            </Button>
+            {canOpenVoucher ? (
+              <Button
+                variant={phase === "booked" ? "contained" : "outlined"}
+                size="small"
+                onClick={() => setGateOpen(true)}
+                startIcon={<ScanLine size={13} />}
+                sx={{ borderRadius: "10px", fontSize: "0.75rem", py: 0.25, px: 1.5, minHeight: 30 }}
+              >
+                {phase === "booked" ? t("trips.gate.action") : t("trips.gate.viewVoucher")}
+              </Button>
+            ) : null}
           </Box>
         )}
       </Box>
 
-      {/* Gate entry dialog */}
-      <Dialog open={gateOpen} onClose={() => setGateOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: "20px", overflow: "hidden" } }}>
+      <Dialog open={gateOpen} onClose={checkBusy ? undefined : () => setGateOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: (th) => gateDialogPaper(th) }}>
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2.5, pt: 2, pb: 0.5 }}>
           <Typography variant="subtitle1" fontWeight={700}>{t("trips.gate.title")}</Typography>
-          <IconButton size="small" onClick={() => setGateOpen(false)} sx={{ bgcolor: "action.hover", borderRadius: "10px" }}>
+          <IconButton size="small" onClick={() => setGateOpen(false)} disabled={checkBusy} sx={(th) => darkDialogHeaderClose(th)}>
             <X size={16} />
           </IconButton>
         </Box>
         <DialogContent sx={{ px: 2.5, pb: 2.5, pt: 1 }}>
-          {/* QR code area */}
-          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mb: 2.5 }}>
-            <Box sx={{ position: "relative" }}>
-              <Box sx={{
-                p: 2,
-                borderRadius: "12px",
-                bgcolor: "#fff",
-                border: 2,
-                borderColor: "primary.main",
-                display: "inline-flex",
-                boxShadow: (th) => `0 4px 24px -4px ${th.palette.primary.main}20`,
-              }}>
-                <QRCodeSVG
-                  value={JSON.stringify({
-                    order_no: order.order_no,
-                    train_no: order.train_no,
-                    from: order.from_station,
-                    to: order.to_station,
-                    date: order.run_date,
-                    departure: order.departure_time,
-                    arrival: order.arrival_time,
-                    passenger: order.passenger_name,
-                    seat: seatInfo,
-                    v: qrSuffix,
-                  })}
-                  size={220}
-                  level="M"
-                />
-              </Box>
-              <IconButton
-                size="small"
-                onClick={() => setQrSuffix((s) => s + "1")}
-                sx={{
-                  position: "absolute",
-                  bottom: -6,
-                  right: -6,
-                  bgcolor: "background.paper",
-                  border: 1,
-                  borderColor: "divider",
-                  borderRadius: "8px",
-                  width: 28,
-                  height: 28,
-                  boxShadow: "var(--shadow-card)",
-                  "&:hover": { bgcolor: "action.hover" },
-                }}
-              >
-                <RefreshCw size={13} />
-              </IconButton>
-            </Box>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5, fontFamily: "monospace", letterSpacing: 1.5, fontWeight: 600 }}>
-              {order.order_no}
-            </Typography>
-          </Box>
+          {gateError ? (
+            <Alert severity="error" variant="outlined" sx={{ mb: 2, borderRadius: "12px" }} onClose={() => setGateError(null)}>
+              {gateError}
+            </Alert>
+          ) : null}
 
-          {/* Compact info strip */}
-          <Box sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 1,
-            px: 2,
-            py: 1.5,
-            borderRadius: "14px",
-            bgcolor: "action.hover",
-          }}>
-            <Box sx={{ textAlign: "center" }}>
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.6rem", display: "block" }}>{order.from_station}</Typography>
-              <Typography variant="subtitle2" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums" }}>{order.departure_time}</Typography>
-            </Box>
-            <Box sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
-              <Chip label={order.train_no} size="small" color="primary" sx={{ fontWeight: 700, height: 22, fontSize: "0.65rem" }} />
-              <Box sx={{ display: "flex", alignItems: "center", width: "80%", mt: 0.5 }}>
-                <Box sx={{ flex: 1, height: "1px", bgcolor: "divider" }} />
-                <ArrowRight size={12} style={{ opacity: 0.35 }} />
+          {phase === "checked_in" && order.checked_in_at && checkedInFmt ? (
+            <Alert severity="success" variant="outlined" sx={(th) => ({
+              mb: 2,
+              borderRadius: "12px",
+              ...(th.palette.mode === "dark" ? {
+                borderColor: `${th.palette.success.main}55`,
+                bgcolor: `${th.palette.success.main}14`,
+              } : {}),
+            })}
+            >
+              {t("trips.gate.scanOk")}（{t("trips.gate.checkedInAt")} {checkedInFmt}）
+            </Alert>
+          ) : null}
+
+          {phase === "expired" ? (
+            <Alert severity="warning" variant="outlined" sx={{ mb: 2, borderRadius: "12px" }}>
+              {t("trips.gate.expiredHint")}
+            </Alert>
+          ) : null}
+
+          {(phase === "booked" || phase === "checked_in" || phase === "expired") ? (
+            <>
+              <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mb: 2.5, opacity: phase === "booked" ? 1 : 0.85 }}>
+                <Box sx={{ position: "relative" }}>
+                  <Box sx={{
+                    p: 2,
+                    borderRadius: "12px",
+                    bgcolor: "#fff",
+                    border: 2,
+                    borderColor: "primary.main",
+                    display: "inline-flex",
+                    boxShadow: (th) => `0 4px 24px -4px ${th.palette.primary.main}20`,
+                  }}>
+                    <QRCodeSVG value={qrPayload} size={220} level="M" />
+                  </Box>
+                  <IconButton
+                    size="small"
+                    onClick={() => setQrSuffix((s) => s + "1")}
+                    sx={(th) => ({
+                      position: "absolute",
+                      bottom: -6,
+                      right: -6,
+                      bgcolor: "background.paper",
+                      border: 1,
+                      borderColor: "divider",
+                      borderRadius: "8px",
+                      width: 28,
+                      height: 28,
+                      boxShadow: "var(--shadow-card)",
+                      "&:hover": { bgcolor: "action.hover" },
+                      ...(th.palette.mode === "dark" ? {
+                        bgcolor: th.palette.grey[900],
+                        borderColor: `${th.palette.divider}99`,
+                      } : {}),
+                    })}
+                  >
+                    <RefreshCw size={13} />
+                  </IconButton>
+                </Box>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5, fontFamily: "monospace", letterSpacing: 1.5, fontWeight: 600 }}>
+                  {order.order_no}
+                </Typography>
               </Box>
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.6rem" }}>{seatInfo}</Typography>
-            </Box>
-            <Box sx={{ textAlign: "center" }}>
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.6rem", display: "block" }}>{order.to_station}</Typography>
-              <Typography variant="subtitle2" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums" }}>{order.arrival_time}</Typography>
-            </Box>
-          </Box>
+
+              <Box sx={(th) => ({
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 1,
+                px: 2,
+                py: 1.5,
+                borderRadius: "12px",
+                ...darkElevatedStrip(th),
+              })}
+              >
+                <Box sx={{ textAlign: "center" }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.6rem", display: "block" }}>{order.from_station}</Typography>
+                  <Typography variant="subtitle2" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums" }}>{order.departure_time}</Typography>
+                </Box>
+                <Box sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
+                  <Chip label={order.train_no} size="small" color="primary" sx={{ fontWeight: 700, height: 22, fontSize: "0.65rem" }} />
+                  <Box sx={{ display: "flex", alignItems: "center", width: "80%", mt: 0.5 }}>
+                    <Box sx={{ flex: 1, height: "1px", bgcolor: "divider" }} />
+                    <ArrowRight size={12} style={{ opacity: 0.35 }} />
+                  </Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.6rem" }}>{seatInfo}</Typography>
+                </Box>
+                <Box sx={{ textAlign: "center" }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.6rem", display: "block" }}>{order.to_station}</Typography>
+                  <Typography variant="subtitle2" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums" }}>{order.arrival_time}</Typography>
+                </Box>
+              </Box>
+
+              {phase === "booked" ? (
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 2 }}>
+                  <Button variant="contained" fullWidth disabled={checkBusy} onClick={() => void simulateScan()} sx={{ borderRadius: "10px" }}>
+                    {checkBusy ? t("trips.gate.scanBusy") : t("trips.gate.scanSimulate")}
+                  </Button>
+                  <Link
+                    component="button"
+                    type="button"
+                    variant="body2"
+                    onClick={() => void directCheckIn()}
+                    disabled={checkBusy}
+                    sx={{ textAlign: "center", cursor: checkBusy ? "default" : "pointer" }}
+                  >
+                    {t("trips.gate.direct")}
+                  </Link>
+                </Box>
+              ) : null}
+            </>
+          ) : null}
 
           <Box sx={{ display: "flex", justifyContent: "space-between", mt: 1.5, px: 0.5 }}>
             <Typography variant="caption" color="text.secondary">{departureDate} · {order.passenger_name}</Typography>

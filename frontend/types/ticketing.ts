@@ -1,5 +1,8 @@
 export type TicketOrderStatus = "booked" | "refunded";
 
+/** 演示行程分类（由后端根据退票 / 检票 / 发车时间计算） */
+export type TravelPhase = "booked" | "checked_in" | "expired" | "refunded";
+
 export interface TicketOrder {
   id: number;
   order_no: string;
@@ -29,6 +32,9 @@ export interface TicketOrder {
   created_at: string;
   updated_at: string;
   refunded_at?: string | null;
+  checked_in_at?: string | null;
+  /** 后端未升级时可能缺失，前端会回退推断 */
+  travel_phase?: TravelPhase;
 }
 
 export interface TicketingSummary {
@@ -36,6 +42,9 @@ export interface TicketingSummary {
   active_orders: number;
   refunded_orders: number;
   upcoming_orders: number;
+  pending_travel_orders?: number;
+  checked_in_orders?: number;
+  expired_orders?: number;
   total_spent: number;
   total_refunded: number;
 }

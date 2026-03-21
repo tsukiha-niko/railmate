@@ -54,4 +54,5 @@ class TicketOrder(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.now)
     refunded_at: Optional[datetime] = Field(default=None)
     refund_note: Optional[str] = Field(default=None, max_length=255)
+    checked_in_at: Optional[datetime] = Field(default=None)
 

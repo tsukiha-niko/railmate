@@ -21,3 +21,12 @@ export function purchaseTicket(payload: TicketPurchasePayload): Promise<TicketOr
 export function refundTicket(orderId: number, reason?: string): Promise<TicketOrder> {
   return post<TicketOrder>(`/api/v1/tickets/${orderId}/refund`, reason ? { reason } : {});
 }
+
+export function checkInTicketOrder(orderId: number): Promise<TicketOrder> {
+  return post<TicketOrder>(`/api/v1/tickets/${orderId}/check-in`, {});
+}
+
+export function checkInTicketScan(raw: string, userId?: string): Promise<TicketOrder> {
+  const q = userId ? `?user_id=${encodeURIComponent(userId)}` : "";
+  return post<TicketOrder>(`/api/v1/tickets/check-in/scan${q}`, { raw });
+}

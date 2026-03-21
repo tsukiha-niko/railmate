@@ -30,6 +30,12 @@ class TicketRefundRequest(BaseModel):
     reason: Optional[str] = None
 
 
+class TicketScanCheckInRequest(BaseModel):
+    """闸机扫描电子票二维码中的 JSON 文本后回传，演示模式下校验 order_no 后记为已检票。"""
+
+    raw: str = Field(..., min_length=3, description="二维码内容（与前端 QRCode 中 JSON 一致）")
+
+
 class TicketOrderResponse(BaseModel):
     id: int
     order_no: str
@@ -59,6 +65,11 @@ class TicketOrderResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     refunded_at: Optional[datetime] = None
+    checked_in_at: Optional[datetime] = None
+    travel_phase: str = Field(
+        default="booked",
+        description="refunded | booked | checked_in | expired（演示行程分类）",
+    )
 
 
 class TicketingSummaryResponse(BaseModel):
@@ -66,6 +77,9 @@ class TicketingSummaryResponse(BaseModel):
     active_orders: int
     refunded_orders: int
     upcoming_orders: int
+    pending_travel_orders: int
+    checked_in_orders: int
+    expired_orders: int
     total_spent: float
     total_refunded: float
 
