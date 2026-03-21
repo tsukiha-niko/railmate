@@ -25,7 +25,6 @@ export function DemoModeCard() {
     <Card
       variant="outlined"
       sx={{
-        borderRadius: 5,
         background: (th) =>
           `linear-gradient(135deg, ${th.palette.primary.main}14 0%, ${th.palette.background.paper}EA 50%, ${th.palette.background.paper}CC 100%)`,
       }}
@@ -54,7 +53,7 @@ export function DemoModeCard() {
             { label: t("settings.demoMode.effect.refund"), desc: t("settings.demoMode.effect.refundDesc") },
             { label: t("settings.demoMode.effect.debug"), desc: demoMessage || t("settings.demoMode.effect.debugDesc") },
           ].map((item) => (
-            <Box key={item.label} sx={{ borderRadius: 4, border: 1, borderColor: (th: any) => `${th.palette.divider}70`, bgcolor: "background.paper", p: 2, minHeight: { xl: 120 } }}>
+            <Box key={item.label} sx={{ borderRadius: "10px", border: 1, borderColor: (th: any) => `${th.palette.divider}70`, bgcolor: "background.paper", p: 2, minHeight: { xl: 120 } }}>
               <Typography variant="caption" color="text.secondary">{item.label}</Typography>
               <Typography variant="body2" fontWeight={500} sx={{ mt: 0.5 }}>{item.desc}</Typography>
             </Box>

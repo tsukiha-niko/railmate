@@ -15,7 +15,7 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
   return (
-    <Card variant="outlined" sx={{ borderStyle: "dashed", borderRadius: 5, borderColor: (th) => `${th.palette.divider}70` }}>
+    <Card variant="outlined" sx={{ borderStyle: "dashed", borderColor: (th) => `${th.palette.divider}70` }}>
       <CardContent sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, py: 7, px: 4, textAlign: "center", minHeight: 320 }}>
         <Box
           sx={{
@@ -24,7 +24,7 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
             justifyContent: "center",
             width: 64,
             height: 64,
-            borderRadius: 4,
+            borderRadius: "12px",
             bgcolor: (th) => `${th.palette.primary.main}0C`,
           }}
         >

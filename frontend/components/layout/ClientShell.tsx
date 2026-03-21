@@ -14,10 +14,12 @@ export function ClientShell({ children }: { children: ReactNode }) {
     <QueryProvider>
       <ThemeProvider>
         <I18nProvider messages={messages}>
-          <div className="relative flex h-dvh flex-col overflow-hidden bg-transparent">
+          <div className="relative flex h-dvh flex-col overflow-hidden bg-background">
             <Navbar />
             <ChatHistoryDrawer />
-            <main className="relative z-10 flex min-h-0 flex-1 flex-col">{children}</main>
+            <main className="relative z-10 flex min-h-0 flex-1 flex-col">
+              {children}
+            </main>
             <MobileNav />
           </div>
         </I18nProvider>

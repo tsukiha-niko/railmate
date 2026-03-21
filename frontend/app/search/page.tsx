@@ -66,9 +66,9 @@ export default function SearchPage() {
   };
 
   return (
-    <Box sx={{ mx: "auto", width: "100%", maxWidth: 1680, flex: 1, overflowY: "auto", px: { xs: 1.5, sm: 2.5, lg: 3 }, py: { xs: 2, sm: 2.5 } }}>
+    <Box sx={{ mx: "auto", width: "100%", maxWidth: 1680, flex: 1, overflowY: "auto", px: { xs: 1.5, sm: 2.5, lg: 3 }, py: { xs: 2.5, sm: 3 } }}>
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2.5 }}>
           <Box
             sx={{
               display: "flex",
@@ -76,8 +76,8 @@ export default function SearchPage() {
               justifyContent: "center",
               width: 42,
               height: 42,
-              borderRadius: 3.5,
-              bgcolor: (th) => `${th.palette.primary.main}10`,
+              borderRadius: "10px",
+              background: (th) => `linear-gradient(135deg, ${th.palette.primary.main}18, ${th.palette.primary.main}08)`,
             }}
           >
             <TrainFront size={20} style={{ color: "var(--primary)" }} />
@@ -89,14 +89,14 @@ export default function SearchPage() {
         </Box>
       </motion.div>
 
-      <Box sx={{ display: "grid", flex: 1, gap: { xs: 2, lg: 3 }, gridTemplateColumns: { lg: "400px 1fr" } }}>
+      <Box sx={{ display: "grid", flex: 1, gap: { xs: 2.5, lg: 3 }, gridTemplateColumns: { lg: "400px 1fr" } }}>
         <Box sx={{ position: { lg: "sticky" }, top: { lg: 12 }, height: "fit-content" }}>
           <SearchForm onSearch={(params: TrainSearchParams) => search(params)} loading={loading} />
         </Box>
 
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {error && (
-            <Alert severity="error" variant="outlined" icon={<AlertCircle size={18} />} sx={{ borderRadius: 4 }}>{error}</Alert>
+            <Alert severity="error" variant="outlined" icon={<AlertCircle size={18} />} sx={{ borderRadius: "12px" }}>{error}</Alert>
           )}
 
           {searched && (
@@ -110,17 +110,17 @@ export default function SearchPage() {
                     {departureTop && (
                       <Chip label={`${departureTop.departure_time}${sortKey === "departure" ? ` ${sortIcon}` : ""}`} size="small"
                         color={sortKey === "departure" ? "primary" : "default"} variant={sortKey === "departure" ? "filled" : "outlined"}
-                        onClick={() => handleSortClick("departure")} clickable sx={{ borderRadius: 2.5 }} />
+                        onClick={() => handleSortClick("departure")} clickable sx={{ borderRadius: "6px" }} />
                     )}
                     {durationTop && (
                       <Chip label={`${formatDuration(durationTop.duration_minutes, statsLocale)}${sortKey === "duration" ? ` ${sortIcon}` : ""}`} size="small"
                         color={sortKey === "duration" ? "primary" : "default"} variant={sortKey === "duration" ? "filled" : "outlined"}
-                        onClick={() => handleSortClick("duration")} clickable sx={{ borderRadius: 2.5 }} />
+                        onClick={() => handleSortClick("duration")} clickable sx={{ borderRadius: "6px" }} />
                     )}
                     {priceTopFare && (
                       <Chip label={`${formatPrice(priceTopFare.price)}${sortKey === "price" ? ` ${sortIcon}` : ""}`} size="small"
                         color={sortKey === "price" ? "primary" : "default"} variant={sortKey === "price" ? "filled" : "outlined"}
-                        onClick={() => handleSortClick("price")} clickable sx={{ borderRadius: 2.5 }} />
+                        onClick={() => handleSortClick("price")} clickable sx={{ borderRadius: "6px" }} />
                     )}
                   </Box>
                 </Box>

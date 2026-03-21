@@ -90,31 +90,38 @@ export function VoiceButton({ onTranscript, disabled }: Props) {
           >
             <Box
               sx={{
-                borderRadius: 3,
+                borderRadius: "10px",
+                borderLeft: "3px solid",
+                borderLeftColor: "primary.main",
                 border: 1,
-                borderColor: "primary.main",
+                borderColor: (th) => `${th.palette.divider}80`,
                 bgcolor: "background.paper",
                 px: 2,
                 py: 0.75,
-                boxShadow: "var(--shadow-md)",
+                boxShadow: "var(--shadow-card-hover)",
                 display: "flex",
                 alignItems: "center",
                 gap: 1,
               }}
             >
-              <Box
-                sx={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  bgcolor: "error.main",
-                  animation: "pulse 1.5s ease-in-out infinite",
-                  "@keyframes pulse": {
-                    "0%, 100%": { opacity: 1, transform: "scale(1)" },
-                    "50%": { opacity: 0.5, transform: "scale(0.85)" },
-                  },
-                }}
-              />
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, height: 16 }}>
+                {[0, 1, 2, 3].map((barIdx) => (
+                  <Box
+                    key={barIdx}
+                    sx={{
+                      width: 3,
+                      borderRadius: 1,
+                      bgcolor: "primary.main",
+                      animation: "voiceBar 0.8s ease-in-out infinite alternate",
+                      animationDelay: `${barIdx * 0.15}s`,
+                      "@keyframes voiceBar": {
+                        "0%": { height: 4 },
+                        "100%": { height: 14 },
+                      },
+                    }}
+                  />
+                ))}
+              </Box>
               <Typography variant="caption" fontWeight={600}>
                 {interim || (locale === "en" ? "Listening..." : "正在听...")}
               </Typography>
@@ -130,42 +137,12 @@ export function VoiceButton({ onTranscript, disabled }: Props) {
             exit={{ opacity: 0, y: 4 }}
             style={{ position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)", maxWidth: 240, zIndex: 10 }}
           >
-            <Box sx={{ borderRadius: 3, border: 1, borderColor: "error.main", bgcolor: "background.paper", px: 2, py: 0.75, boxShadow: "var(--shadow-md)" }}>
+            <Box sx={{ borderRadius: "10px", border: 1, borderColor: "error.main", bgcolor: "background.paper", px: 2, py: 0.75, boxShadow: "var(--shadow-card-hover)" }}>
               <Typography variant="caption" color="error" noWrap>{errorMsg}</Typography>
             </Box>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {listening && (
-        <>
-          <Box
-            sx={{
-              position: "absolute",
-              inset: -4,
-              borderRadius: 4,
-              border: 2,
-              borderColor: "primary.main",
-              opacity: 0.3,
-              pointerEvents: "none",
-            }}
-            className="voice-wave-ring"
-          />
-          <Box
-            sx={{
-              position: "absolute",
-              inset: -8,
-              borderRadius: 4,
-              border: 1,
-              borderColor: "primary.main",
-              opacity: 0.15,
-              pointerEvents: "none",
-            }}
-            className="voice-wave-ring"
-            style={{ animationDelay: "0.4s" }}
-          />
-        </>
-      )}
 
       <IconButton
         onClick={toggle}
@@ -173,7 +150,7 @@ export function VoiceButton({ onTranscript, disabled }: Props) {
         sx={{
           width: 40,
           height: 40,
-          borderRadius: 3,
+          borderRadius: "8px",
           border: 1,
           borderColor: listening ? "error.main" : (th) => `${th.palette.divider}80`,
           color: listening ? "error.main" : "text.secondary",

@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, type KeyboardEvent } from "react";
-import { Send, Loader2 } from "lucide-react";
+import { Send } from "lucide-react";
 import dynamic from "next/dynamic";
-import Card from "@mui/material/Card";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -75,14 +74,14 @@ export function ChatInput({ onSend, loading, conversationId }: Props) {
   }, [conversationId, setDraft]);
 
   return (
-    <Card
-      variant="outlined"
+    <Box
       sx={{
-        p: 1,
-        borderRadius: 5,
+        p: "6px",
+        borderRadius: "12px",
         bgcolor: "background.paper",
-        boxShadow: "var(--shadow-sm)",
-        borderColor: (th) => `${th.palette.divider}80`,
+        border: 1,
+        borderColor: (th) => th.palette.divider,
+        boxShadow: "var(--shadow-card)",
         transition: "box-shadow 0.2s ease, border-color 0.2s ease",
         "&:focus-within": {
           borderColor: "primary.main",
@@ -128,7 +127,7 @@ export function ChatInput({ onSend, loading, conversationId }: Props) {
           sx={{
             width: 40,
             height: 40,
-            borderRadius: 3,
+            borderRadius: "10px",
             bgcolor: "primary.main",
             color: "primary.contrastText",
             "&:hover": { bgcolor: "primary.dark", transform: "scale(1.04)" },
@@ -139,6 +138,6 @@ export function ChatInput({ onSend, loading, conversationId }: Props) {
           {loading ? <CircularProgress size={18} color="inherit" /> : <Send size={18} />}
         </IconButton>
       </Box>
-    </Card>
+    </Box>
   );
 }

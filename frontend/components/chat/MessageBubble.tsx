@@ -77,7 +77,7 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
           {!isUser && message.tool_calls && message.tool_calls.length > 0 && (
             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mb: 0.5 }}>
               {message.tool_calls.map((tc, i) => (
-                <Chip key={i} icon={<Wrench size={10} />} label={tc.tool_name} size="small" variant="outlined" sx={{ borderRadius: 2.5 }} />
+                <Chip key={i} icon={<Wrench size={10} />} label={tc.tool_name} size="small" variant="outlined" sx={{ borderRadius: "6px" }} />
               ))}
             </Box>
           )}
@@ -87,10 +87,10 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
               fontSize: "0.875rem",
               lineHeight: 1.7,
               ...(isUser
-                ? { maxWidth: "min(840px,100%)", borderRadius: "20px 20px 6px 20px", bgcolor: "primary.main", color: "primary.contrastText", px: 2.5, py: 1.5, whiteSpace: "pre-wrap" }
+                ? { maxWidth: "min(840px,100%)", borderRadius: "16px 16px 4px 16px", bgcolor: "primary.main", color: "primary.contrastText", px: 2.5, py: 1.5, whiteSpace: "pre-wrap" }
                 : isProgressOnly
                   ? { width: "100%" }
-                  : { width: "100%", borderRadius: "20px 20px 20px 6px", border: 1, borderColor: (th: any) => `${th.palette.divider}80`, bgcolor: "background.paper", px: 2.5, py: 1.5, boxShadow: "var(--shadow-xs)" }),
+                  : { width: "100%", borderRadius: "16px 16px 16px 4px", border: 1, borderColor: (th: any) => `${th.palette.divider}80`, bgcolor: "background.paper", px: 2.5, py: 1.5, boxShadow: "var(--shadow-card)" }),
             }}
           >
             {isUser ? (
@@ -99,7 +99,7 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
               <Box sx={{ width: "100%" }}>
                 <ButtonBase
                   onClick={() => setProgressExpanded(message.id, !progressExpanded)}
-                  sx={{ width: "100%", borderRadius: 5, border: 1, borderColor: "divider", bgcolor: "background.default", p: 2, textAlign: "left", display: "block" }}
+                  sx={{ width: "100%", borderRadius: "12px", border: 1, borderColor: "divider", bgcolor: "background.default", p: 2, textAlign: "left", display: "block" }}
                 >
                   <Box sx={{ display: "flex", gap: 1.5 }}>
                     <Box sx={{ mt: 0.5, flexShrink: 0 }}>
@@ -128,7 +128,7 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
                               icon={state === "done" ? <Check size={12} /> : undefined}
                               color={state === "done" ? "success" : state === "active" ? "primary" : "default"}
                               variant={state === "idle" ? "outlined" : "filled"}
-                              sx={{ fontSize: "0.625rem", justifyContent: "center", borderRadius: 2 }}
+                              sx={{ fontSize: "0.625rem", justifyContent: "center", borderRadius: "6px" }}
                             />
                           );
                         })}
@@ -141,9 +141,9 @@ export function MessageBubble({ message, index, onQueryTransfer }: Props) {
                 <AnimatePresence initial={false}>
                   {progressExpanded && recentEvents.length > 0 && (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} style={{ overflow: "hidden" }}>
-                      <Box sx={{ mt: 1, display: "flex", flexDirection: "column", gap: 0.75, borderRadius: 4, border: 1, borderColor: "divider", bgcolor: "background.default", p: 1.5 }}>
+                      <Box sx={{ mt: 1, display: "flex", flexDirection: "column", gap: 0.75, borderRadius: "12px", border: 1, borderColor: "divider", bgcolor: "background.default", p: 1.5 }}>
                         {recentEvents.map((event: ProgressEvent, ei) => (
-                          <Box key={`${event.timestamp || ei}-${ei}`} sx={{ display: "flex", gap: 1, borderRadius: 3, bgcolor: "background.paper", px: 1.5, py: 1 }}>
+                          <Box key={`${event.timestamp || ei}-${ei}`} sx={{ display: "flex", gap: 1, borderRadius: "10px", bgcolor: "background.paper", px: 1.5, py: 1 }}>
                             <Box sx={{ mt: 0.75, width: 7, height: 7, borderRadius: "50%", flexShrink: 0, bgcolor: ei === recentEvents.length - 1 ? "primary.main" : "text.disabled" }} />
                             <Box sx={{ minWidth: 0 }}>
                               <Typography variant="caption" fontWeight={600}>{event.message}</Typography>

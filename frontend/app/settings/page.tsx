@@ -2,8 +2,6 @@
 
 import { motion } from "framer-motion";
 import Box from "@mui/material/Box";
-import Chip from "@mui/material/Chip";
-import Divider from "@mui/material/Divider";
 import { PageHeader } from "@/components/common/PageHeader";
 import { LocationSettings } from "@/components/settings/LocationSettings";
 import { AppearanceSettings } from "@/components/settings/AppearanceSettings";
@@ -83,8 +81,6 @@ export default function SettingsPage() {
         </motion.div>
       </Box>
 
-      <Divider sx={{ my: 0.5 }} />
-
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.155 }}>
         <DemoModeCard />
       </motion.div>
@@ -105,15 +101,15 @@ function InfoCell({ label, value }: { label: string; value: string }) {
   return (
     <Box
       sx={{
-        borderRadius: 4,
-        border: 1,
-        borderColor: (th) => `${th.palette.divider}70`,
+        borderRadius: "0 10px 10px 0",
+        borderLeft: 3,
+        borderLeftColor: "primary.main",
         bgcolor: "background.paper",
-        px: 2.5,
-        py: 2,
-        boxShadow: "var(--shadow-xs)",
+        boxShadow: "var(--shadow-card)",
+        px: 2,
+        py: 1.5,
         transition: "all 0.2s ease",
-        "&:hover": { boxShadow: "var(--shadow-sm)" },
+        "&:hover": { boxShadow: "var(--shadow-card-hover)" },
       }}
     >
       <Box component="span" sx={{ display: "block", fontSize: "0.6875rem", color: "text.secondary", mb: 0.5 }}>{label}</Box>

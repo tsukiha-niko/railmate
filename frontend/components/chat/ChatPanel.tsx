@@ -70,27 +70,50 @@ export function ChatPanel() {
         }}
       >
         {messages.length === 0 ? (
-          <div className="flex h-full w-full flex-col items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
+          <div className="flex h-full w-full items-center justify-center px-4 py-6 sm:px-6 lg:px-8">
             <motion.div
-              initial={{ opacity: 0, scale: 0.92 }}
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
-              className="flex w-full max-w-2xl flex-col items-center gap-5 rounded-3xl border border-border/50 bg-card/60 p-6 text-center shadow-[0_12px_48px_-16px_rgba(15,23,42,0.12)] backdrop-blur-sm sm:p-10"
+              transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+              className="w-full max-w-3xl"
             >
-              <RobotAnimation className="w-32 h-32 md:w-40 md:h-40" />
-              <h2 className="text-xl font-bold tracking-tight text-foreground">
-                {t("chat.welcome.title")}
-              </h2>
-              <p className="text-sm text-muted-foreground leading-relaxed max-w-md">
-                {t("chat.welcome.body").split("\n").map((line, idx) => (
-                  <span key={idx}>{line}{idx === 0 ? <br /> : null}</span>
-                ))}
-              </p>
-              <QuickActions onSelect={sendMessage} />
+              {/* Portrait: vertical stack */}
+              <div className="flex flex-col items-center gap-4 text-center md:hidden p-4">
+                <RobotAnimation className="w-28 h-28" />
+                <h2 className="text-xl font-bold tracking-tight text-foreground">
+                  {t("chat.welcome.title")}
+                </h2>
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
+                  {t("chat.welcome.body").split("\n").map((line, idx) => (
+                    <span key={idx}>{line}{idx === 0 ? <br /> : null}</span>
+                  ))}
+                </p>
+                <QuickActions onSelect={sendMessage} />
+              </div>
+
+              {/* Landscape: horizontal layout */}
+              <div className="hidden md:flex items-center gap-8 p-6">
+                <div className="flex-shrink-0">
+                  <RobotAnimation className="w-36 h-36 lg:w-44 lg:h-44" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-2xl font-bold tracking-tight text-foreground">
+                    {t("chat.welcome.title")}
+                  </h2>
+                  <p className="text-sm text-muted-foreground leading-relaxed mt-2 max-w-lg">
+                    {t("chat.welcome.body").split("\n").map((line, idx) => (
+                      <span key={idx}>{line}{idx === 0 ? <br /> : null}</span>
+                    ))}
+                  </p>
+                  <div className="mt-4">
+                    <QuickActions onSelect={sendMessage} />
+                  </div>
+                </div>
+              </div>
             </motion.div>
           </div>
         ) : (
-          <div className="mx-auto w-full max-w-6xl space-y-4 px-4 py-4 sm:px-5 lg:px-7">
+          <div className="mx-auto w-full max-w-6xl space-y-3 px-3 py-3 sm:space-y-4 sm:px-5 sm:py-4 lg:px-7">
             {messages.map((msg, i) => (
               <MessageBubble
                 key={msg.id}
@@ -103,7 +126,7 @@ export function ChatPanel() {
           </div>
         )}
       </div>
-      <div className="border-t border-border/40 bg-background/80 px-3 py-2.5 backdrop-blur-lg sm:px-5 sm:py-3 lg:px-7">
+      <div className="border-t border-border bg-card px-3 py-2 sm:px-5 sm:py-2.5 lg:px-7">
         <div className="mx-auto w-full max-w-4xl">
           <ChatInput onSend={sendMessage} loading={loading} conversationId={activeConv?.id} />
         </div>

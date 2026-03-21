@@ -34,10 +34,10 @@ export function SeatPurchaseDialog({
   if (!seat) return null;
 
   return (
-    <Dialog open={open} onClose={purchasing ? undefined : onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 5 } }}>
+    <Dialog open={open} onClose={purchasing ? undefined : onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: "20px" } }}>
       <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
         {t("booking.dialog.title")}
-        {demoMode && <Chip label={t("booking.demo.badge")} size="small" />}
+        {demoMode && <Chip label={t("booking.demo.badge")} size="small" sx={{ borderRadius: "6px" }} />}
       </DialogTitle>
 
       <DialogContent dividers>
@@ -47,9 +47,9 @@ export function SeatPurchaseDialog({
               <Typography variant="body2" fontWeight={700}>{t("booking.success.title")}</Typography>
               <Typography variant="caption" color="text.secondary">{t("booking.success.desc")}</Typography>
               <Box sx={{ display: "flex", gap: 0.75, mt: 1, flexWrap: "wrap" }}>
-                <Chip label={purchasedOrder.booking_reference} size="small" color="success" />
-                <Chip label={`${purchasedOrder.coach_no ?? "--"} ${t("booking.success.coach")}`} size="small" variant="outlined" />
-                <Chip label={purchasedOrder.seat_no ?? "--"} size="small" variant="outlined" />
+                <Chip label={purchasedOrder.booking_reference} size="small" color="success" sx={{ borderRadius: "6px" }} />
+                <Chip label={`${purchasedOrder.coach_no ?? "--"} ${t("booking.success.coach")}`} size="small" variant="outlined" sx={{ borderRadius: "6px" }} />
+                <Chip label={purchasedOrder.seat_no ?? "--"} size="small" variant="outlined" sx={{ borderRadius: "6px" }} />
               </Box>
             </Alert>
             <Box sx={{ display: "grid", gridTemplateColumns: { sm: "1fr 1fr" }, gap: 1.5 }}>
@@ -59,10 +59,10 @@ export function SeatPurchaseDialog({
           </Box>
         ) : (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Box sx={{ borderRadius: 4, border: 1, borderColor: (th: any) => `${th.palette.divider}70`, p: 2 }}>
+            <Box sx={{ borderRadius: "10px", border: 1, borderColor: (th: any) => `${th.palette.divider}70`, p: 2 }}>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-                <Chip label={trainTypeLabel} size="small" variant="outlined" />
-                <Chip label={trainNo} color="primary" size="small" sx={{ fontWeight: 700 }} />
+                <Chip label={trainTypeLabel} size="small" variant="outlined" sx={{ borderRadius: "6px" }} />
+                <Chip label={trainNo} color="primary" size="small" sx={{ fontWeight: 700, borderRadius: "6px" }} />
                 <Typography variant="caption" color="text.secondary">{formatDateLocalized(runDate, locale === "en" ? "en" : "zh-CN")}</Typography>
               </Box>
               <Box sx={{ display: "grid", gridTemplateColumns: { sm: "1fr auto 1fr" }, gap: 2, mt: 2, alignItems: "center" }}>
@@ -75,7 +75,7 @@ export function SeatPurchaseDialog({
               <InfoBlock label={t("booking.seat")} value={seat.label} />
               <InfoBlock label={t("booking.fare")} value={formatPrice(seat.price)} />
             </Box>
-            <Box sx={{ borderRadius: 4, border: 1, borderColor: (th: any) => `${th.palette.divider}70`, p: 2 }}>
+            <Box sx={{ borderRadius: "10px", border: 1, borderColor: (th: any) => `${th.palette.divider}70`, p: 2 }}>
               <Typography variant="body2" fontWeight={600}>{t("booking.account")}</Typography>
               <Typography variant="caption" color="text.secondary">
                 {loginBound ? t("booking.account.bound", { username: accountUsername || "--" }) : t("booking.account.unbound")}
@@ -106,7 +106,7 @@ export function SeatPurchaseDialog({
 
 function InfoBlock({ label, value }: { label: string; value: string }) {
   return (
-    <Box sx={{ borderRadius: 4, border: 1, borderColor: (th: any) => `${th.palette.divider}70`, bgcolor: "action.hover", p: 1.5 }}>
+    <Box sx={{ borderRadius: "10px", border: 1, borderColor: (th: any) => `${th.palette.divider}70`, bgcolor: "action.hover", p: 1.5 }}>
       <Typography variant="caption" color="text.secondary">{label}</Typography>
       <Typography variant="body2" fontWeight={600} sx={{ mt: 0.25 }}>{value}</Typography>
     </Box>

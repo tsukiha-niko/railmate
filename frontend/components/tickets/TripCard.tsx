@@ -1,19 +1,29 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Copy, Undo2, Check } from "lucide-react";
+import { Copy, Undo2, Check, ArrowRight, ScanLine, X, RefreshCw } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
-import Divider from "@mui/material/Divider";
+import Dialog from "@mui/material/Dialog";
+import DialogContent from "@mui/material/DialogContent";
 import type { TicketOrder } from "@/types/ticketing";
 import { formatDateLocalized } from "@/utils/date";
 import { formatPrice, getTrainTypeLabel } from "@/utils/format";
 import { useI18n } from "@/lib/i18n/i18n";
+
+function InfoRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <Box>
+      <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.65rem", lineHeight: 1 }}>{label}</Typography>
+      <Typography variant="body2" fontWeight={highlight ? 700 : 600} color={highlight ? "primary.main" : "text.primary"} sx={{ mt: 0.25 }}>{value}</Typography>
+    </Box>
+  );
+}
 
 interface TripCardProps { order: TicketOrder; refunding: boolean; onRefund: (order: TicketOrder) => void; }
 
@@ -22,6 +32,8 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
   const fmtLocale = locale === "en" ? "en" : "zh-CN";
   const isRefunded = order.status === "refunded";
   const [copied, setCopied] = useState<"order" | "refund" | null>(null);
+  const [gateOpen, setGateOpen] = useState(false);
+  const [qrSuffix, setQrSuffix] = useState("");
   const timerRef = useRef<number | null>(null);
 
   useEffect(() => () => { if (timerRef.current) window.clearTimeout(timerRef.current); }, []);
@@ -35,7 +47,7 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
     ? new Intl.DateTimeFormat(locale === "en" ? "en-US" : "zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: locale === "en" }).format(new Date(order.refunded_at))
     : null;
   const departureDate = formatDateLocalized(order.run_date, fmtLocale);
-  const seatAssignment = `${order.coach_no || "--"} ${t("booking.success.coach")} ${order.seat_no || "--"}`;
+  const seatInfo = `${order.coach_no || "--"}${t("booking.success.coach")} ${order.seat_no || "--"}`;
 
   return (
     <Card
@@ -43,98 +55,176 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
       sx={{
         position: "relative",
         overflow: "hidden",
-        borderRadius: 5,
-        borderColor: (th) => `${th.palette.divider}70`,
-        opacity: isRefunded ? 0.92 : 1,
-        transition: "all 0.3s ease",
-        boxShadow: "var(--shadow-xs)",
-        "&:hover": { boxShadow: "var(--shadow-sm)" },
+        borderRadius: "14px",
+        borderLeft: 3,
+        borderLeftColor: isRefunded ? "warning.main" : "success.main",
+        opacity: isRefunded ? 0.88 : 1,
+        boxShadow: "var(--shadow-card)",
+        transition: "box-shadow 0.2s",
+        "&:hover": { boxShadow: "var(--shadow-card-hover)" },
       }}
     >
-      {isRefunded && (
-        <Box sx={{ position: "absolute", right: -44, top: 20, zIndex: 10, transform: "rotate(34deg)", bgcolor: "action.disabledBackground", border: 1, borderColor: "divider", px: 5, py: 0.5, borderRadius: 1 }}>
-          <Typography variant="caption" sx={{ fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "text.secondary" }}>
-            {locale === "en" ? "Completed" : "已完成"}
-          </Typography>
+      {/* Header: train info + price */}
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, px: 1.5, pt: 1.25, pb: 0.75 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap", minWidth: 0 }}>
+          <Chip label={order.train_no} color="primary" size="small" sx={{ fontWeight: 700, borderRadius: "6px", height: 22 }} />
+          {order.train_type && <Typography variant="caption" color="text.secondary">{getTrainTypeLabel(order.train_type, fmtLocale)}</Typography>}
+          <Chip label={isRefunded ? t("trips.status.refunded") : t("trips.status.booked")} size="small" color={isRefunded ? "warning" : "success"} sx={{ borderRadius: "6px", height: 20, fontSize: "0.6rem" }} />
+          {order.demo_mode && <Chip label="Demo" size="small" variant="outlined" sx={{ borderRadius: "6px", height: 20, fontSize: "0.6rem" }} />}
         </Box>
-      )}
-
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: 1, borderColor: "divider", px: { xs: 2.5, sm: 3 }, height: 44 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
-          <Chip label={order.train_no} color="primary" size="small" sx={{ fontWeight: 700, borderRadius: 999 }} />
-          {order.train_type && <Chip label={getTrainTypeLabel(order.train_type, fmtLocale)} size="small" variant="outlined" sx={{ borderRadius: 999 }} />}
-          <Chip label={isRefunded ? t("trips.status.refunded") : t("trips.status.booked")} size="small" color={isRefunded ? "warning" : "success"} sx={{ borderRadius: 999 }} />
-        </Box>
-        {order.demo_mode && <Chip label={t("booking.demo.badge")} size="small" variant="outlined" sx={{ borderRadius: 999 }} />}
+        <Typography variant="subtitle2" fontWeight={800} color="warning.main" sx={{ fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
+          {formatPrice(order.fare_amount)}
+        </Typography>
       </Box>
 
-      <CardContent sx={{ px: { xs: 2.5, sm: 3 }, py: { xs: 2.5, sm: 3 } }}>
-        <Box sx={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: { xs: 2, lg: 3 } }}>
-          <Box>
-            <Typography variant="h4" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{order.departure_time || "--:--"}</Typography>
-            <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 1 }}>{order.from_station}</Typography>
-            <Typography variant="caption" color="text.secondary">{departureDate}</Typography>
-          </Box>
-          <Box sx={{ textAlign: "center" }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-              <Box sx={{ height: "1px", flex: 1, bgcolor: "divider" }} />
-              <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ letterSpacing: 1 }}>{order.train_no}</Typography>
-              <Box sx={{ height: "1px", flex: 1, bgcolor: "divider" }} />
-            </Box>
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>{seatAssignment}</Typography>
-          </Box>
-          <Box sx={{ textAlign: "right" }}>
-            <Typography variant="h4" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{order.arrival_time || "--:--"}</Typography>
-            <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 1 }}>{order.to_station}</Typography>
-            <Typography variant="caption" color="text.secondary">{departureDate}</Typography>
+      {/* Route row */}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, px: 1.5, py: 0.75 }}>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="h6" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums", lineHeight: 1.1, fontSize: "1.125rem" }}>{order.departure_time || "--:--"}</Typography>
+          <Typography variant="caption" color="text.secondary" noWrap>{order.from_station}</Typography>
+        </Box>
+        <Box sx={{ flex: 1, display: "flex", alignItems: "center", gap: 0.5, minWidth: 40 }}>
+          <Box sx={{ flex: 1, height: "1px", bgcolor: "divider" }} />
+          <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.6rem", whiteSpace: "nowrap", fontWeight: 600 }}>{seatInfo}</Typography>
+          <ArrowRight size={12} style={{ opacity: 0.4, flexShrink: 0 }} />
+        </Box>
+        <Box sx={{ minWidth: 0, textAlign: "right" }}>
+          <Typography variant="h6" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums", lineHeight: 1.1, fontSize: "1.125rem" }}>{order.arrival_time || "--:--"}</Typography>
+          <Typography variant="caption" color="text.secondary" noWrap>{order.to_station}</Typography>
+        </Box>
+      </Box>
+
+      {/* Footer */}
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, px: 1.5, pb: 1.25, pt: 0.5, flexWrap: "wrap" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", minWidth: 0 }}>
+          <Typography variant="caption" color="text.secondary">{departureDate}</Typography>
+          <Typography variant="caption" color="text.secondary">·</Typography>
+          <Typography variant="caption" color="text.secondary">{order.passenger_name}</Typography>
+          <Typography variant="caption" color="text.secondary">·</Typography>
+          <Typography variant="caption" color="text.secondary">{order.seat_label}</Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.25 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "monospace", fontSize: "0.6rem" }}>{order.order_no}</Typography>
+            <IconButton size="small" onClick={() => copyValue(order.order_no, "order")} sx={{ p: 0.25 }}>
+              {copied === "order" ? <Check size={11} style={{ color: "var(--success)" }} /> : <Copy size={11} />}
+            </IconButton>
           </Box>
         </Box>
-
-        <Divider sx={{ my: 2.5 }} />
-
-        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: { xs: 1.5, sm: 3 } }}>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-            <InfoRow label={t("booking.passenger")} value={order.passenger_name} />
-            <InfoRow label={t("trips.card.seat")} value={order.seat_label} />
-          </Box>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-              <Typography variant="body2" color="text.secondary" sx={{ width: 80, flexShrink: 0 }}>{t("trips.card.amount")}</Typography>
-              <Typography variant="h6" fontWeight={800} color="warning.main">{formatPrice(order.fare_amount)}</Typography>
-              {isRefunded && <Chip label={locale === "en" ? "Refunded" : "已退回"} size="small" color="warning" sx={{ borderRadius: 999 }} />}
-            </Box>
-            <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}>
-              <Typography variant="body2" color="text.secondary" sx={{ width: 80, flexShrink: 0, pt: 0.25 }}>{t("booking.orderNo")}</Typography>
-              <Box>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                  <Typography variant="body2" fontWeight={600}>{order.order_no}</Typography>
-                  <IconButton size="small" onClick={() => copyValue(order.order_no, "order")} title={t("common.copy")} sx={{ borderRadius: 2 }}>
-                    {copied === "order" ? <Check size={14} style={{ color: "#10B981" }} /> : <Copy size={14} />}
-                  </IconButton>
-                </Box>
-                {isRefunded && refundedTime && <Typography variant="caption" color="text.secondary">{t("trips.card.refundedAt")} · {refundedTime}</Typography>}
-              </Box>
-            </Box>
-          </Box>
-        </Box>
-
         {!isRefunded && (
-          <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 3 }}>
-            <Button variant="outlined" onClick={() => onRefund(order)} disabled={refunding} startIcon={<Undo2 size={16} />} sx={{ minWidth: { sm: 160 }, borderRadius: 999 }}>
+          <Box sx={{ display: "flex", gap: 0.75, flexShrink: 0 }}>
+            <Button variant="outlined" size="small" onClick={() => onRefund(order)} disabled={refunding} startIcon={<Undo2 size={13} />}
+              sx={{ borderRadius: "8px", fontSize: "0.75rem", py: 0.25, px: 1.5, minHeight: 28 }}>
               {refunding ? t("trips.refund.processing") : t("trips.refund.action")}
+            </Button>
+            <Button variant="contained" size="small" onClick={() => setGateOpen(true)} startIcon={<ScanLine size={13} />}
+              sx={{ borderRadius: "8px", fontSize: "0.75rem", py: 0.25, px: 1.5, minHeight: 28 }}>
+              {t("trips.gate.action")}
             </Button>
           </Box>
         )}
-      </CardContent>
-    </Card>
-  );
-}
+      </Box>
 
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-      <Typography variant="body2" color="text.secondary" sx={{ width: 80, flexShrink: 0 }}>{label}</Typography>
-      <Typography variant="body2" fontWeight={600}>{value}</Typography>
-    </Box>
+      {/* Gate entry dialog */}
+      <Dialog open={gateOpen} onClose={() => setGateOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: "16px", overflow: "hidden" } }}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2.5, pt: 2, pb: 0.5 }}>
+          <Typography variant="subtitle1" fontWeight={700}>{t("trips.gate.title")}</Typography>
+          <IconButton size="small" onClick={() => setGateOpen(false)} sx={{ bgcolor: "action.hover", borderRadius: "8px" }}>
+            <X size={16} />
+          </IconButton>
+        </Box>
+        <DialogContent sx={{ px: 2.5, pb: 2.5, pt: 1 }}>
+          {/* QR code area */}
+          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mb: 2.5 }}>
+            <Box sx={{ position: "relative" }}>
+              <Box sx={{
+                p: 2,
+                borderRadius: "14px",
+                bgcolor: "#fff",
+                border: 2,
+                borderColor: "primary.main",
+                display: "inline-flex",
+                boxShadow: (th) => `0 4px 24px -4px ${th.palette.primary.main}20`,
+              }}>
+                <QRCodeSVG
+                  value={JSON.stringify({
+                    order_no: order.order_no,
+                    train_no: order.train_no,
+                    from: order.from_station,
+                    to: order.to_station,
+                    date: order.run_date,
+                    departure: order.departure_time,
+                    arrival: order.arrival_time,
+                    passenger: order.passenger_name,
+                    seat: seatInfo,
+                    v: qrSuffix,
+                  })}
+                  size={220}
+                  level="M"
+                />
+              </Box>
+              <IconButton
+                size="small"
+                onClick={() => setQrSuffix((s) => s + "1")}
+                sx={{
+                  position: "absolute",
+                  bottom: -6,
+                  right: -6,
+                  bgcolor: "background.paper",
+                  border: 1,
+                  borderColor: "divider",
+                  borderRadius: "8px",
+                  width: 28,
+                  height: 28,
+                  boxShadow: "var(--shadow-card)",
+                  "&:hover": { bgcolor: "action.hover" },
+                }}
+              >
+                <RefreshCw size={13} />
+              </IconButton>
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5, fontFamily: "monospace", letterSpacing: 1.5, fontWeight: 600 }}>
+              {order.order_no}
+            </Typography>
+          </Box>
+
+          {/* Compact info strip */}
+          <Box sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 1,
+            px: 2,
+            py: 1.5,
+            borderRadius: "10px",
+            bgcolor: "action.hover",
+          }}>
+            <Box sx={{ textAlign: "center" }}>
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.6rem", display: "block" }}>{order.from_station}</Typography>
+              <Typography variant="subtitle2" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums" }}>{order.departure_time}</Typography>
+            </Box>
+            <Box sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
+              <Chip label={order.train_no} size="small" color="primary" sx={{ fontWeight: 700, borderRadius: "6px", height: 20, fontSize: "0.65rem" }} />
+              <Box sx={{ display: "flex", alignItems: "center", width: "80%", mt: 0.5 }}>
+                <Box sx={{ flex: 1, height: "1px", bgcolor: "divider" }} />
+                <ArrowRight size={12} style={{ opacity: 0.35 }} />
+              </Box>
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.6rem" }}>{seatInfo}</Typography>
+            </Box>
+            <Box sx={{ textAlign: "center" }}>
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.6rem", display: "block" }}>{order.to_station}</Typography>
+              <Typography variant="subtitle2" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums" }}>{order.arrival_time}</Typography>
+            </Box>
+          </Box>
+
+          <Box sx={{ display: "flex", justifyContent: "space-between", mt: 1.5, px: 0.5 }}>
+            <Typography variant="caption" color="text.secondary">{departureDate} · {order.passenger_name}</Typography>
+            <Typography variant="caption" color="text.secondary">{order.seat_label}</Typography>
+          </Box>
+
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "center", mt: 2, fontSize: "0.7rem", opacity: 0.7 }}>
+            {t("trips.gate.hint")}
+          </Typography>
+        </DialogContent>
+      </Dialog>
+    </Card>
   );
 }

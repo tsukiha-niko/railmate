@@ -73,7 +73,7 @@ export function TrainCardList({ trains, date, loading, emptyMessage }: Props) {
   const annotated = annotateTrains(trains, t);
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: { xs: 1.5, sm: 2 } }}>
+    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: { xs: 1.5, sm: 2 } }}>
       {annotated.map(({ train, tags }, i) => (
         <TrainCard key={`${train.train_no}:${train.from_station}:${train.departure_time}:${i}`} train={train} date={date} index={i} tags={tags} />
       ))}

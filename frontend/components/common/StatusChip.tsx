@@ -24,7 +24,7 @@ export function StatusChip({ label, status = "default", size = "small" }: Status
     <Chip
       label={label}
       size={size}
-      sx={{ bgcolor: bg, color: fg, fontWeight: 600, borderRadius: 999 }}
+      sx={{ bgcolor: bg, color: fg, fontWeight: 600, borderRadius: "6px" }}
     />
   );
 }

@@ -16,7 +16,9 @@ export function MobileNav() {
 
   if (!showBottomNav) return null;
 
-  const activeIndex = NAV_ITEMS.findIndex((item) => isNavItemActive(pathname, item.href));
+  const activeIndex = NAV_ITEMS.findIndex((item) =>
+    isNavItemActive(pathname, item.href),
+  );
 
   return (
     <Paper
@@ -25,10 +27,11 @@ export function MobileNav() {
         position: "sticky",
         bottom: 0,
         zIndex: 40,
-        borderTop: 1,
-        borderColor: "divider",
+        borderRadius: 0,
         bgcolor: (th) => `${th.palette.background.paper}D8`,
         backdropFilter: "blur(20px) saturate(1.3)",
+        boxShadow:
+          "0 -1px 0 0 var(--border), 0 -4px 12px -4px rgba(0,0,0,0.05)",
         pb: "env(safe-area-inset-bottom)",
       }}
     >
@@ -42,7 +45,21 @@ export function MobileNav() {
             minWidth: 0,
             color: "text.secondary",
             transition: "color 0.2s ease",
-            "&.Mui-selected": { color: "primary.main" },
+            position: "relative",
+            "&.Mui-selected": {
+              color: "primary.main",
+              "&::after": {
+                content: '""',
+                position: "absolute",
+                bottom: 6,
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: 3,
+                height: 3,
+                borderRadius: "50%",
+                bgcolor: "primary.main",
+              },
+            },
             "& .MuiBottomNavigationAction-label": {
               fontSize: "0.6875rem",
               "&.Mui-selected": { fontSize: "0.6875rem" },

@@ -20,7 +20,7 @@ export function SectionHeader({ icon, title }: SectionHeaderProps) {
             justifyContent: "center",
             width: 28,
             height: 28,
-            borderRadius: 2,
+            borderRadius: "8px",
             bgcolor: (th) => `${th.palette.primary.main}12`,
             color: "primary.main",
             "& svg": { width: 16, height: 16 },

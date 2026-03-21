@@ -35,12 +35,15 @@ export function RadioCardGroup<T extends string = string>({
             key={opt.value}
             variant="outlined"
             sx={{
-              borderRadius: 4,
+              borderRadius: selected ? "0 12px 12px 0" : "12px",
               borderColor: selected ? "primary.main" : (th) => `${th.palette.divider}80`,
+              ...(selected && { borderLeft: 3, borderLeftColor: "primary.main" }),
               bgcolor: selected ? (th) => `${th.palette.primary.main}08` : "transparent",
+              boxShadow: "none",
               transition: "all 0.2s ease",
               "&:hover": {
                 borderColor: selected ? "primary.main" : "primary.light",
+                boxShadow: "var(--shadow-card)",
               },
             }}
           >

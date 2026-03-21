@@ -20,7 +20,7 @@ export function TripModeSettings() {
   ];
 
   return (
-    <Card variant="outlined" sx={{ borderRadius: 5 }}>
+    <Card variant="outlined">
       <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2, p: { xs: 2, sm: 2.5 } }}>
         <SectionHeader icon={<Bot />} title={t("settings.tripMode")} />
         <RadioCardGroup options={options} value={planningMode} onChange={setPlanningMode} />

@@ -53,48 +53,53 @@ export function MiniTrainCard({ train, index, returnTo }: MiniTrainCardProps) {
   const lowestFare = getLowestFare(train);
 
   return (
-    <motion.div initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2, delay: index * 0.05 }}>
-      <Card variant="outlined" sx={{ borderRadius: 4, bgcolor: "background.default", borderColor: (th: any) => `${th.palette.divider}80`, transition: "all 0.2s ease", "&:hover": { borderColor: "primary.main", boxShadow: "0 4px 16px -4px rgba(59,130,246,0.12)" } }}>
-        <CardActionArea component={Link} href={href} sx={{ p: 1.5 }}>
-          <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-              <span className={cn("inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-bold text-white", getTrainTypeColor(train.train_type))}>{train.train_no}</span>
-              {dateLabel && <Chip label={dateLabel} size="small" color="warning" variant="outlined" sx={{ fontSize: "0.625rem", height: 20 }} />}
+    <motion.div initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.15, delay: index * 0.04 }}>
+      <Card
+        variant="outlined"
+        sx={{
+          borderRadius: "10px",
+          bgcolor: "background.default",
+          boxShadow: "none",
+          borderLeft: "2px solid transparent",
+          transition: "all 0.15s ease",
+          "&:hover": { borderLeftColor: "primary.main", boxShadow: "var(--shadow-card)" },
+        }}
+      >
+        <CardActionArea component={Link} href={href} sx={{ px: 1.25, py: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <span className={cn("inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold text-white leading-none", getTrainTypeColor(train.train_type))}>{train.train_no}</span>
+            {dateLabel && <Chip label={dateLabel} size="small" color="warning" variant="outlined" sx={{ fontSize: "0.6rem", height: 18, borderRadius: "4px" }} />}
+
+            <Box sx={{ minWidth: 0, ml: 0.5 }}>
+              <Typography variant="caption" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums", fontSize: "0.8rem" }}>{train.departure_time}</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ mx: 0.25, fontSize: "0.6rem" }}>{train.from_station}</Typography>
             </Box>
-            <Box sx={{ display: "flex", gap: 0.75, alignItems: "center" }}>
-              <Chip label={`${t("tickets.fare.from")} ${lowestFare != null ? formatPrice(lowestFare.price) : "--"}`} size="small" color="primary" variant="outlined" sx={{ fontWeight: 700, fontSize: "0.6875rem" }} />
+
+            <Box sx={{ flex: 1, display: "flex", alignItems: "center", gap: 0.25, minWidth: 32 }}>
+              <Box sx={{ flex: 1, height: "1px", bgcolor: "divider" }} />
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.25, color: "text.secondary", flexShrink: 0 }}>
+                <Clock size={9} />
+                <Typography variant="caption" sx={{ fontSize: "0.6rem" }}>{formatDuration(train.duration_minutes, fmtLocale)}</Typography>
+              </Box>
+              <ArrowRight size={10} style={{ opacity: 0.3, flexShrink: 0 }} />
+            </Box>
+
+            <Box sx={{ minWidth: 0, textAlign: "right" }}>
+              <Typography variant="caption" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums", fontSize: "0.8rem" }}>{train.arrival_time}</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ mx: 0.25, fontSize: "0.6rem" }}>{train.to_station}</Typography>
+            </Box>
+
+            <Box sx={{ display: "flex", gap: 0.5, alignItems: "center", flexShrink: 0, ml: 0.5 }}>
+              <Chip label={lowestFare != null ? formatPrice(lowestFare.price) : "--"} size="small" color="primary" variant="outlined" sx={{ fontWeight: 700, fontSize: "0.6rem", height: 18, borderRadius: "4px" }} />
               <Chip
                 label={formatRemaining(train.remaining_tickets, fmtLocale)}
                 size="small"
                 sx={{
-                  fontWeight: 700,
-                  fontSize: "0.6875rem",
+                  fontWeight: 700, fontSize: "0.6rem", height: 18, borderRadius: "4px",
                   bgcolor: train.remaining_tickets === 0 ? "error.main" : train.remaining_tickets != null && train.remaining_tickets < 10 ? "warning.main" : "success.main",
                   color: "white",
                 }}
               />
-            </Box>
-          </Box>
-
-          <Box sx={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 1.5, mt: 1.5 }}>
-            <Box>
-              <Typography variant="body1" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums" }}>{train.departure_time}</Typography>
-              <Typography variant="caption" color="text.secondary" noWrap>{train.from_station}</Typography>
-            </Box>
-            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5, color: "text.secondary" }}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: "0.6875rem", fontWeight: 500 }}>
-                <Clock size={12} />
-                <span>{formatDuration(train.duration_minutes, fmtLocale)}</span>
-              </Box>
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <Box sx={{ width: 24, height: "1px", bgcolor: "divider" }} />
-                <ArrowRight size={12} style={{ opacity: 0.5 }} />
-                <Box sx={{ width: 24, height: "1px", bgcolor: "divider" }} />
-              </Box>
-            </Box>
-            <Box sx={{ textAlign: "right" }}>
-              <Typography variant="body1" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums" }}>{train.arrival_time}</Typography>
-              <Typography variant="caption" color="text.secondary" noWrap>{train.to_station}</Typography>
             </Box>
           </Box>
         </CardActionArea>

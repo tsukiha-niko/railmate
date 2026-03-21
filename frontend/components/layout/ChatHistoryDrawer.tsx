@@ -29,19 +29,19 @@ export function ChatHistoryDrawer() {
       sx={{
         zIndex: 1300,
         "& .MuiDrawer-paper": {
-          width: "min(22rem, calc(100vw - 2rem))",
+          width: "min(18rem, calc(100vw - 3rem))",
           top: 0,
           height: "100%",
           borderRight: "1px solid",
           borderColor: "divider",
-          bgcolor: (th) => `${th.palette.background.paper}F5`,
-          backdropFilter: "blur(24px) saturate(1.4)",
-          borderTopRightRadius: 24,
-          borderBottomRightRadius: 24,
+          bgcolor: "background.paper",
+          borderTopRightRadius: 0,
+          borderBottomRightRadius: 0,
         },
-        "& .MuiBackdrop-root": { bgcolor: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" },
+        "& .MuiBackdrop-root": { bgcolor: "rgba(0,0,0,0.4)" },
       }}
     >
+      {/* Header with gradient */}
       <Box
         sx={{
           display: "flex",
@@ -52,36 +52,43 @@ export function ChatHistoryDrawer() {
           px: 2.5,
           py: 2,
           background: (th) =>
-            `linear-gradient(135deg, ${th.palette.primary.main}0A 0%, transparent 60%)`,
+            `linear-gradient(135deg, ${th.palette.primary.main}12 5%, ${th.palette.background.paper} 100%)`,
         }}
       >
         <Box
           sx={{
-            width: 36,
-            height: 36,
-            borderRadius: 3,
+            width: 34,
+            height: 34,
+            borderRadius: "8px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            bgcolor: (th) => `${th.palette.primary.main}14`,
-            color: "primary.main",
+            background: (th) =>
+              `linear-gradient(135deg, ${th.palette.primary.main}, ${th.palette.secondary.main})`,
+            color: "#fff",
+            flexShrink: 0,
           }}
         >
-          <Train size={18} />
+          <Train size={16} />
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="body2" fontWeight={700}>RailMate</Typography>
-          <Typography variant="caption" color="text.secondary">{t("chat.sidebar.subtitle")}</Typography>
+          <Typography variant="body2" fontWeight={700}>
+            RailMate
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {t("chat.sidebar.subtitle")}
+          </Typography>
         </Box>
         <IconButton
           onClick={() => setMobileSidebarOpen(false)}
           aria-label={t("chat.sidebar.close")}
           size="small"
-          sx={{ borderRadius: 3 }}
+          sx={{ borderRadius: 2 }}
         >
           <PanelLeftClose size={18} />
         </IconButton>
       </Box>
+
       <ConversationList onAction={() => setMobileSidebarOpen(false)} />
     </MuiDrawer>
   );
