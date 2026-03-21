@@ -2,39 +2,40 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageSquare, Search, Settings, Ticket } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { useI18n } from "@/lib/i18n/i18n";
-
-const TABS = [
-  { href: "/", labelKey: "nav.ai", icon: MessageSquare },
-  { href: "/search", labelKey: "nav.search", icon: Search },
-  { href: "/trips", labelKey: "nav.trips", icon: Ticket },
-  { href: "/settings", labelKey: "nav.settings", icon: Settings },
-];
+import { NAV_ITEMS, isNavItemActive } from "./nav-config";
+import { useResponsiveNavMode } from "@/hooks/useResponsiveNavMode";
 
 export function MobileNav() {
   const pathname = usePathname();
   const { t } = useI18n();
+  const { showBottomNav } = useResponsiveNavMode();
+
+  if (!showBottomNav) return null;
 
   return (
-    <nav className="z-40 flex shrink-0 items-center justify-around border-t border-border/70 bg-card/88 px-2 pt-1 pb-[calc(env(safe-area-inset-bottom)+0.3rem)] backdrop-blur-xl md:hidden">
-      {TABS.map((tab) => {
-        const active = tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href);
-        return (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            className={cn(
-              "flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl px-2 py-1 text-[10px] transition-all",
-              active ? "bg-primary/12 text-primary" : "text-muted-foreground",
-            )}
-          >
-            <tab.icon className={cn("h-[18px] w-[18px]", active && "scale-105")} />
-            <span>{t(tab.labelKey)}</span>
-          </Link>
-        );
-      })}
+    <nav className="z-40 border-t border-border/65 bg-card/86 px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.55rem)] backdrop-blur-xl">
+      <div className="grid w-full grid-cols-4 gap-1 rounded-[1.35rem] border border-border/70 bg-background/70 p-1.5 shadow-[0_18px_36px_-28px_rgba(15,23,42,0.68)]">
+        {NAV_ITEMS.map((tab) => {
+          const active = isNavItemActive(pathname, tab.href);
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              className={cn(
+                "flex min-w-0 flex-col items-center justify-center gap-1 rounded-[1rem] px-2 py-2 text-[11px] font-medium transition-all",
+                active
+                  ? "bg-primary/14 text-primary shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--primary)_32%,transparent)]"
+                  : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+              )}
+            >
+              <tab.icon className={cn("h-[18px] w-[18px] shrink-0", active && "scale-105")} />
+              <span className="truncate">{t(tab.labelKey)}</span>
+            </Link>
+          );
+        })}
+      </div>
     </nav>
   );
 }

@@ -24,6 +24,8 @@ import { useChatStore } from "@/store/chatStore";
 import { useTheme } from "@/lib/theme/theme";
 import { useI18n } from "@/lib/i18n/i18n";
 import { getTicketingCapabilities } from "@/services/ticketing";
+import { useResponsiveNavMode } from "@/hooks/useResponsiveNavMode";
+import { cn } from "@/utils/cn";
 
 export default function SettingsPage() {
   const location = useUserContextStore((s) => s.location);
@@ -36,6 +38,7 @@ export default function SettingsPage() {
   const { detectByIP, detectByGPS, loading, error } = useGeoLocation();
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, t } = useI18n();
+  const { showBottomNav } = useResponsiveNavMode();
 
   const [manualCity, setManualCity] = useState("");
   const [manualStation, setManualStation] = useState("");
@@ -212,7 +215,12 @@ export default function SettingsPage() {
   const sectionContentClass = "space-y-3 px-4 py-4 sm:px-5 sm:py-5";
 
   return (
-    <div className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col overflow-y-auto px-3 pb-24 pt-2 sm:px-5 sm:pb-6 sm:pt-4 lg:px-7 xl:px-8">
+    <div
+      className={cn(
+        "mx-auto flex w-full max-w-[1480px] flex-1 flex-col overflow-y-auto px-3 pt-2 sm:px-5 sm:pt-4 lg:px-7 xl:px-8",
+        showBottomNav ? "pb-24" : "pb-6",
+      )}
+    >
       <div className="space-y-4 xl:space-y-5">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
           <div className="grid gap-3 xl:grid-cols-[minmax(0,1.5fr)_minmax(300px,1fr)] xl:items-stretch xl:gap-4">

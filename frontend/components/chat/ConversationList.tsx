@@ -2,6 +2,7 @@
 
 import { MessageSquare, Plus, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useChatStore } from "@/store/chatStore";
 import { cn } from "@/utils/cn";
@@ -12,12 +13,20 @@ interface Props {
 }
 
 export function ConversationList({ onAction }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
   const conversations = useChatStore((s) => s.conversations);
   const activeId = useChatStore((s) => s.activeConversationId);
   const setActive = useChatStore((s) => s.setActiveConversation);
   const create = useChatStore((s) => s.createConversation);
   const remove = useChatStore((s) => s.deleteConversation);
   const { t } = useI18n();
+
+  const navigateToAssistantIfNeeded = () => {
+    if (pathname !== "/") {
+      router.push("/");
+    }
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -29,6 +38,7 @@ export function ConversationList({ onAction }: Props) {
         <Button
           onClick={() => {
             create();
+            navigateToAssistantIfNeeded();
             onAction?.();
           }}
           className="w-full justify-start gap-2"
@@ -47,12 +57,14 @@ export function ConversationList({ onAction }: Props) {
                 role="button" tabIndex={0}
                 onClick={() => {
                   setActive(conv.id);
+                  navigateToAssistantIfNeeded();
                   onAction?.();
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
                     setActive(conv.id);
+                    navigateToAssistantIfNeeded();
                     onAction?.();
                   }
                 }}
