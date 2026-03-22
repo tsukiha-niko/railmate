@@ -184,24 +184,45 @@ export function SeatPurchaseDialog({
 
       <DialogActions
         sx={(th) => ({
+          // 与 DialogContent 左右留白一致，避免按钮区视觉上比内容窄/歪
           px: 3,
-          py: 2,
+          py: 1.5,
+          pt: 2,
           gap: 1,
-          flexWrap: "wrap",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "stretch",
+          justifyContent: "flex-start",
+          width: "100%",
+          maxWidth: "100%",
+          boxSizing: "border-box",
           borderTop: `1px solid ${alpha(th.palette.divider, th.palette.mode === "dark" ? 0.35 : 0.5)}`,
+          // MUI 默认给「第二个及以后的按钮」加 margin-left，纵向排布时会把第二颗挤窄/错位
+          "& > .MuiButton-root": {
+            margin: "0 !important",
+            marginLeft: "0 !important",
+            marginTop: "0 !important",
+            alignSelf: "stretch",
+            width: "100%",
+            maxWidth: "100%",
+            minHeight: 42,
+            borderRadius: "12px",
+            py: 1,
+            fontWeight: 700,
+            fontSize: "0.875rem",
+            textTransform: "none",
+          },
         })}
       >
         {purchasedOrder ? (
           <>
-            <Button variant="contained" onClick={onViewTrips} startIcon={<Sparkles size={16} />} fullWidth sx={{ borderRadius: "10px" }}>
+            <Button variant="contained" onClick={onViewTrips} startIcon={<Sparkles size={16} />}>
               {t("booking.success.viewTrips")}
             </Button>
             <Button
               variant="outlined"
               onClick={onClose}
-              fullWidth
               sx={(th) => ({
-                borderRadius: "10px",
                 borderColor: alpha(th.palette.text.primary, th.palette.mode === "dark" ? 0.22 : 0.2),
                 color: "text.primary",
               })}
@@ -211,16 +232,14 @@ export function SeatPurchaseDialog({
           </>
         ) : (
           <>
-            <Button variant="contained" onClick={onConfirm} disabled={purchasing} startIcon={purchasing ? <CircularProgress size={16} /> : <Ticket size={16} />} fullWidth sx={{ borderRadius: "10px" }}>
+            <Button variant="contained" onClick={onConfirm} disabled={purchasing} startIcon={purchasing ? <CircularProgress size={16} color="inherit" /> : <Ticket size={16} />}>
               {purchasing ? t("booking.submitting") : t("booking.confirm")}
             </Button>
             <Button
               variant="outlined"
               onClick={onClose}
               disabled={purchasing}
-              fullWidth
               sx={(th) => ({
-                borderRadius: "10px",
                 borderColor: alpha(th.palette.text.primary, th.palette.mode === "dark" ? 0.22 : 0.2),
                 color: "text.primary",
               })}
