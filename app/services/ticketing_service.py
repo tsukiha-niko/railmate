@@ -131,14 +131,14 @@ class TicketingService:
             "live_booking_enabled": False,
             "requires_login_for_binding": False,
             "bound_account_username": auth.username if auth.is_logged_in else None,
-            "message": "演示模式已锁定开启，购票/退票/行程查询均为本地离线模拟，不会改动真实 12306 订单。",
+            "message": "演示模式：票务与行程均为模拟数据，仅供体验。",
         }
 
     def purchase_ticket(self, payload: TicketPurchaseRequest) -> TicketOrderResponse:
         auth = get_auth_instance()
         existing_count = len(self.session.exec(select(TicketOrder.id)).all())
         coach_no, seat_no = self._generate_seat_assignment(existing_count)
-        passenger_name = payload.passenger_name or auth.username or "演示乘客"
+        passenger_name = payload.passenger_name or auth.username or "乘车人"
         now = datetime.now()
         order = TicketOrder(
             order_no=self._random_code("RM"),
@@ -181,7 +181,7 @@ class TicketingService:
             return self._to_response(order)
 
         order.status = "refunded"
-        order.refund_note = reason or "演示模式退票：仅更新本地订单状态，不会触发真实退款。"
+        order.refund_note = reason or "退票已受理：已更新本地订单状态，不产生对外退款流程。"
         order.refunded_at = datetime.now()
         order.updated_at = datetime.now()
         self.session.add(order)
@@ -195,7 +195,7 @@ class TicketingService:
         if order.checked_in_at:
             return self._to_response(order)
         if self._departure_passed(order):
-            raise ValueError("已过发车时间，无法检票（演示规则：过期车票请退票或查看已过期分类）")
+            raise ValueError("已过发车时间，无法完成检票；请查看订单状态或办理退改。")
         order.checked_in_at = datetime.now()
         order.updated_at = datetime.now()
         self.session.add(order)
@@ -231,7 +231,7 @@ class TicketingService:
         if not order:
             raise ValueError("未找到该电子票对应订单")
         if user_id and order.user_id and order.user_id != user_id:
-            raise ValueError("该车票不属于当前用户（演示校验）")
+            raise ValueError("该车票与当前用户不匹配")
         train_no = data.get("train_no")
         if train_no and isinstance(train_no, str) and train_no.strip().upper() != (order.train_no or "").upper():
             raise ValueError("车次信息与订单不一致")

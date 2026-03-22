@@ -1,25 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
 import Switch from "@mui/material/Switch";
 import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
-import { ShieldCheck } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useI18n } from "@/lib/i18n/i18n";
-import { getTicketingCapabilities } from "@/services/ticketing";
 
 export function DemoModeCard() {
   const { t } = useI18n();
-  const [demoMessage, setDemoMessage] = useState("");
-
-  useEffect(() => {
-    getTicketingCapabilities()
-      .then((cap) => setDemoMessage(cap.message))
-      .catch(() => setDemoMessage(""));
-  }, []);
 
   return (
     <Card
@@ -34,7 +25,7 @@ export function DemoModeCard() {
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 2 }}>
           <Box>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-              <ShieldCheck size={20} style={{ color: "var(--primary)" }} />
+              <Sparkles size={20} style={{ color: "var(--primary)" }} />
               <Typography variant="subtitle1" fontWeight={700}>{t("settings.demoMode.title")}</Typography>
               <Chip label={t("settings.demoMode.locked")} size="small" />
             </Box>
@@ -52,7 +43,7 @@ export function DemoModeCard() {
           {[
             { label: t("settings.demoMode.effect.buy"), desc: t("settings.demoMode.effect.buyDesc") },
             { label: t("settings.demoMode.effect.refund"), desc: t("settings.demoMode.effect.refundDesc") },
-            { label: t("settings.demoMode.effect.debug"), desc: demoMessage || t("settings.demoMode.effect.debugDesc") },
+            { label: t("settings.demoMode.effect.debug"), desc: t("settings.demoMode.effect.debugDesc") },
           ].map((item) => (
             <Box key={item.label} sx={{ borderRadius: "12px", border: 1, borderColor: (th: any) => `${th.palette.divider}60`, bgcolor: "background.paper", p: 2, minHeight: { xl: 120 } }}>
               <Typography variant="caption" color="text.secondary">{item.label}</Typography>

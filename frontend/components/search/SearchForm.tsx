@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useLayoutEffect } from "react";
 import { Search, ArrowLeftRight, MapPin, CalendarDays, Clock, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import Card from "@mui/material/Card";
@@ -20,6 +20,7 @@ import type { TrainSearchParams } from "@/types/trains";
 import { useI18n } from "@/lib/i18n/i18n";
 import { useSortedStationsForSearch } from "@/hooks/queries/useStations";
 import { formatPrice } from "@/utils/format";
+import { useIsClient } from "@/hooks/useIsClient";
 
 export interface BudgetSliderValue {
   maxBound: number;
@@ -43,12 +44,25 @@ export function SearchForm({ onSearch, loading, budgetSlider }: Props) {
   const prevDate = useSearchStore((s) => s.searchDate);
   const recentSearches = useSearchStore((s) => s.recentSearches);
   const clearRecentSearches = useSearchStore((s) => s.clearRecentSearches);
+  const isClient = useIsClient();
   const [from, setFrom] = useState(prevFrom || location?.station || "");
   const [to, setTo] = useState(prevTo || "");
-  const [date, setDate] = useState(prevDate || getToday());
+  /** 首帧固定空串，避免 SSR/客户端时区与持久化 searchDate 不一致导致 hydration 报错 */
+  const [date, setDate] = useState("");
   const trainType = useSearchStore((s) => s.trainTypeFilter);
   const setTrainType = useSearchStore((s) => s.setTrainTypeFilter);
   const { t } = useI18n();
+
+  const todayStr = isClient ? getToday() : "";
+  const tomorrowStr = isClient ? getTomorrow() : "";
+
+  useLayoutEffect(() => {
+    if (!isClient) return;
+    setDate((cur) => {
+      if (cur) return cur;
+      return prevDate || getToday();
+    });
+  }, [isClient, prevDate]);
 
   const handleRecentClick = useCallback((entry: RecentSearch) => {
     setFrom(entry.from);
@@ -69,7 +83,8 @@ export function SearchForm({ onSearch, loading, budgetSlider }: Props) {
   const handleSwap = useCallback(() => { setFrom(to); setTo(from); }, [from, to]);
   const handleSearch = useCallback(() => {
     if (!from.trim() || !to.trim()) return;
-    onSearch({ from_station: from.trim(), to_station: to.trim(), travel_date: date });
+    const travelDate = date || getToday();
+    onSearch({ from_station: from.trim(), to_station: to.trim(), travel_date: travelDate });
   }, [from, to, date, onSearch]);
   const useMyLocation = useCallback(() => {
     if (location?.station) setFrom(location.station);
@@ -124,21 +139,22 @@ export function SearchForm({ onSearch, loading, budgetSlider }: Props) {
             />
           </Box>
 
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr auto" }, alignItems: "flex-end", gap: { xs: 1.25, sm: 1.5 } }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr) auto", sm: "minmax(0, 1fr) auto" }, alignItems: "flex-end", gap: { xs: 1, sm: 1.5 }, columnGap: { xs: 0.75, sm: 1.5 } }}>
             <TextField
               label={<Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}><CalendarDays size={14} aria-hidden />{t("search.departDate")}</Box>}
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              slotProps={{ htmlInput: { min: getToday() } }}
+              slotProps={{ htmlInput: isClient && todayStr ? { min: todayStr } : {} }}
               fullWidth
               sx={{
+                minWidth: 0,
                 "& .MuiOutlinedInput-root": { borderRadius: "12px" },
               }}
             />
-            <Box sx={{ display: "flex", gap: 0.75, flexShrink: 0, alignSelf: { xs: "stretch", sm: "end" }, justifyContent: { xs: "stretch", sm: "flex-start" } }}>
-              <Button variant={date === getToday() ? "contained" : "outlined"} size="medium" onClick={() => setDate(getToday())} sx={{ borderRadius: "10px", minHeight: 40, flex: { xs: 1, sm: "none" }, px: 1.75 }}>{t("search.today")}</Button>
-              <Button variant={date === getTomorrow() ? "contained" : "outlined"} size="medium" onClick={() => setDate(getTomorrow())} sx={{ borderRadius: "10px", minHeight: 40, flex: { xs: 1, sm: "none" }, px: 1.75 }}>{t("search.tomorrow")}</Button>
+            <Box sx={{ display: "flex", gap: { xs: 0.5, sm: 0.75 }, flexShrink: 0, alignSelf: "end", justifyContent: "flex-start" }}>
+              <Button variant={isClient && date === todayStr ? "contained" : "outlined"} size="medium" onClick={() => setDate(getToday())} sx={{ borderRadius: "10px", minHeight: 40, flexShrink: 0, px: { xs: 1.25, sm: 1.75 }, fontSize: { xs: "0.8125rem", sm: "0.875rem" }, whiteSpace: "nowrap" }}>{t("search.today")}</Button>
+              <Button variant={isClient && date === tomorrowStr ? "contained" : "outlined"} size="medium" onClick={() => setDate(getTomorrow())} sx={{ borderRadius: "10px", minHeight: 40, flexShrink: 0, px: { xs: 1.25, sm: 1.75 }, fontSize: { xs: "0.8125rem", sm: "0.875rem" }, whiteSpace: "nowrap" }}>{t("search.tomorrow")}</Button>
             </Box>
           </Box>
 
@@ -233,7 +249,7 @@ export function SearchForm({ onSearch, loading, budgetSlider }: Props) {
             variant="contained"
             size="large"
             onClick={handleSearch}
-            disabled={!from.trim() || !to.trim() || loading}
+            disabled={!from.trim() || !to.trim() || !date || loading}
             startIcon={<Search size={18} />}
             fullWidth
             sx={{ height: { xs: 48, sm: 52 }, borderRadius: "14px", fontSize: "0.9375rem", fontWeight: 700, boxShadow: "var(--shadow-primary)" }}

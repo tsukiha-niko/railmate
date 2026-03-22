@@ -21,7 +21,7 @@ import type { TicketOrder } from "@/types/ticketing";
 import { useChatStore } from "@/store/chatStore";
 import { useTrainSchedule, useTrainPrices, useTicketingCapabilities } from "@/hooks/queries/useTrainDetail";
 import { formatPrice, getFareLabel, getTrainTypeLabel, getTrainTypeColor } from "@/utils/format";
-import { formatDateLocalized, getToday } from "@/utils/date";
+import { formatDateLocalized, formatDuration, getToday } from "@/utils/date";
 import { arrivalCalendarDayOffset, segmentDurationByStops } from "@/utils/trainCrossDay";
 import { cn } from "@/utils/cn";
 import { useI18n } from "@/lib/i18n/i18n";
@@ -201,7 +201,7 @@ export default function TrainDetailPage() {
                     variant="h5"
                     fontWeight={800}
                     sx={{
-                      fontSize: { xs: "1.05rem", sm: "1.55rem" },
+                      fontSize: { xs: "1.35rem", sm: "1.95rem" },
                       letterSpacing: "-0.03em",
                       lineHeight: 1.25,
                       overflow: "hidden",
@@ -233,32 +233,51 @@ export default function TrainDetailPage() {
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
+                    justifyContent: "center",
                     gap: 0.5,
                     flexShrink: 0,
-                    width: { xs: 88, sm: 120 },
-                    maxWidth: { xs: 88, sm: 140 },
+                    /** 随历时文案撑开中间列，箭头横线同步变长，避免压缩文字 */
+                    width: "max-content",
+                    minWidth: { xs: 104, sm: 132 },
+                    maxWidth: "100%",
+                    px: { xs: 0.25, sm: 0.5 },
                   }}
                 >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 0.35, sm: 0.75 }, width: "100%" }}>
-                    <Box sx={{ height: 2, flex: 1, borderRadius: 1, bgcolor: "divider", minWidth: 0 }} />
-                    <ArrowRight size={20} strokeWidth={2.25} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
-                    <Box sx={{ height: 2, flex: 1, borderRadius: 1, bgcolor: "divider", minWidth: 0 }} />
-                  </Box>
                   {totalStops > 0 ? (
                     <Typography
                       variant="body1"
                       color="text.secondary"
+                      textAlign="center"
                       sx={{
                         fontWeight: 700,
                         fontSize: { xs: "0.78rem", sm: "1.05rem" },
                         letterSpacing: "0.02em",
                         whiteSpace: "nowrap",
-                        maxWidth: "100%",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
+                        lineHeight: 1.25,
                       }}
                     >
                       {locale === "en" ? `${totalStops} stops` : `共${totalStops}站`}
+                    </Typography>
+                  ) : null}
+                  <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 0.35, sm: 0.75 }, width: "100%", minWidth: { xs: 96, sm: 120 } }}>
+                    <Box sx={{ height: 2, flex: 1, borderRadius: 1, bgcolor: "divider", minWidth: 12 }} />
+                    <ArrowRight size={20} strokeWidth={2.25} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
+                    <Box sx={{ height: 2, flex: 1, borderRadius: 1, bgcolor: "divider", minWidth: 12 }} />
+                  </Box>
+                  {segmentMinutes != null && segmentMinutes > 0 ? (
+                    <Typography
+                      variant="body1"
+                      color="text.secondary"
+                      textAlign="center"
+                      sx={{
+                        fontWeight: 700,
+                        fontSize: { xs: "0.78rem", sm: "1.05rem" },
+                        letterSpacing: "0.02em",
+                        whiteSpace: "nowrap",
+                        lineHeight: 1.25,
+                      }}
+                    >
+                      {t("train.totalDuration", { duration: formatDuration(segmentMinutes, dateLocale) })}
                     </Typography>
                   ) : null}
                 </Box>
@@ -267,7 +286,7 @@ export default function TrainDetailPage() {
                     variant="h5"
                     fontWeight={800}
                     sx={{
-                      fontSize: { xs: "1.05rem", sm: "1.55rem" },
+                      fontSize: { xs: "1.35rem", sm: "1.95rem" },
                       letterSpacing: "-0.03em",
                       lineHeight: 1.25,
                       overflow: "hidden",

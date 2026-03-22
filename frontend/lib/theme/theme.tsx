@@ -108,7 +108,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <ThemeContext.Provider value={value}>
       <MuiThemeProvider theme={muiTheme}>
-        <CssBaseline enableColorScheme />
+        {/*
+          首帧不渲染 CssBaseline：其注入的 emotion 全局 <style> 与 ClientShell 的 ShellSkeleton
+          在 SSR/客户端首帧的兄弟节点顺序不一致，会触发 hydration mismatch。
+        */}
+        {mounted ? <CssBaseline enableColorScheme /> : null}
         {children}
       </MuiThemeProvider>
     </ThemeContext.Provider>

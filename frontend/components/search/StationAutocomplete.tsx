@@ -6,7 +6,8 @@ import TextField from "@mui/material/TextField";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import InputAdornment from "@mui/material/InputAdornment";
-import { MapPin, Star } from "lucide-react";
+import { MapPin, Star, X } from "lucide-react";
+import IconButton from "@mui/material/IconButton";
 import type { Station } from "@/types/trains";
 import { useStations } from "@/hooks/queries/useStations";
 import { useUserContextStore } from "@/store/userContextStore";
@@ -41,6 +42,7 @@ export function StationAutocomplete({ label, value, onChange, stations, placehol
   return (
     <Autocomplete
       freeSolo
+      disableClearable
       options={stations}
       inputValue={value}
       onInputChange={(_e, newValue) => onChange(newValue)}
@@ -81,7 +83,24 @@ export function StationAutocomplete({ label, value, onChange, stations, placehol
               ...params.InputProps,
               endAdornment: (
                 <>
-                  {endAdornment && <InputAdornment position="end">{endAdornment}</InputAdornment>}
+                  {endAdornment ? <InputAdornment position="end">{endAdornment}</InputAdornment> : null}
+                  <InputAdornment position="end" sx={{ ml: 0, mr: -0.5 }}>
+                    <IconButton
+                      size="small"
+                      tabIndex={-1}
+                      aria-label="清除"
+                      title=""
+                      onClick={() => onChange("")}
+                      disabled={!value.trim()}
+                      sx={{
+                        p: 0.5,
+                        borderRadius: "8px",
+                        color: "text.secondary",
+                      }}
+                    >
+                      <X size={15} strokeWidth={2.25} />
+                    </IconButton>
+                  </InputAdornment>
                   {params.InputProps.endAdornment}
                 </>
               ),

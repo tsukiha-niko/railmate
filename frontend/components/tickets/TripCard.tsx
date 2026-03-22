@@ -141,7 +141,7 @@ export function TripCard({ order, refunding, onRefund }: TripCardProps) {
           <Chip label={order.train_no} color="primary" size="small" sx={{ fontWeight: 700, height: 24 }} />
           {order.train_type && <Typography variant="caption" color="text.secondary">{getTrainTypeLabel(order.train_type, fmtLocale)}</Typography>}
           <Chip label={statusChipLabel(phase, t)} size="small" color={statusChipColor} sx={{ height: 22, fontSize: "0.6rem" }} />
-          {order.demo_mode && <Chip label="Demo" size="small" variant="outlined" sx={{ height: 22, fontSize: "0.6rem" }} />}
+          {order.demo_mode && <Chip label={t("booking.demo.badge")} size="small" variant="outlined" sx={{ height: 22, fontSize: "0.6rem" }} />}
         </Box>
         <Typography variant="subtitle2" fontWeight={800} color="warning.main" sx={{ fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
           {formatPrice(order.fare_amount)}

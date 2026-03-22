@@ -23,7 +23,7 @@ class TicketOrder(SQLModel, table=True):
 
     user_id: Optional[str] = Field(default=None, index=True, max_length=128)
     account_username: Optional[str] = Field(default=None, max_length=64)
-    passenger_name: str = Field(default="演示乘客", max_length=64)
+    passenger_name: str = Field(default="乘车人", max_length=64)
 
     demo_mode: bool = Field(default=True, index=True)
     status: str = Field(default="booked", index=True, max_length=20)

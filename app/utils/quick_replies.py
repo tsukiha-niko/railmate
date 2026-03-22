@@ -6,11 +6,8 @@ import json
 import re
 from typing import List, Tuple
 
-# 匹配文末 ::actions::["a","b"]，兼容模型多打一个冒号
-_ACTIONS_SUFFIX = re.compile(
-    r"(?:^|\n)\s*:?:?actions::\s*(\[[\s\S]*?\])\s*\Z",
-    re.MULTILINE,
-)
+# 匹配文中任意位置的 ::actions::["a","b"]（不要求在文末），兼容模型多打一个冒号
+_ACTIONS_BLOCK = re.compile(r"\s*:?:?actions::\s*(\[[\s\S]*?\])")
 
 _MAX_BUTTONS = 3
 _MAX_LABEL_LEN = 32
@@ -20,7 +17,7 @@ def split_answer_and_quick_replies(text: str) -> Tuple[str, List[str]]:
     """返回 (展示用正文, 最多 3 条按钮文案)。"""
     if not text or not str(text).strip():
         return text, []
-    m = _ACTIONS_SUFFIX.search(text)
+    m = _ACTIONS_BLOCK.search(text)
     if not m:
         return text, []
     try:
@@ -39,5 +36,12 @@ def split_answer_and_quick_replies(text: str) -> Tuple[str, List[str]]:
         labels.append(s)
         if len(labels) >= _MAX_BUTTONS:
             break
-    clean = text[: m.start()].rstrip()
+    if not labels:
+        return text, []
+    before = text[: m.start()].rstrip()
+    after = text[m.end() :].lstrip()
+    if before and after:
+        clean = f"{before} {after}".strip()
+    else:
+        clean = (before or after).strip()
     return clean, labels
