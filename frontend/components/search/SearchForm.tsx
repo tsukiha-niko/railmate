@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { Search, ArrowLeftRight, MapPin, CalendarDays, Clock, Trash2 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import TextField from "@mui/material/TextField";
@@ -11,12 +11,11 @@ import IconButton from "@mui/material/IconButton";
 import Chip from "@mui/material/Chip";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import ButtonBase from "@mui/material/ButtonBase";
 import Slider from "@mui/material/Slider";
 import { StationAutocomplete } from "./StationAutocomplete";
 import { useUserContextStore } from "@/store/userContextStore";
 import { useSearchStore, type RecentSearch } from "@/store/searchStore";
-import { getToday, getTomorrow, formatDateLocalized } from "@/utils/date";
+import { getToday, getTomorrow } from "@/utils/date";
 import type { TrainSearchParams } from "@/types/trains";
 import { useI18n } from "@/lib/i18n/i18n";
 import { useSortedStationsForSearch } from "@/hooks/queries/useStations";
@@ -49,7 +48,7 @@ export function SearchForm({ onSearch, loading, budgetSlider }: Props) {
   const [date, setDate] = useState(prevDate || getToday());
   const trainType = useSearchStore((s) => s.trainTypeFilter);
   const setTrainType = useSearchStore((s) => s.setTrainTypeFilter);
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
 
   const handleRecentClick = useCallback((entry: RecentSearch) => {
     setFrom(entry.from);
@@ -80,8 +79,8 @@ export function SearchForm({ onSearch, loading, budgetSlider }: Props) {
   return (
     <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
       <Card variant="outlined" sx={{ borderRadius: "18px", borderColor: (th) => `${th.palette.divider}70`, boxShadow: "var(--shadow-card)" }}>
-        <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2.5, p: { xs: 2.5, sm: 3 } }}>
-          <Box sx={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "flex-end", gap: { xs: 1, sm: 1.5 } }}>
+        <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2.25, p: { xs: 2.5, sm: 3 } }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr auto 1fr", sm: "1fr 44px 1fr" }, alignItems: "flex-end", gap: { xs: 1, sm: 1.25 }, columnGap: { sm: 1.5 } }}>
             <StationAutocomplete
               label={t("search.from")}
               value={from}
@@ -99,13 +98,16 @@ export function SearchForm({ onSearch, loading, budgetSlider }: Props) {
             />
             <IconButton
               onClick={handleSwap}
+              aria-label={t("search.swapStations")}
               sx={{
                 border: 1,
                 borderColor: (th) => `${th.palette.divider}80`,
-                width: 40,
-                height: 40,
+                width: 44,
+                height: 44,
                 borderRadius: "12px",
-                alignSelf: "center",
+                alignSelf: "end",
+                mb: "2px",
+                flexShrink: 0,
                 "&:hover": { borderColor: "primary.main", bgcolor: (th) => `${th.palette.primary.main}0A` },
                 transition: "all 0.2s ease",
               }}
@@ -122,44 +124,51 @@ export function SearchForm({ onSearch, loading, budgetSlider }: Props) {
             />
           </Box>
 
-          <Box sx={{ display: "grid", gridTemplateColumns: "1fr auto", alignItems: "flex-end", gap: { xs: 1, sm: 1.5 } }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr auto" }, alignItems: "flex-end", gap: { xs: 1.25, sm: 1.5 } }}>
             <TextField
-              label={<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}><CalendarDays size={14} />{t("search.departDate")}</Box>}
+              label={<Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}><CalendarDays size={14} aria-hidden />{t("search.departDate")}</Box>}
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
               slotProps={{ htmlInput: { min: getToday() } }}
               fullWidth
+              sx={{
+                "& .MuiOutlinedInput-root": { borderRadius: "12px" },
+              }}
             />
-            <Box sx={{ display: "flex", gap: 0.75 }}>
-              <Button variant={date === getToday() ? "contained" : "outlined"} size="small" onClick={() => setDate(getToday())} sx={{ borderRadius: "10px" }}>{t("search.today")}</Button>
-              <Button variant={date === getTomorrow() ? "contained" : "outlined"} size="small" onClick={() => setDate(getTomorrow())} sx={{ borderRadius: "10px" }}>{t("search.tomorrow")}</Button>
+            <Box sx={{ display: "flex", gap: 0.75, flexShrink: 0, alignSelf: { xs: "stretch", sm: "end" }, justifyContent: { xs: "stretch", sm: "flex-start" } }}>
+              <Button variant={date === getToday() ? "contained" : "outlined"} size="medium" onClick={() => setDate(getToday())} sx={{ borderRadius: "10px", minHeight: 40, flex: { xs: 1, sm: "none" }, px: 1.75 }}>{t("search.today")}</Button>
+              <Button variant={date === getTomorrow() ? "contained" : "outlined"} size="medium" onClick={() => setDate(getTomorrow())} sx={{ borderRadius: "10px", minHeight: 40, flex: { xs: 1, sm: "none" }, px: 1.75 }}>{t("search.tomorrow")}</Button>
             </Box>
           </Box>
 
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap" }}>
-            <Typography variant="caption" color="text.secondary">{t("search.trainType")}</Typography>
-            {TRAIN_TYPES.map((tt) => (
-              <Chip
-                key={tt.value}
-                label={tt.label}
-                size="small"
-                variant={trainType === tt.value ? "filled" : "outlined"}
-                color={trainType === tt.value ? "primary" : "default"}
-                onClick={() => setTrainType(tt.value)}
-                clickable
-                sx={{ borderRadius: "8px" }}
-              />
-            ))}
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, letterSpacing: "0.02em" }}>
+              {t("search.trainType")}
+            </Typography>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, alignItems: "center" }}>
+              {TRAIN_TYPES.map((tt) => (
+                <Chip
+                  key={tt.value}
+                  label={tt.label}
+                  size="small"
+                  variant={trainType === tt.value ? "filled" : "outlined"}
+                  color={trainType === tt.value ? "primary" : "default"}
+                  onClick={() => setTrainType(tt.value)}
+                  clickable
+                  sx={{ borderRadius: "8px", height: 28, "& .MuiChip-label": { px: 1.1, fontSize: "0.75rem" } }}
+                />
+              ))}
+            </Box>
           </Box>
 
           {budgetSlider && budgetSlider.maxBound > 0 ? (
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75, pt: 0.25 }}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1, pt: 0.25 }}>
               <Box>
-                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, letterSpacing: "0.02em" }}>
                   {t("search.budget")}
                 </Typography>
-                <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.25, lineHeight: 1.45 }}>
+                <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.35, lineHeight: 1.5 }}>
                   {t("search.budgetHint")}
                 </Typography>
               </Box>
@@ -176,13 +185,14 @@ export function SearchForm({ onSearch, loading, budgetSlider }: Props) {
                 valueLabelDisplay="auto"
                 valueLabelFormat={(x) => formatPrice(x)}
                 sx={{
-                  mt: 0.5,
-                  mx: 0.75,
+                  mt: 0.25,
+                  mx: 1,
+                  alignSelf: "stretch",
                   "& .MuiSlider-thumb": { width: 18, height: 18 },
                   "& .MuiSlider-valueLabel": { fontSize: "0.7rem" },
                 }}
               />
-              <Box sx={{ display: "flex", justifyContent: "space-between", px: 0.5 }}>
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", px: 1, mt: -0.25 }}>
                 <Typography variant="caption" color="text.secondary" sx={{ fontVariantNumeric: "tabular-nums" }}>
                   {formatPrice(budgetSlider.minValue)}
                 </Typography>
@@ -194,16 +204,16 @@ export function SearchForm({ onSearch, loading, budgetSlider }: Props) {
           ) : null}
 
           {recentSearches.length > 0 && (
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                  <Clock size={12} />{t("search.recentSearches")}
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 32 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 0.6, fontWeight: 600, letterSpacing: "0.02em" }}>
+                  <Clock size={13} aria-hidden />{t("search.recentSearches")}
                 </Typography>
-                <IconButton size="small" onClick={clearRecentSearches} sx={{ opacity: 0.5 }}>
-                  <Trash2 size={12} />
+                <IconButton size="small" onClick={clearRecentSearches} aria-label={t("search.clearRecent")} sx={{ opacity: 0.55, borderRadius: "10px" }}>
+                  <Trash2 size={14} />
                 </IconButton>
               </Box>
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, alignItems: "center" }}>
                 {recentSearches.slice(0, 5).map((entry, i) => (
                   <Chip
                     key={i}
@@ -212,7 +222,7 @@ export function SearchForm({ onSearch, loading, budgetSlider }: Props) {
                     variant="outlined"
                     clickable
                     onClick={() => handleRecentClick(entry)}
-                    sx={{ borderRadius: "8px", fontSize: "0.75rem" }}
+                    sx={{ borderRadius: "8px", height: 28, fontSize: "0.75rem", "& .MuiChip-label": { px: 1.1 } }}
                   />
                 ))}
               </Box>
@@ -230,10 +240,6 @@ export function SearchForm({ onSearch, loading, budgetSlider }: Props) {
           >
             {loading ? t("search.searching") : t("search.btn.search")}
           </Button>
-
-          <Typography variant="caption" color="text.secondary" align="center">
-            {formatDateLocalized(date, locale === "en" ? "en" : "zh-CN")}
-          </Typography>
         </CardContent>
       </Card>
     </motion.div>

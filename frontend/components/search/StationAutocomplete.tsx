@@ -75,6 +75,7 @@ export function StationAutocomplete({ label, value, onChange, stations, placehol
           label={label}
           placeholder={placeholder}
           onKeyDown={(e) => e.key === "Enter" && onEnter?.()}
+          sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
           slotProps={{
             input: {
               ...params.InputProps,

@@ -128,8 +128,9 @@ export function ChatPanel() {
           </div>
         )}
       </div>
-      <div className="border-t border-border/40 bg-card/60 backdrop-blur-md px-3 py-2 sm:px-5 sm:py-2.5 lg:px-6 lg:rounded-b-[1.25rem]">
-        <div className="mx-auto w-full max-w-3xl">
+      <div className="border-t border-border/40 bg-card/60 backdrop-blur-md py-2 sm:py-2.5 lg:rounded-b-[1.25rem]">
+        {/** 与上方消息列表同一 max-w + 水平 padding，输入框与对话内容区对齐 */}
+        <div className="mx-auto w-full max-w-5xl px-3 sm:px-5 lg:px-6">
           <ChatInput onSend={sendMessage} loading={loading} conversationId={activeConv?.id} />
         </div>
       </div>

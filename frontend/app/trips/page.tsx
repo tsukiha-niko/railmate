@@ -94,6 +94,7 @@ export default function TripsPage() {
           title={t("trips.title")}
           subtitle={t("trips.subtitle")}
           badges={data?.demo_mode ? [t("booking.demo.badge")] : undefined}
+          badgesInlineWithTitle
           action={
             <Button variant="outlined" onClick={() => refetch()} disabled={loading} startIcon={loading ? <CircularProgress size={16} /> : <RefreshCw size={16} />} sx={{ alignSelf: "flex-start", borderRadius: "8px" }}>
               {t("trips.refresh")}

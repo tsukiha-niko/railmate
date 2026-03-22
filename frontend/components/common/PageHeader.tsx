@@ -11,11 +11,13 @@ interface PageHeaderProps {
   title: string;
   subtitle?: string;
   badges?: string[];
+  /** 为 true 时徽章与标题同一行（标题右侧），不再出现在副标题下方 */
+  badgesInlineWithTitle?: boolean;
   action?: ReactNode;
   children?: ReactNode;
 }
 
-export function PageHeader({ title, subtitle, badges, action, children }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, badges, badgesInlineWithTitle, action, children }: PageHeaderProps) {
   return (
     <Card
       variant="outlined"
@@ -27,20 +29,40 @@ export function PageHeader({ title, subtitle, badges, action, children }: PageHe
     >
       <CardContent sx={{ p: { xs: 2.5, sm: 3 }, "&:last-child": { pb: { xs: 2.5, sm: 3 } } }}>
         <Box sx={{ display: "flex", flexDirection: { xs: "column", lg: "row" }, gap: 2, justifyContent: "space-between", alignItems: { lg: "flex-start" } }}>
-          <Box>
-            <Typography variant="h5" fontWeight={800} sx={{ letterSpacing: "-0.01em" }}>{title}</Typography>
+          <Box sx={{ minWidth: 0, flex: action ? 1 : undefined }}>
+            <Box
+              sx={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                gap: 1,
+                columnGap: 1.25,
+                rowGap: 0.75,
+              }}
+            >
+              <Typography variant="h5" fontWeight={800} sx={{ letterSpacing: "-0.01em" }}>
+                {title}
+              </Typography>
+              {badges && badges.length > 0 && badgesInlineWithTitle ? (
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, alignItems: "center" }}>
+                  {badges.map((b) => (
+                    <Chip key={b} label={b} size="small" variant="outlined" />
+                  ))}
+                </Box>
+              ) : null}
+            </Box>
             {subtitle && (
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
                 {subtitle}
               </Typography>
             )}
-            {badges && badges.length > 0 && (
+            {badges && badges.length > 0 && !badgesInlineWithTitle ? (
               <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mt: 1.5 }}>
                 {badges.map((b) => (
                   <Chip key={b} label={b} size="small" variant="outlined" />
                 ))}
               </Box>
-            )}
+            ) : null}
           </Box>
           {action}
         </Box>

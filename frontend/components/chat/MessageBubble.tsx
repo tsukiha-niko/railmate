@@ -87,25 +87,62 @@ export function MessageBubble({ message, index, onQueryTransfer, onSuggestionCli
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.25), ease: [0.22, 1, 0.36, 1] }}
     >
-      <Box sx={{ display: "flex", width: "100%", gap: 1.5, flexDirection: isUser ? "row-reverse" : "row" }}>
+      <Box
+        sx={{
+          display: "flex",
+          width: "100%",
+          gap: 1.5,
+          flexDirection: isUser ? "row-reverse" : "row",
+          alignItems: "flex-start",
+        }}
+      >
         <Avatar
           sx={{
-            width: 34,
-            height: 34,
+            width: 36,
+            height: 36,
+            flexShrink: 0,
             borderRadius: "10px",
             bgcolor: isUser ? "primary.main" : undefined,
             background: isUser ? undefined : "linear-gradient(135deg, #3B82F6, #06B6D4)",
             fontSize: "0.875rem",
+            boxShadow: "none",
           }}
         >
-          {isUser ? <User size={16} /> : <Bot size={16} />}
+          {isUser ? <User size={17} /> : <Bot size={17} />}
         </Avatar>
 
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75, minWidth: 0, overflow: "hidden", ...(isUser ? { ml: "auto", maxWidth: "75%", alignItems: "flex-end" } : { width: "100%", alignItems: "flex-start" }) }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 0.75,
+            minWidth: 0,
+            /** 用户气泡有外扩阴影，不能用 hidden 裁切，否则圆角处会出现脏边 */
+            overflow: isUser ? "visible" : "hidden",
+            ...(isUser ? { ml: "auto", maxWidth: "min(75%,560px)", alignItems: "flex-end" } : { flex: 1, alignItems: "flex-start" }),
+          }}
+        >
           {!isUser && message.tool_calls && message.tool_calls.length > 0 && (
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mb: 0.5 }}>
+            <Box
+              sx={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 0.75,
+                mb: 0.25,
+                minHeight: 36,
+                alignItems: "center",
+                alignSelf: "stretch",
+              }}
+            >
               {message.tool_calls.map((tc, i) => (
-                <Chip key={i} icon={<Wrench size={10} />} label={tc.tool_name} size="small" variant="outlined" />
+                <Chip
+                  key={i}
+                  icon={<Wrench size={10} />}
+                  label={tc.tool_name}
+                  size="small"
+                  variant="outlined"
+                  sx={{ height: 28, borderRadius: "8px", "& .MuiChip-label": { px: 1, fontSize: "0.7rem", fontFamily: "ui-monospace, monospace" } }}
+                />
               ))}
             </Box>
           )}
@@ -113,12 +150,33 @@ export function MessageBubble({ message, index, onQueryTransfer, onSuggestionCli
           <Box
             sx={{
               fontSize: "0.875rem",
-              lineHeight: 1.7,
+              lineHeight: 1.65,
               ...(isUser
-                ? { maxWidth: "min(560px,100%)", borderRadius: "18px 18px 6px 18px", bgcolor: "primary.main", color: "primary.contrastText", px: 2, py: 1.25, whiteSpace: "pre-wrap", boxShadow: "var(--shadow-primary)" }
+                ? {
+                    maxWidth: "100%",
+                    borderRadius: "14px",
+                    bgcolor: "primary.main",
+                    color: "primary.contrastText",
+                    px: 2,
+                    py: 1.125,
+                    whiteSpace: "pre-wrap",
+                    boxShadow: (th) =>
+                      th.palette.mode === "dark"
+                        ? "0 2px 14px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.06) inset"
+                        : "0 2px 12px rgba(37,99,235,0.22)",
+                  }
                 : isProgressOnly
                   ? { width: "100%" }
-                  : { width: "100%", borderRadius: "18px 18px 18px 6px", border: 1, borderColor: (th: any) => `${th.palette.divider}40`, bgcolor: "background.paper", px: 2.25, py: 1.5, boxShadow: "var(--shadow-xs)" }),
+                  : {
+                      width: "100%",
+                      borderRadius: "14px",
+                      border: 1,
+                      borderColor: (th: any) => `${th.palette.divider}40`,
+                      bgcolor: "background.paper",
+                      px: 2.25,
+                      py: 1.25,
+                      boxShadow: "var(--shadow-xs)",
+                    }),
             }}
           >
             {isUser ? (
