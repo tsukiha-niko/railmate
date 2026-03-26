@@ -143,7 +143,7 @@ export const messages: Record<Locale, Record<string, string>> = {
     "chat.emptyHint": "点击上方开始新对话",
     "chat.searchConversations": "搜索对话...",
     "chat.noSearchResults": "没有匹配的对话",
-    "chat.inputPlaceholder": "请输入出行需求，例如：查询明天广州南至长沙南的高铁车次。",
+    "chat.inputPlaceholder": "请输入出行需求，例如：查询明天广州至长沙的车次",
     "chat.welcome.title": "RailMate 智轨伴行",
     "chat.welcome.body": "你好！我是 RailMate，你的铁路出行 AI 助手。\n你可以直接告诉我你的出行需求，我会帮你查票、推荐车次、规划中转路线。",
     "chat.quick.fast.label": "最快的车",
